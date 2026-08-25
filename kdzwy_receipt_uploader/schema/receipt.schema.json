@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Kdzwy standard receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "receiptId", "voucher"],
+  "properties": {
+    "schemaVersion": {"const": "1.0"},
+    "draft": {"type": "boolean"},
+    "receiptId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{2,119}$"},
+    "source": {"type": "string"},
+    "voucher": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["date", "groupId", "summary", "attachments", "userName", "entries"],
+      "properties": {
+        "date": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+        "groupId": {"type": ["string", "integer"]},
+        "groupName": {"type": "string"},
+        "summary_header": {"type": "string"},
+        "summary_body": {"type": "string"},
+        "summary": {"type": "string"},
+        "amount": {"type": ["number", "string"]},
+        "taxAmount": {"type": ["number", "string"]},
+        "totalAmount": {"type": ["number", "string"]},
+        "attachments": {"type": "integer", "minimum": 0},
+        "invoiceCodes": {
+          "type": "array",
+          "description": "按发票码从月份 xlsx_pdf_map.json 检索 PDF；未解析码不上传附件",
+          "items": {"type": ["string", "number"]},
+          "uniqueItems": true
+        },
+        "attachmentFiles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path"],
+            "properties": {
+              "path": {"type": "string", "pattern": "^(?!/)(?![A-Za-z]:)[^\\\\].*\\.pdf$"},
+              "kind": {"const": "pdf"},
+              "billTypeId": {"type": "string"},
+              "remark": {"type": "string"}
+            }
+          }
+        },
+        "userName": {"type": "string", "minLength": 1},
+        "ownerId": {"type": ["string", "integer"]},
+        "checkerId": {"type": ["string", "integer"]},
+        "entries": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["lineNo", "explanation", "accountId", "accountNumber", "accountName", "dc", "amount", "cur", "rate", "amountFor"],
+            "properties": {
+              "entryId": {"type": ["string", "integer"]},
+              "lineNo": {"type": "integer", "minimum": 1},
+              "explanation": {"type": "string", "minLength": 1},
+              "accountId": {"type": ["string", "integer"]},
+              "accountNumber": {"type": "string", "minLength": 1},
+              "accountName": {"type": "string", "minLength": 1},
+              "dc": {"enum": [1, -1]},
+              "amount": {"type": ["number", "string"]},
+              "cur": {"type": "string"},
+              "rate": {"type": ["number", "string"]},
+              "amountFor": {"type": ["number", "string"]}
+            }
+          }
+        }
+      }
+    }
+  }
+}

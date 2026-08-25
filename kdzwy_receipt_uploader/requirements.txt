@@ -1,0 +1,18 @@
+# Runtime, Excel, PDF rendering and local OCR dependencies.
+# Browser automation is intentionally not required.
+et_xmlfile==2.0.0
+flatbuffers==25.12.19
+numpy==2.5.2
+onnxruntime==1.29.0
+opencv-python==5.0.0.93
+openpyxl==3.1.5
+packaging==26.3
+pillow==12.3.0
+protobuf==7.35.1
+pyclipper==1.4.0
+pymupdf==1.28.2
+PyYAML==6.0.3
+rapidocr-onnxruntime==1.2.3
+shapely==2.1.2
+six==1.17.0
+typing_extensions==4.16.0

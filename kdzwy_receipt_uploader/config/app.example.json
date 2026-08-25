@@ -1,0 +1,8 @@
+{
+  "runtime_dir": "runtime",
+  "cookie_file": "../http_sessions/kdzwy.accountbook.cookies.json",
+  "account_snapshot": "accountbook_snapshot.json",
+  "timeout_seconds": 30,
+  "upload_timeout_seconds": 60,
+  "user_agent": "KdzwyReceiptUploader/0.1"
+}

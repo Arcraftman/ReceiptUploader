@@ -1,0 +1,77 @@
+{
+  "id": "expense-17",
+  "name": "费用_增值税发票_往来结算_服务费发票_人民币",
+  "version": "1.0",
+  "documentBlock": "费用",
+  "documentType": "增值税发票",
+  "settlementMethod": "往来结算",
+  "businessType": "服务费发票",
+  "currency": "人民币",
+  "keywords": [
+    "服务费发票",
+    "增值税发票",
+    "费用"
+  ],
+  "when": {},
+  "matchRules": {
+    "sourceFolders": [
+      "purchase*"
+    ],
+    "allowedDocumentBlocks": [
+      "费用"
+    ],
+    "requiredKeywords": [
+      "增值税发票"
+    ],
+    "anyKeywords": [
+      "服务费发票"
+    ],
+    "excludeKeywords": [],
+    "expectedAccounts": [
+      "560217",
+      "22210101",
+      "2202"
+    ],
+    "priority": 80
+  },
+  "summary": {
+    "header": "",
+    "body": "服务费 {invoiceCode}",
+    "separator": " "
+  },
+  "amountSource": "purchase_map",
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "560217",
+        "name": "管理费用_服务费"
+      },
+      "amountFrom": "purchase_map.amount",
+      "amountForFrom": "purchase_map.amount"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "22210101",
+        "name": "应交税费_应交增值税_进项税额"
+      },
+      "amountFrom": "purchase_map.taxAmount",
+      "amountForFrom": "purchase_map.taxAmount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "2202",
+        "name": "应付账款"
+      },
+      "amountFrom": "purchase_map.totalAmount",
+      "amountForFrom": "purchase_map.totalAmount",
+      "auxiliary": {
+        "field": "supplierId",
+        "itemClassId": 5,
+        "selector": "auxiliaryItem"
+      }
+    }
+  ]
+}

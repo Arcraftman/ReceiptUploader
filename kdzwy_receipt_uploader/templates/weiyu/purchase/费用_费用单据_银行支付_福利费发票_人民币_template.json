@@ -1,0 +1,58 @@
+{
+  "id": "expense-10",
+  "name": "费用_费用单据_银行支付_福利费发票_人民币",
+  "version": "1.0",
+  "documentBlock": "费用",
+  "documentType": "费用单据",
+  "settlementMethod": "银行支付",
+  "businessType": "福利费发票",
+  "currency": "人民币",
+  "keywords": [
+    "福利费发票",
+    "费用单据",
+    "费用"
+  ],
+  "when": {},
+  "matchRules": {
+    "sourceFolders": [],
+    "allowedDocumentBlocks": [
+      "费用"
+    ],
+    "requiredKeywords": [],
+    "anyKeywords": [
+      "福利费发票"
+    ],
+    "excludeKeywords": [],
+    "expectedAccounts": [
+      "560202",
+      "100201"
+    ],
+    "priority": 80
+  },
+  "summary": {
+    "header": "",
+    "body": "福利费 {invoiceCode}",
+    "separator": " "
+  },
+  "amountSource": "sales_map",
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "560202",
+        "name": "管理费用_福利费"
+      },
+      "amountFrom": "sales_map.totalAmount",
+      "amountForFrom": "sales_map.totalAmount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "100201",
+        "name": "银行存款_0301招商银行"
+      },
+      "amountFrom": "sales_map.totalAmount",
+      "amountForFrom": "sales_map.totalAmount"
+    }
+  ]
+}

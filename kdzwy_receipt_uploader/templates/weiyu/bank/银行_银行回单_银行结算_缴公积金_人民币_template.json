@@ -1,0 +1,59 @@
+{
+  "id": "bank-10",
+  "name": "银行_银行回单_银行结算_缴公积金_人民币",
+  "version": "1.0",
+  "documentBlock": "银行",
+  "documentType": "银行回单",
+  "settlementMethod": "银行结算",
+  "businessType": "缴公积金",
+  "currency": "人民币",
+  "keywords": [
+    "缴公积金",
+    "银行回单",
+    "银行"
+  ],
+  "when": {},
+  "matchRules": {
+    "sourceFolders": [],
+    "allowedDocumentBlocks": [
+      "银行"
+    ],
+    "requiredKeywords": [
+      "银行回单"
+    ],
+    "anyKeywords": [
+      "缴公积金"
+    ],
+    "excludeKeywords": [],
+    "expectedAccounts": [
+      "221103",
+      "100201"
+    ],
+    "priority": 80
+  },
+  "summary": {
+    "header": "",
+    "body": "缴公积金",
+    "separator": " "
+  },
+  "amountSource": "sales_map",
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "221103"
+      },
+      "amountFrom": "sales_map.amount",
+      "amountForFrom": "sales_map.amount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "100201",
+        "name": "银行存款_0301招商银行"
+      },
+      "amountFrom": "sales_map.amount",
+      "amountForFrom": "sales_map.amount"
+    }
+  ]
+}

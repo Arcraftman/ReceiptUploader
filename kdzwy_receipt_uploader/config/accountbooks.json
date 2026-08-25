@@ -1,0 +1,14 @@
+{
+    "version":  1,
+    "accountbooks":  [
+                         {
+                             "key":  "xinghai",
+                             "name":  "星海公司",
+                             "enabled":  true,
+                             "session_file":  "../http_sessions/companies/星海公司.accountbook.cookies.json",
+                             "pipeline_overrides":  {
+
+                                                    }
+                         }
+                     ]
+}

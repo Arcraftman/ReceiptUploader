@@ -1,0 +1,14 @@
+﻿{
+    "generated_at":  "2026-08-24T16:23:29.1927054+08:00",
+    "requested_count":  1,
+    "success_count":  1,
+    "sessions":  [
+                     {
+                         "company_name":  "星海公司",
+                         "company_name_expected":  "星海公司",
+                         "company_matched":  false,
+                         "session_file":  "C:\\Users\\chqte\\Documents\\Codex\\receipt-uploader\\http_sessions\\companies\\星海公司.accountbook.cookies.json",
+                         "verified_at":  "2026-08-24T16:23:29.1587764+08:00"
+                     }
+                 ]
+}

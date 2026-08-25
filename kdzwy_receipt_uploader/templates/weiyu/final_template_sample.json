@@ -1,0 +1,50 @@
+{
+  "schemaVersion": "1.0",
+  "purpose": "最终凭证模板样例。DeepSeek必须先选择候选template，再严格按本样例填充entries；不得创建候选目录外的科目、辅助核算类型、辅助对象或分录。",
+  "instructions": {
+    "outputOnlyJson": true,
+    "preserveEntryCountFromTemplate": true,
+    "accountMustComeFromDynamicAccounts": true,
+    "itemClassMustComeFromDynamicItemClasses": true,
+    "auxiliaryIdMustComeFromDynamicItems": true,
+    "unknownValueAction": "blocked",
+    "amountSources": ["sales_map.totalAmount", "sales_map.amount", "sales_map.taxAmount", "purchase_map.totalAmount", "purchase_map.amount", "purchase_map.taxAmount"]
+  },
+  "outputSchema": {
+    "templatePath": "候选模板中的path",
+    "templateId": "候选模板中的id",
+    "confidence": 0.0,
+    "reason": "基于OCR字段和规则的简短理由",
+    "extractedFields": {},
+    "filledEntries": [
+      {
+        "entryId": 1,
+        "dc": 1,
+        "accountNumber": "动态科目目录中的number",
+        "accountName": "动态科目目录中的fullName",
+        "accountId": "动态科目目录中的id",
+        "amountFrom": "sales_map.amount 或 purchase_map.amount",
+        "amount": "从金额来源填充后的数值",
+        "amountFor": "从金额来源填充后的数值",
+        "explanation": "摘要",
+        "auxiliary": {
+          "itemClassId": 0,
+          "itemClass": "客户/供应商/职员/项目/存货/部门",
+          "id": "动态ItemClass明细中的id",
+          "number": "动态ItemClass明细中的number",
+          "name": "动态ItemClass明细中的name",
+          "field": "customId/supplierId/empId/projectId/inventoryId/deptId"
+        }
+      }
+    ],
+    "validationNotes": ["列出科目、金额、辅助核算和借贷平衡校验依据"]
+  },
+  "dynamicAccountCatalog": {
+    "source": "运行时注入，不允许DeepSeek自行补全",
+    "accounts": []
+  },
+  "dynamicItemClassCatalog": {
+    "source": "运行时注入，不允许DeepSeek自行补全",
+    "classes": []
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "id": "purchase-05",
+  "name": "采购_增值税发票_往来结算_采购商品进项_人民币",
+  "version": "1.0",
+  "documentBlock": "采购",
+  "documentType": "增值税发票",
+  "settlementMethod": "往来结算",
+  "businessType": "采购商品进项",
+  "currency": "人民币",
+  "keywords": [
+    "采购商品进项",
+    "增值税发票",
+    "采购"
+  ],
+  "when": {},
+  "matchRules": {
+    "sourceFolders": [
+      "purchase*"
+    ],
+    "allowedDocumentBlocks": [
+      "采购"
+    ],
+    "requiredKeywords": [
+      "增值税发票"
+    ],
+    "anyKeywords": [
+      "采购商品进项"
+    ],
+    "excludeKeywords": [],
+    "expectedAccounts": [
+      "1405",
+      "22210101",
+      "2202"
+    ],
+    "priority": 100
+  },
+  "summary": {
+    "header": "",
+    "body": "采购商品{invoiceCode}",
+    "separator": " "
+  },
+  "amountSource": "purchase_map",
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "1405",
+        "name": "库存商品"
+      },
+      "amountFrom": "purchase_map.amount",
+      "amountForFrom": "purchase_map.amount"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "22210101",
+        "name": "应交税费_应交增值税_进项税额"
+      },
+      "amountFrom": "purchase_map.taxAmount",
+      "amountForFrom": "purchase_map.taxAmount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "2202",
+        "name": "应付账款"
+      },
+      "amountFrom": "purchase_map.totalAmount",
+      "amountForFrom": "purchase_map.totalAmount",
+      "auxiliary": {
+        "field": "supplierId",
+        "itemClassId": 5,
+        "selector": "auxiliaryItem"
+      }
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "id": "expense-16",
+  "name": "费用_增值税发票_往来结算_汽车费用发票_人民币",
+  "version": "1.0",
+  "documentBlock": "费用",
+  "documentType": "增值税发票",
+  "settlementMethod": "往来结算",
+  "businessType": "汽车费用发票",
+  "currency": "人民币",
+  "keywords": [
+    "汽车费用发票",
+    "增值税发票",
+    "费用"
+  ],
+  "when": {},
+  "matchRules": {
+    "sourceFolders": [
+      "purchase*"
+    ],
+    "allowedDocumentBlocks": [
+      "费用"
+    ],
+    "requiredKeywords": [
+      "增值税发票"
+    ],
+    "anyKeywords": [
+      "汽车费用发票"
+    ],
+    "excludeKeywords": [],
+    "expectedAccounts": [
+      "560216",
+      "22210101",
+      "2202"
+    ],
+    "priority": 80
+  },
+  "summary": {
+    "header": "",
+    "body": "汽车费用 {invoiceCode}",
+    "separator": " "
+  },
+  "amountSource": "purchase_map",
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "560216",
+        "name": "管理费用_汽车费用"
+      },
+      "amountFrom": "purchase_map.amount",
+      "amountForFrom": "purchase_map.amount"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "22210101",
+        "name": "应交税费_应交增值税_进项税额"
+      },
+      "amountFrom": "purchase_map.taxAmount",
+      "amountForFrom": "purchase_map.taxAmount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "2202",
+        "name": "应付账款"
+      },
+      "amountFrom": "purchase_map.totalAmount",
+      "amountForFrom": "purchase_map.totalAmount",
+      "auxiliary": {
+        "field": "supplierId",
+        "itemClassId": 5,
+        "selector": "auxiliaryItem"
+      }
+    }
+  ],
+  "accountbookValidation": {
+    "company": "星海公司",
+    "periodRead": "202509",
+    "validatedAt": "2026-08-23T10:57:54.250341+00:00",
+    "source": "live-subject-tree",
+    "status": "validated",
+    "unresolvedAccounts": [],
+    "missingAuxiliary": []
+  }
+}

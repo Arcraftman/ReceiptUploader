@@ -1,0 +1,42 @@
+{
+  "accountbook_source": "live",
+  "analysis_stage": "ocr",
+  "analysis_validation": "strict",
+  "ocr_workers": 2,
+  "deepseek_workers": 2,
+  "only_mapped_invoices": false,
+  "preload_items": false,
+  "item_source_columns": [],
+  "paths": {
+    "month_dir": "data/inbox/{company}/{month}",
+    "input_dir": "data/inbox/{company}/{month}/input",
+    "map_file": "data/inbox/{company}/{month}/generated/maps/{source}/xlsx_pdf_map.json",
+    "map_report_file": "data/inbox/{company}/{month}/generated/maps/{source}/xlsx_pdf_map.report.json",
+    "sales_map_file": "data/inbox/{company}/{month}/generated/maps/{source}/sales_map.json",
+    "sales_map_report_file": "data/inbox/{company}/{month}/generated/maps/{source}/sales_map.report.json",
+    "purchase_map_file": "data/inbox/{company}/{month}/generated/maps/{source}/purchase_map.json",
+    "purchase_map_report_file": "data/inbox/{company}/{month}/generated/maps/{source}/purchase_map.report.json",
+    "bank_maps_dir": "data/inbox/{company}/{month}/generated/maps/{source}/bank",
+    "bank_map_path_pattern": "data/inbox/{company}/{month}/generated/maps/{source}/bank/{bank_account}/bank_map.json",
+    "bank_map_report_path_pattern": "data/inbox/{company}/{month}/generated/maps/{source}/bank/{bank_account}/bank_map.report.json",
+    "misc_map_file": "data/inbox/{company}/{month}/generated/maps/{source}/misc_map.json",
+    "misc_map_report_file": "data/inbox/{company}/{month}/generated/maps/{source}/misc_map.report.json",
+    "item_class_map_file": "data/inbox/{company}/{month}/generated/maps/{source}/item_class_maps.json",
+    "upload_map_file": "data/inbox/{company}/{month}/generated/maps/{source}/upload_pdf_map.json",
+    "receipt_dir": "data/inbox/{company}/{month}/generated/receipts/{source}",
+    "receipt_dir_sales_map": "data/inbox/{company}/{month}/generated/receipts/{source}",
+    "receipt_dir_bank_map_pattern": "data/inbox/{company}/{month}/generated/receipts/{source}/{bank_account}",
+    "receipt_dir_misc_map": "data/inbox/{company}/{month}/generated/receipts/{source}",
+    "receipts_ocr_dir": "data/inbox/{company}/{month}/generated/ocr/{source}",
+    "receipt_report_file": "data/inbox/{company}/{month}/generated/receipts/{source}/receipt_generation.report.json",
+    "preupload_review_file": "data/inbox/{company}/{month}/generated/maps/{source}/preupload_review.report.json"
+  },
+  "voucher_defaults": {
+    "group_id": "",
+    "summary": "",
+    "user_name": ""
+  },
+  "entry_defaults": [],
+  "pdf_folders": ["sales*", "purchase*", "bank*", "misc*"],
+  "generate_overwrite": true
+}

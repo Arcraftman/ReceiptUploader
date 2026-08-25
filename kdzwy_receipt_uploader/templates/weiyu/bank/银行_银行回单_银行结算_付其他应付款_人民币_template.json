@@ -1,0 +1,60 @@
+{
+  "id": "bank-18",
+  "name": "银行_银行回单_银行结算_付其他应付款_人民币",
+  "version": "1.0",
+  "documentBlock": "银行",
+  "documentType": "银行回单",
+  "settlementMethod": "银行结算",
+  "businessType": "付其他应付款",
+  "currency": "人民币",
+  "keywords": [
+    "付其他应付款",
+    "银行回单",
+    "银行"
+  ],
+  "when": {},
+  "matchRules": {
+    "sourceFolders": [],
+    "allowedDocumentBlocks": [
+      "银行"
+    ],
+    "requiredKeywords": [
+      "银行回单"
+    ],
+    "anyKeywords": [
+      "付其他应付款"
+    ],
+    "excludeKeywords": [],
+    "expectedAccounts": [
+      "224101",
+      "100201"
+    ],
+    "priority": 80
+  },
+  "summary": {
+    "header": "",
+    "body": "【备注】",
+    "separator": " "
+  },
+  "amountSource": "sales_map",
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "224101",
+        "name": "其他应付款_外部往来"
+      },
+      "amountFrom": "sales_map.amount",
+      "amountForFrom": "sales_map.amount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "100201",
+        "name": "银行存款_0301招商银行"
+      },
+      "amountFrom": "sales_map.amount",
+      "amountForFrom": "sales_map.amount"
+    }
+  ]
+}

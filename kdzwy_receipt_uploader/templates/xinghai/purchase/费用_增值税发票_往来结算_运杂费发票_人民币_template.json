@@ -1,0 +1,94 @@
+{
+  "id": "expense-12",
+  "name": "费用_增值税发票_往来结算_运杂费发票_人民币",
+  "version": "1.0",
+  "documentBlock": "费用",
+  "documentType": "增值税发票",
+  "settlementMethod": "往来结算",
+  "businessType": "运杂费发票",
+  "currency": "人民币",
+  "keywords": [
+    "运杂费发票",
+    "增值税发票",
+    "费用"
+  ],
+  "when": {},
+  "matchRules": {
+    "sourceFolders": [
+      "purchase*"
+    ],
+    "allowedDocumentBlocks": [
+      "费用"
+    ],
+    "requiredKeywords": [
+      "增值税发票"
+    ],
+    "anyKeywords": [
+      "运费",
+      "运输费",
+      "物流费",
+      "货运",
+      "运杂费"
+    ],
+    "excludeKeywords": [
+      "电费",
+      "水费",
+      "办公用品"
+    ],
+    "expectedAccounts": [
+      "560206",
+      "22210101",
+      "2202"
+    ],
+    "priority": 80
+  },
+  "summary": {
+    "header": "",
+    "body": "运杂费 {invoiceCode}",
+    "separator": " "
+  },
+  "amountSource": "purchase_map",
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "560206",
+        "name": "管理费用_运杂费"
+      },
+      "amountFrom": "purchase_map.amount",
+      "amountForFrom": "purchase_map.amount"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "22210101",
+        "name": "应交税费_应交增值税_进项税额"
+      },
+      "amountFrom": "purchase_map.taxAmount",
+      "amountForFrom": "purchase_map.taxAmount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "2202",
+        "name": "应付账款"
+      },
+      "amountFrom": "purchase_map.totalAmount",
+      "amountForFrom": "purchase_map.totalAmount",
+      "auxiliary": {
+        "field": "supplierId",
+        "itemClassId": 5,
+        "selector": "auxiliaryItem"
+      }
+    }
+  ],
+  "accountbookValidation": {
+    "company": "星海公司",
+    "periodRead": "202509",
+    "validatedAt": "2026-08-23T10:57:54.254029+00:00",
+    "source": "live-subject-tree",
+    "status": "validated",
+    "unresolvedAccounts": [],
+    "missingAuxiliary": []
+  }
+}

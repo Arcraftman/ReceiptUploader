@@ -1,0 +1,81 @@
+﻿{
+    "target_url":  "https://vip4-kj.kdzwy.com/accounting/index.html?dbId=791310921951184\u0026random=1787559805649",
+    "cookies":  [
+                    {
+                        "name":  "app-token",
+                        "value":  "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHQiOnsic2hhcmRLZXkiOiJkYi5zaGFyZDMifSwiZ3JwIjoibnMtdjMtZmktZzMiLCJleHAiOjE3ODc1ODg2MDUsImFpZCI6Ijc5MTM4MTkxMTkxMDM0NjgiLCJpYXQiOjE3ODc1NTk4MDV9.q6Fo7b-x6dSRg3TW79kyI13lkr-jofNt5wyHv7kCFBE",
+                        "domain":  "vip4-kj.kdzwy.com",
+                        "path":  "/",
+                        "expires":  -1,
+                        "httpOnly":  false,
+                        "secure":  true
+                    },
+                    {
+                        "name":  "authCode",
+                        "value":  "5fcb0c67c81448cca021f138b75a71fa",
+                        "domain":  "vip4-kj.kdzwy.com",
+                        "path":  "/",
+                        "expires":  -1,
+                        "httpOnly":  false,
+                        "secure":  true
+                    },
+                    {
+                        "name":  "grp",
+                        "value":  "ns-v3-fi-g3",
+                        "domain":  "vip4-kj.kdzwy.com",
+                        "path":  "/",
+                        "expires":  -1,
+                        "httpOnly":  false,
+                        "secure":  true
+                    },
+                    {
+                        "name":  "group",
+                        "value":  "jdy-fi-zwy-g3",
+                        "domain":  "vip4-kj.kdzwy.com",
+                        "path":  "/",
+                        "expires":  -1,
+                        "httpOnly":  false,
+                        "secure":  true
+                    },
+                    {
+                        "name":  "ysSession",
+                        "value":  "MmVlZDgxMGUtYzJmNy00NjljLWI3ZjYtYWJmNjNmN2UzNmJm",
+                        "domain":  "vip4-kj.kdzwy.com",
+                        "path":  "/",
+                        "expires":  -1,
+                        "httpOnly":  true,
+                        "secure":  true
+                    },
+                    {
+                        "name":  "zwyClient",
+                        "value":  "67aaecac-2d95-4135-a7c1-ea5a20296e6f",
+                        "domain":  "kdzwy.com",
+                        "path":  "/",
+                        "expires":  -1,
+                        "httpOnly":  true,
+                        "secure":  false
+                    },
+                    {
+                        "name":  "fct",
+                        "value":  "1785293197bbaa7a2ae1bbebfb95dedf",
+                        "domain":  "kdzwy.com",
+                        "path":  "/",
+                        "expires":  -1,
+                        "httpOnly":  true,
+                        "secure":  false
+                    },
+                    {
+                        "name":  "gj-phone",
+                        "value":  "18249555724",
+                        "domain":  "kdzwy.com",
+                        "path":  "/",
+                        "expires":  1788164607,
+                        "httpOnly":  false,
+                        "secure":  false
+                    }
+                ],
+    "access_token":  "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHQiOnsic2hhcmRLZXkiOiJkYi5zaGFyZDMifSwiZ3JwIjoibnMtdjMtZmktZzMiLCJleHAiOjE3ODc1ODg2MDUsImFpZCI6Ijc5MTM4MTkxMTkxMDM0NjgiLCJpYXQiOjE3ODc1NTk4MDV9.q6Fo7b-x6dSRg3TW79kyI13lkr-jofNt5wyHv7kCFBE",
+    "refresh_token":  "c7182b2d83a9482a8d2f0e6ccc3467a2",
+    "company_name":  "星海公司",
+    "verified_at":  "2026-08-24T16:23:29.1587764+08:00"
+}

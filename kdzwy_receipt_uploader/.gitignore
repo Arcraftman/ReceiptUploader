@@ -1,0 +1,83 @@
+# 本机密钥和会话配置
+config/app.json
+.env
+.env.*
+!*.example
+
+# 自动生成的任务快照和运行数据
+runtime/
+data/inbox/*/*/maps/
+data/inbox/*/*/receipts*/
+
+# Python 本地产物
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# 编辑器和系统文件
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Python virtual environments
+.auto/
+.venv/
+venv/
+
+# Login sessions and cookies
+http_sessions/**
+
+
+# Secrets and local credentials
+.env
+.env.*
+!.env.example
+**/config/app.json
+**/config/kdzwy.json
+**/config/credentials.json
+
+# Runtime jobs, logs, checkpoints and upload records
+**/runtime/
+**/logs/
+**/*.log
+**/run.jsonl
+**/run.before-upload-reset.*.jsonl
+
+# Real accounting data
+**/data/inbox/
+**/data/input/
+**/generated/
+**/receipts/
+**/ocr/
+**/maps/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.lock
+~$*
+*.part
+
+# Python caches
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# IDE and operating system
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+tests/**

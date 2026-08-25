@@ -1,0 +1,74 @@
+{
+  "id": "bank-13",
+  "name": "银行_银行回单_银行结算_银行手续费_人民币",
+  "version": "1.0",
+  "documentBlock": "银行",
+  "documentType": "银行回单",
+  "settlementMethod": "银行结算",
+  "businessType": "银行手续费",
+  "currency": "人民币",
+  "keywords": [
+    "银行手续费",
+    "银行回单",
+    "银行"
+  ],
+  "when": {},
+  "matchRules": {
+    "sourceFolders": [],
+    "allowedDocumentBlocks": [
+      "银行"
+    ],
+    "requiredKeywords": [
+      "银行回单"
+    ],
+    "anyKeywords": [
+      "银行手续费"
+    ],
+    "excludeKeywords": [],
+    "expectedAccounts": [
+      "2202",
+      "100201"
+    ],
+    "priority": 80
+  },
+  "summary": {
+    "header": "",
+    "body": "银行手续费",
+    "separator": " "
+  },
+  "amountSource": "sales_map",
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "2202",
+        "name": "应付账款"
+      },
+      "amountFrom": "sales_map.amount",
+      "amountForFrom": "sales_map.amount",
+      "auxiliary": {
+        "field": "supplierId",
+        "itemClassId": 5,
+        "selector": "auxiliaryItem"
+      }
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "100201",
+        "name": "银行存款_0301招商银行"
+      },
+      "amountFrom": "sales_map.amount",
+      "amountForFrom": "sales_map.amount"
+    }
+  ],
+  "accountbookValidation": {
+    "company": "星海公司",
+    "periodRead": "202509",
+    "validatedAt": "2026-08-23T10:57:54.291568+00:00",
+    "source": "live-subject-tree",
+    "status": "validated",
+    "unresolvedAccounts": [],
+    "missingAuxiliary": []
+  }
+}
