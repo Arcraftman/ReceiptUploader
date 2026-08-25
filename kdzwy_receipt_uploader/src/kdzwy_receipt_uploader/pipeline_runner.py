@@ -35,6 +35,7 @@ from kdzwy_receipt_uploader.preupload_review import build_preupload_report
 from kdzwy_receipt_uploader.final_template_sample import build_final_template_context, load_final_template_sample
 from kdzwy_receipt_uploader.preload_items import apply_preloaded_items, preload_items
 from kdzwy_receipt_uploader.simple_logging import configure_pipeline_logger
+from kdzwy_receipt_uploader.bank_receipt_splitter import BankReceiptSplitError, split_configured_bank_pdfs
 
 
 def main() -> int:
@@ -84,6 +85,34 @@ def main() -> int:
         return 2
     logger.info("开始任务：company=%s accountbook=%s dataset=%s month=%s mode=%s source=%s", company, expected_company, document_entity_name, month, mode, settings.get("source", "all"))
     config = MonthConfig.load(confs[0])
+    if pipeline_source_key == "bank":
+        bank_input_dir = input_dir / "bank"
+        bank_split_config = resolve_config_path(
+            str(paths_config.get("bank_split_config_file", "data/inbox/{company}/{month}/input/bank/bank_split.json")),
+            ROOT, company, month, pipeline_source_key,
+        )
+        bank_split_output = resolve_config_path(
+            str(paths_config.get("bank_split_output_dir", "data/inbox/{company}/{month}/generated/bank_receipts")),
+            ROOT, company, month, pipeline_source_key,
+        )
+        bank_split_report_path = resolve_config_path(
+            str(paths_config.get("bank_split_report_file", "data/inbox/{company}/{month}/generated/bank_receipts/split.report.json")),
+            ROOT, company, month, pipeline_source_key,
+        )
+        try:
+            bank_split_report = split_configured_bank_pdfs(
+                bank_split_config, bank_input_dir, bank_split_output, bank_split_report_path
+            )
+        except BankReceiptSplitError as exc:
+            print(f"银行回单裁剪失败：{exc}", file=sys.stderr)
+            return 2
+        print(
+            f"银行回单裁剪完成：银行={bank_split_report['summary']['bankCount']}，"
+            f"回单={bank_split_report['summary']['receiptCount']}，"
+            f"新生成={bank_split_report['summary']['generatedBankCount']}，"
+            f"复用={bank_split_report['summary']['reusedBankCount']}；"
+            f"目录={bank_split_output}"
+        )
     map_report = match_month_directory(input_dir, config, map_path.parent)
     income_path = input_dir / config.income_cost_filename
     preload_report = None
