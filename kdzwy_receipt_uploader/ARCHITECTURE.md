@@ -76,6 +76,18 @@ The source selector now uses semantic values only:
 - A receipt is successful only after voucher readback and attachment readback.
 - A failed or ambiguous API workflow stops the batch; archive failures are separate from API failures.
 
+## Durable job state
+
+One job is uniquely scoped by `accountbook/dataset/month/source`. Its latest state
+is atomically written to `runtime/jobs/.../state.json`, while transitions are
+appended to `events.jsonl`. The state records observation and diagnostics only;
+it never authorizes an upload or silently skips a receipt. A per-job OS lock
+prevents concurrent runners, and is automatically released if a process exits.
+
+Business artifacts remain authoritative at their own boundaries: OCR reports,
+template analysis, bank split manifests, generated receipts, API audit events,
+and live voucher/attachment read-back.
+
 ## Preprocessing and analysis workflow
 
 ```text

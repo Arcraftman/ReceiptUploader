@@ -36,6 +36,7 @@ from kdzwy_receipt_uploader.final_template_sample import build_final_template_co
 from kdzwy_receipt_uploader.preload_items import apply_preloaded_items, preload_items
 from kdzwy_receipt_uploader.simple_logging import configure_pipeline_logger
 from kdzwy_receipt_uploader.bank_receipt_splitter import BankReceiptSplitError, split_configured_bank_pdfs
+from kdzwy_receipt_uploader.pipeline_state import PipelineStateStore
 
 
 def main() -> int:
@@ -47,7 +48,14 @@ def main() -> int:
     parser.add_argument("--limit", type=int, default=0, help="传递给上传阶段的单证限制（仅 confirm 阶段生效）")
     parser.add_argument("--receipt-id", type=str, default="", help="传递给上传阶段的单个 receiptId（仅 confirm 阶段生效）")
     parser.add_argument("--test-upload", action="store_true", help="传递给上传阶段的 test-upload 标记（仅 confirm 阶段生效）")
+    parser.add_argument("--state-file", type=Path, default=None, help="任务级状态文件；通常由 run_companies.py 传入")
     args = parser.parse_args()
+    state_store = PipelineStateStore(args.state_file) if args.state_file else None
+
+    def checkpoint(phase: str, *, artifacts=None, counters=None, event: str = "phase_changed") -> None:
+        if state_store is not None:
+            state_store.update(phase=phase, artifacts=artifacts, counters=counters, event=event)
+
     logger = configure_pipeline_logger(ROOT / "runtime" / "logs", "run_pipeline")
     run_config_path = args.run_config if args.run_config.is_absolute() else ROOT / args.run_config
     app_config_path = args.app_config if args.app_config.is_absolute() else ROOT / args.app_config
@@ -84,8 +92,10 @@ def main() -> int:
         print(f"月份目录没有 .conf：{month_dir}")
         return 2
     logger.info("开始任务：company=%s accountbook=%s dataset=%s month=%s mode=%s source=%s", company, expected_company, document_entity_name, month, mode, settings.get("source", "all"))
+    checkpoint("workspace_ready", artifacts={"runConfig": str(run_config_path.resolve()), "appConfig": str(app_config_path.resolve()), "monthDirectory": str(month_dir.resolve())})
     config = MonthConfig.load(confs[0])
     if pipeline_source_key == "bank":
+        checkpoint("bank_split")
         bank_input_dir = input_dir / "bank"
         bank_split_config = resolve_config_path(
             str(paths_config.get("bank_split_config_file", "data/inbox/{company}/{month}/input/bank/bank_split.json")),
@@ -113,6 +123,10 @@ def main() -> int:
             f"复用={bank_split_report['summary']['reusedBankCount']}；"
             f"目录={bank_split_output}"
         )
+        checkpoint("bank_split_complete", artifacts={"bankSplitReport": str(bank_split_report_path.resolve())}, counters={"bankReceiptCount": bank_split_report["summary"]["receiptCount"]})
+        print("银行预处理阶段完成：当前只生成单张回单；银行专用OCR、流水匹配、bank_map、receipt和上传尚未开放。")
+        return 0
+    checkpoint("mapping")
     map_report = match_month_directory(input_dir, config, map_path.parent)
     income_path = input_dir / config.income_cost_filename
     preload_report = None
@@ -156,6 +170,7 @@ def main() -> int:
 
     preload_enabled = preload_mode != "off"
     if preload_enabled and not preload_already_done and str(settings.get("accountbook_source", "live")) == "live":
+        checkpoint("item_preload")
         preload_config = AppConfig.from_json(app_config_path, ROOT)
         preload_api = KdzwyApi(replace(preload_config, expected_company=expected_company))
         preload_api.get_dynamic_system_params()
@@ -176,8 +191,10 @@ def main() -> int:
             )
             preload_state_tmp.replace(preload_state_path)
         print(f"ItemClass预加载完成：{preload_report['counts']}，新增：{len(preload_result.created)}")
+        checkpoint("item_preload_complete", artifacts={"itemPreloadReport": str(preload_path.resolve())}, counters={"itemPreloadCreatedCount": len(preload_result.created)})
     elif preload_already_done:
         print(f"ItemClass预加载已完成且输入Excel未变化，本次跳过：{settings.get('source', 'all')}")
+        checkpoint("item_preload_reused")
     usage_path = input_dir / config.usage_filename
     sales_map_report = build_sales_map(income_path, sales_map_path, sales_map_report_path)
     purchase_map_report = build_purchase_map(usage_path, purchase_map_path, purchase_map_report_path)
@@ -197,6 +214,11 @@ def main() -> int:
     purchase_map_report["report"]["summary"]["excludedByUsagePdfFilterCount"] = purchase_map_total_count - len(purchase_map_report["map"])
     purchase_map_path.write_text(json.dumps(purchase_map_report["map"], ensure_ascii=False, indent=2), encoding="utf-8")
     purchase_map_report_path.write_text(json.dumps(purchase_map_report["report"], ensure_ascii=False, indent=2), encoding="utf-8")
+    checkpoint(
+        "mapping_complete",
+        artifacts={"xlsxPdfMap": str(map_path.resolve()), "salesMap": str(sales_map_path.resolve()), "purchaseMap": str(purchase_map_path.resolve())},
+        counters={"salesInvoiceCount": len(sales_map_report["map"]), "purchaseInvoiceCount": len(purchase_map_report["map"])},
+    )
     template_config = json.loads(template_path.read_text(encoding="utf-8")) if template_path.is_file() else {}
     final_sample_path = (ROOT / str(settings.get("final_template_sample", "templates/final_template_sample.json"))).resolve()
     if not final_sample_path.is_file():
@@ -209,6 +231,7 @@ def main() -> int:
     runtime_item_catalog: dict[str, dict[str, object]] = {}
     needs_live_analysis_catalog = mode != "analysis-only" or analysis_stage in {"deepseek", "all"}
     if str(settings.get("accountbook_source", "live")) == "live" and needs_live_analysis_catalog:
+        checkpoint("dynamic_catalog")
         analysis_api_config = AppConfig.from_json(app_config_path, ROOT)
         account_api_for_analysis = KdzwyApi(replace(analysis_api_config, expected_company=expected_company))
         account_api_for_analysis.get_dynamic_system_params()
@@ -248,6 +271,7 @@ def main() -> int:
         sales_allowed_codes = set(sales_map_report["map"]) if pipeline_source_key in {"all", "sales"} else set()
         allowed_ocr_codes = purchase_allowed_codes | sales_allowed_codes
         if analysis_stage == "existing":
+            checkpoint("analysis_existing")
             analysis_path = receipts_ocr_dir / "template_analysis.json"
             if not analysis_path.is_file():
                 raise OcrPipelineError(f"缺少已批准DeepSeek分析：{analysis_path}")
@@ -281,6 +305,7 @@ def main() -> int:
             ocr_artifacts = load_ocr_artifacts(receipts_ocr_dir, allowed_ocr_codes)
             logger.info("复用已批准DeepSeek分析：%s 张，不运行OCR、不调用DeepSeek", len(ocr_analysis_by_invoice))
         elif analysis_stage in {"ocr", "all"}:
+            checkpoint("ocr")
             logger.info("OCR 阶段开始：source=%s folders=%s allowed=%s", pipeline_source_key, pdf_folders, len(allowed_ocr_codes))
             ocr_report, ocr_artifacts = run_ocr_stage(
                 input_dir, receipts_ocr_dir, pdf_folders, company=configured_company,
@@ -292,11 +317,14 @@ def main() -> int:
             if ocr_artifacts and success_text_count == 0:
                 engines = sorted({artifact.engine for artifact in ocr_artifacts})
                 raise OcrPipelineError(f"OCR 未产生任何有效文本；引擎状态：{engines}")
+            checkpoint("ocr_complete", artifacts={"ocrReport": str(ocr_stage_report_path.resolve()), "ocrDirectory": str(receipts_ocr_dir.resolve())}, counters={"ocrArtifactCount": len(ocr_artifacts), "ocrSuccessTextCount": success_text_count})
         else:
+            checkpoint("ocr_reuse")
             logger.info("DeepSeek阶段：只读取已有OCR产物，不运行OCR")
             ocr_artifacts = load_ocr_artifacts(receipts_ocr_dir, allowed_ocr_codes)
 
         if analysis_stage in {"deepseek", "all"}:
+            checkpoint("deepseek")
             try:
                 deepseek_worker_count = max(1, int(settings.get("deepseek_workers", 2) or 1))
             except (TypeError, ValueError):
@@ -333,6 +361,7 @@ def main() -> int:
                 for code, analysis in ocr_analysis_by_invoice.items()
             }
             (receipts_ocr_dir / "template_analysis.json").write_text(json.dumps(stored_analysis, ensure_ascii=False, indent=2), encoding="utf-8")
+            checkpoint("deepseek_complete", artifacts={"templateAnalysis": str((receipts_ocr_dir / "template_analysis.json").resolve())}, counters={"analysisCount": len(stored_analysis), "analysisBlockedCount": sum(1 for item in stored_analysis.values() if item.get("analysisStatus") != "ready_for_review")})
     else:
         allowed_ocr_codes = set()
         ocr_stage_report_path.parent.mkdir(parents=True, exist_ok=True)
@@ -366,6 +395,7 @@ def main() -> int:
         else:
             print("DeepSeek未执行；下一步请使用 --stage deepseek。")
         print(f"有效销售发票：{len(sales_map_report['map'])}，有效进项发票：{len(purchase_map_report['map'])}，合计范围：{len(allowed_ocr_codes)}")
+        checkpoint("analysis_complete", artifacts={"analysisDirectory": str(receipts_ocr_dir.resolve())})
         return 0
     account_source = str(settings.get("accountbook_source", "live"))
     if account_source == "live":
@@ -446,6 +476,7 @@ def main() -> int:
     upload_map = {code: str(paths[0]) for code, paths in all_pdfs.items() if paths}
     upload_map_path.parent.mkdir(parents=True, exist_ok=True)
     upload_map_path.write_text(json.dumps(upload_map, ensure_ascii=False, indent=2), encoding="utf-8")
+    checkpoint("receipt_generation")
     receipt_report = generate_receipts(
         input_dir,
         config,
@@ -468,6 +499,7 @@ def main() -> int:
     print(f"输入目录：{input_dir}")
     print(f"map：{map_path}")
     print(f"生成 receipt：{receipt_report['summary']['generatedCount']}，已存在：{receipt_report['summary']['skippedCount']}，扫描 PDF：{receipt_report['summary']['pdfInvoiceCodeCount']}，重复：{receipt_report['summary']['duplicateInvoiceCodeCount']}，无效 PDF：{receipt_report['summary']['invalidPdfCount']}")
+    checkpoint("receipt_generation_complete", artifacts={"receiptDirectory": str(receipt_dir.resolve()), "uploadPdfMap": str(upload_map_path.resolve())}, counters={"receiptGeneratedCount": receipt_report["summary"]["generatedCount"], "receiptInvalidPdfCount": receipt_report["summary"]["invalidPdfCount"]})
     review_path = resolve_config_path(str(paths_config.get("preupload_review_file", "data/inbox/{company}/{month}/maps/{source}/preupload_review.report.json")), ROOT, company, month, pipeline_source_key)
     review_report = build_preupload_report(
         receipt_dir,
@@ -489,6 +521,7 @@ def main() -> int:
     print(f"用途确认发票码：{map_report['summary']['usageConfirmNumberCount']}，匹配 PDF：{map_report['summary']['matchedCount']}，空值：{map_report['summary']['emptyCount']}")
     print(f"purchase_map：{purchase_map_path}，原始发票数：{purchase_map_report['report']['summary'].get('rawInvoiceCount', purchase_map_report['report']['summary']['invoiceCount'])}，用途确认+PDF筛选后：{purchase_map_report['report']['summary'].get('filteredInvoiceCount', len(purchase_map_report['map']))}，排除：{purchase_map_report['report']['summary'].get('excludedByUsagePdfFilterCount', 0)}，日期冲突：{purchase_map_report['report']['summary']['dateConflictCount']}，供应商冲突：{purchase_map_report['report']['summary']['supplierConflictCount']}")
     print(f"正式上传前审查报告：{review_path}，状态：{review_report['reviewStatus']}，警告：{review_report['summary']['warningCount']}")
+    checkpoint("preupload_review_complete", artifacts={"preuploadReview": str(review_path.resolve())}, counters={"preuploadWarningCount": review_report["summary"]["warningCount"]})
     if mode == "prepare":
         print("准备阶段完成：receipt 仍是待补业务字段草稿，未进入批量校验或真实提交。")
         print("补齐 receipt.json 的 date/groupId/summary/userName/entries 后，将对应任务配置的 mode 改为 dry-run。")
@@ -510,5 +543,8 @@ def main() -> int:
             command.append("--test-upload")
     print(f"运行模式：{mode}")
     print("开始批量处理：" + " ".join(command))
+    checkpoint("upload" if mode == "confirm" else "dry_run")
     logger.info("开始调用 batch_receipts: %s", " ".join(command))
-    return subprocess.call(command)
+    return_code = subprocess.call(command)
+    checkpoint("upload_complete" if mode == "confirm" and return_code == 0 else "dry_run_complete" if return_code == 0 else "batch_failed", counters={"batchExitCode": return_code})
+    return return_code

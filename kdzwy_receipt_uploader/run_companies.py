@@ -25,6 +25,11 @@ from kdzwy_receipt_uploader.company_registry import (  # noqa: E402
     validate_accountbook_session,
 )
 from kdzwy_receipt_uploader.simple_logging import configure_pipeline_logger
+from kdzwy_receipt_uploader.pipeline_state import (
+    PipelineStateError,
+    PipelineStateStore,
+    exclusive_job_lock,
+)
 
 
 def read_object(path: Path) -> dict[str, object]:
@@ -210,16 +215,44 @@ def main() -> int:
         write_json(run_path, settings)
         write_json(app_path, app_payload)
         print(f"开始第 {index}/{len(plans)} 个任务：{dataset.entity_name} -> {accountbook.name}/{job.month}")
-        completed = subprocess.run([
-            sys.executable,
-            str(ROOT / "run_pipeline.py"),
-            "--run-config", str(run_path),
-            "--app-config", str(app_path),
-            *(["--limit", str(args.limit)] if args.limit > 0 else []),
-            *(["--receipt-id", args.receipt_id] if args.receipt_id else []),
-            *(["--test-upload"] if args.test_upload else []),
-            *(["--stage", args.stage] if args.stage else []),
-        ], cwd=ROOT, check=False)
+        state_path = runtime_dir / "state.json"
+        state = PipelineStateStore(state_path)
+        effective_stage = args.stage or str(settings.get("analysis_stage", "ocr"))
+        identity = {
+            "accountbook": accountbook.key,
+            "accountbookName": accountbook.name,
+            "dataset": dataset.key,
+            "datasetName": dataset.entity_name,
+            "month": job.month,
+            "source": str(job.source),
+            "templateCompany": str(settings.get("template_company_key", "")),
+        }
+        try:
+            with exclusive_job_lock(runtime_dir / "job.lock"):
+                state.begin(identity, mode=job.mode, stage=effective_stage)
+                completed = subprocess.run([
+                    sys.executable,
+                    str(ROOT / "run_pipeline.py"),
+                    "--run-config", str(run_path),
+                    "--app-config", str(app_path),
+                    "--state-file", str(state_path),
+                    *(["--limit", str(args.limit)] if args.limit > 0 else []),
+                    *(["--receipt-id", args.receipt_id] if args.receipt_id else []),
+                    *(["--test-upload"] if args.test_upload else []),
+                    *(["--stage", args.stage] if args.stage else []),
+                ], cwd=ROOT, check=False)
+                if completed.returncode == 0:
+                    state.update(status="succeeded", exit_code=0, event="run_succeeded")
+                else:
+                    state.update(status="failed", exit_code=completed.returncode, error=f"pipeline退出码={completed.returncode}", event="run_failed")
+        except KeyboardInterrupt:
+            state.update(status="cancelled", exit_code=130, error="用户中断", event="run_cancelled")
+            print("用户中断任务；状态已安全保存。", file=sys.stderr)
+            return 130
+        except PipelineStateError as exc:
+            print(f"任务状态错误：{exc}", file=sys.stderr)
+            logger.error("任务状态错误：%s", exc)
+            return 3
         if completed.returncode != 0:
             print(f"任务失败并停止后续任务：{dataset.key}->{accountbook.key}/{job.month}，退出码={completed.returncode}", file=sys.stderr)
             logger.error("任务失败并停止后续任务：%s->%s/%s code=%s", dataset.key, accountbook.key, job.month, completed.returncode)

@@ -26,67 +26,6 @@ def audit(paths: ProjectPaths, result: dict[str, Any]) -> None:
         handle.write(json.dumps(result, ensure_ascii=False, default=str) + "\n")
 
 
-def _successful_uploads_from_audit(paths: ProjectPaths) -> dict[str, dict[str, Any]]:
-    successful: dict[str, dict[str, Any]] = {}
-    audit_path = paths.logs / "run.jsonl"
-    if not audit_path.is_file():
-        return successful
-    try:
-        for line in audit_path.read_text(encoding="utf-8-sig").splitlines():
-            try:
-                item = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            receipt_id = str(item.get("receiptId", "")) if isinstance(item, dict) else ""
-            if receipt_id and item.get("status") == "submitted_and_verified" and item.get("voucherId") and item.get("voucherNo"):
-                successful[receipt_id] = item
-    except OSError:
-        return {}
-    return successful
-
-
-def _write_upload_checkpoint(path: Path, result: dict[str, Any]) -> None:
-    payload = json.loads(path.read_text(encoding="utf-8-sig"))
-    payload["uploaded"] = True
-    payload["upload"] = {
-        "status": "submitted_and_verified",
-        "voucherNo": result.get("voucherNo", ""),
-        "voucherId": result.get("voucherId", ""),
-        "attachmentStatus": result.get("attachmentStatus", ""),
-        "completedAt": result.get("completedAt", ""),
-    }
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    temporary.replace(path)
-
-
-def _exclude_already_uploaded(valid: list[tuple[Path, Any]], paths: ProjectPaths) -> tuple[list[tuple[Path, Any]], int]:
-    successful = _successful_uploads_from_audit(paths)
-    pending: list[tuple[Path, Any]] = []
-    skipped = 0
-    for path, receipt in valid:
-        try:
-            payload = json.loads(path.read_text(encoding="utf-8-sig"))
-        except (OSError, json.JSONDecodeError):
-            payload = {}
-        upload = payload.get("upload", {}) if isinstance(payload.get("upload"), dict) else {}
-        checkpoint = successful.get(receipt.receipt_id)
-        already_uploaded = payload.get("uploaded") is True and upload.get("status") == "submitted_and_verified"
-        if already_uploaded or checkpoint is not None:
-            if not already_uploaded and checkpoint is not None:
-                try:
-                    _write_upload_checkpoint(path, checkpoint)
-                except OSError as exc:
-                    print(f"已从审计记录确认上传成功，但回填 receipt 状态失败：{receipt.receipt_id} -> {exc}", file=sys.stderr)
-            voucher_no = upload.get("voucherNo") if already_uploaded else checkpoint.get("voucherNo", "")
-            voucher_id = upload.get("voucherId") if already_uploaded else checkpoint.get("voucherId", "")
-            print(f"跳过已上传 receipt：{receipt.receipt_id} -> {voucher_no} / {voucher_id}")
-            skipped += 1
-            continue
-        pending.append((path, receipt))
-    return pending, skipped
-
-
 def receipt_source(path: Path, receipt: Any) -> str:
     """Resolve source from 语义化目录（sales/purchase/bank/misc）或 OCR 元数据。"""
     for part in reversed(path.parts):
@@ -218,9 +157,6 @@ def main(argv: list[str] | None = None) -> int:
     except ReceiptError as exc:
         print(f"初始化失败：{exc}", file=sys.stderr)
         return 2
-    valid, uploaded_count = _exclude_already_uploaded(valid, paths)
-    if uploaded_count:
-        print(f"断点续传：已确认并跳过 {uploaded_count} 张成功 receipt，仅处理剩余 {len(valid)} 张。")
     print(f"项目根目录：{root}")
     print(f"输入目录：{input_dir}")
     logger.info("batch start: project=%s input=%s source=%s confirm=%s limit=%s", root, input_dir, source, args.confirm, args.limit)

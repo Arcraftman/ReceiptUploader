@@ -1,143 +1,214 @@
-# 企业凭证自动处理与上传
+# 企业凭证自动处理与上传操作手册
 
-本项目用于串行处理多家公司、多个账套和多个月份的会计资料。主流程包括：Excel 映射、OCR、DeepSeek 模板分析、凭证草稿生成、上传前校验、凭证保存、附件上传和结果回读。
+本项目把企业原始财务资料转换为会计凭证，并通过账无忧 HTTP 接口串行保存凭证、上传附件和回读验证。
 
-项目使用纯 HTTP 接口访问账套，不使用 Playwright 自动登录。登录会话按账套独立保存。
+日常操作以 `.bat` 文件为入口。Python 长命令仅保留给开发、排错和特殊维护，不作为普通用户的日常启动方式。
 
-## 1. 当前能力
+---
 
-| 业务板块 | `--source` | 输入资料 | 当前状态 |
+## 1. 开始前先确认
+
+### 1.1 当前业务完成度
+
+| 业务 | 配置名 | 当前可执行范围 | 是否允许批量上传 |
 |---|---|---|---|
-| 销项发票 | `sales` | 销售发票、收入成本表 | OCR、分析、凭证生成和真实上传已跑通 |
-| 进项与费用 | `purchase` | 进项/费用发票、用途确认表 | 已接入 OCR 和分析；模板正在校准，尚未批准批量上传 |
-| 银行 | `bank` | 每个银行账户的回单和流水 | 目录和映射位置已预留，真实上传保持阻断 |
-| 杂项 | `misc` | 无法归入前三类的资料 | 目录和映射位置已预留，真实上传保持阻断 |
+| 销项发票 | `sales` | 映射、OCR、DeepSeek、凭证、附件、回读 | 已跑通，但仍须先单张验证 |
+| 进项与费用 | `purchase` | 映射、OCR、DeepSeek、凭证草稿、校验 | 暂未批准批量上传 |
+| 银行 | `bank` | 合并 PDF 裁剪、回单号识别、单张 PDF 输出 | 不允许上传 |
+| 杂项 | `misc` | 目录、提示词和模板位置占位 | 不允许上传 |
 
-核心安全原则：不能确定模板、科目、辅助核算、金额或借贷方向时必须停止，不得猜测入账。
+### 1.2 绝对不能跳过的安全规则
 
-## 2. 三个独立的公司概念
+1. 一次只启用一个业务板块。不要第一次就同时运行 `sales` 和 `purchase`。
+2. `confirm` 表示真实保存凭证，不是“确认一下配置”。
+3. 正式批量上传前必须依次完成 OCR、DeepSeek、人工复核、dry-run、单张上传和网页回读。
+4. `confirm_all.bat` 不根据本地历史日志自动跳过；重复运行可能在线上生成重复凭证。
+5. 如果上一批线上凭证没有清空，不得直接重新完整上传。
+6. 不能确定模板、科目、辅助核算、金额或借贷方向时，程序必须阻断，不得猜测入账。
+7. Cookie、登录密码、DeepSeek API Key 不得写入 README、公司 JSON 或模板文件。
 
-| 概念 | 命令参数 | 配置文件 | 作用 |
-|---|---|---|---|
-| 资料公司 | `--dataset weiyu` | `config/datasets.json` | 决定读取哪家公司的 PDF、XLSX 和月份目录 |
-| 目标账套 | `--accountbook xinghai` | `config/accountbooks.json` | 决定登录哪个账套、读取哪套动态科目、最后写入哪里 |
-| 公司模板 | `--company-template weiyu` | `config/template_companies.json` | 决定使用哪家公司的业务规则、提示词和模板 |
+---
 
-例如下面的测试表示：读取微誉资料，使用微誉模板，在星海测试账套环境中分析：
+## 2. 先理解三个独立概念
 
-```powershell
-python run_companies.py --mode analysis-only --stage ocr --source purchase --accountbook xinghai --dataset weiyu --month 7月 --company-template weiyu
+项目把“资料、模板、账套”分开管理：
+
+| 概念 | 示例 | 决定什么 |
+|---|---|---|
+| 资料公司 `dataset` | `weiyu` | 从哪个目录读取 PDF、XLSX 和月份资料 |
+| 模板公司 `template_company` | `weiyu` | 使用哪家公司的业务规则、提示词和会计模板 |
+| 目标账套 `accountbook` | `xinghai` | 动态读取哪套科目和辅助核算，最后写入哪里 |
+
+当前测试关系是：
+
+```text
+资料：weiyu（上海微誉信息技术有限公司）
+模板：weiyu（上海微誉信息技术有限公司）
+账套：xinghai（星海公司）
 ```
 
-资料公司与账套不一致属于跨主体任务。配置中必须声明 `allow_cross_entity=true`；真实上传时还必须显式传入 `--allow-cross-entity-confirm`。
+这是跨主体测试。真实上传时必须通过专用确认 BAT 明确授权。
+
+---
 
 ## 3. 项目目录
 
 ```text
 kdzwy_receipt_uploader/
-├─ config/                         # 公司、账套、任务和流水线配置
-├─ data/inbox/                     # 原始资料及按月生成的结果
-├─ templates/                      # 按公司、业务板块隔离的模板和提示词
-├─ runtime/                        # 任务快照、日志和处理状态
-├─ src/kdzwy_receipt_uploader/     # 核心业务代码
-├─ scripts/maintenance/            # 非日常维护工具
-├─ run_companies.py                # 推荐的日常主入口
-├─ run_pipeline.py                 # 单任务流水线，由主入口调用
-├─ batch_receipts.py               # 凭证校验和串行上传
-├─ initialize_company_template.py  # 公司模板初始化器
-└─ requirements.txt                # Python 依赖
+├─ config/                         # 账套、数据集、公司任务和流水线配置
+│  ├─ accountbooks.json
+│  ├─ datasets.json
+│  ├─ template_companies.json
+│  ├─ pipeline.defaults.json
+│  ├─ app.json                    # 本机运行配置，不提交密钥
+│  └─ companies/                  # 每家公司一个日常运行配置
+├─ data/inbox/                    # 原始资料和生成结果
+├─ templates/                     # 每家公司独立的四类模板和提示词
+├─ runtime/                       # 任务状态、日志、成功和失败记录
+├─ src/kdzwy_receipt_uploader/    # 核心代码
+├─ run_company.bat                # 日常分析和 dry-run 入口
+├─ confirm_one.bat                # 真实上传一张
+├─ confirm_all.bat                # 真实批量上传
+├─ generate_analysis_report.bat   # 生成普通用户可读分析简表
+├─ pipeline_status.bat            # 查看全部任务状态
+├─ start_http_login.bat           # 纯 HTTP 登录
+└─ start_discover_companies.bat   # 选择公司、建立会话和公司配置
 ```
 
-旧目录名 `x1/x2/j1/j2/j3` 已废弃，不兼容旧结构。
+旧目录 `x1/x2/j1/j2/j3` 已废弃，不再兼容。
 
-## 4. 原始资料结构
+---
+
+## 4. 第一次使用
+
+以下步骤每台电脑只需完成一次。
+
+### 步骤 1：安装 Python 依赖
+
+在项目目录打开 PowerShell：
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+项目通常优先使用：
 
 ```text
-data/inbox/{dataset}/{month}/
-├─ sales/
-├─ purchase/
-├─ bank/
-│  ├─ {银行账户一}/
-│  │  ├─ 回单/
-│  │  └─ 流水/
-│  └─ {银行账户二}/
-├─ misc/
-├─ 收入成本表.xlsx
-├─ 用途确认信息.xlsx
-└─ *.conf
+D:\receipt-uploader\.auto\Scripts\python.exe
 ```
 
-用户资料统一放在月份目录的 `input/` 下；运行产生的 maps、OCR 和凭证草稿统一放在 `generated/` 下。
+如果该环境不存在，BAT 会尝试使用系统 `python`。
 
-### sales
+### 步骤 2：创建本机运行配置
 
-- PDF 放入 `sales/`，允许继续建立子目录。
-- `收入成本表.xlsx` 用于建立 `sales_map`。
-- `信息汇总表` H 列作为客户名称来源。
-- 资料公司必须是发票销售方，购买方作为客户。
+复制 `config/app.example.json` 为 `config/app.json`。
 
-### purchase
+正常情况下保留示例中的超时和运行目录即可。真实 Cookie 文件会由公司任务动态写入运行快照，不需要手工把 Cookie 填进公司配置。
 
-- PDF 放入 `purchase/`，允许继续建立子目录。
-- `用途确认信息.xlsx` 用于特殊匹配，不能只凭 OCR 商品名称判断用途。
-- `发票` 工作表 J 列作为供应商名称来源。
-- 资料公司必须是发票购买方，发票销售方作为供应商。
+### 步骤 3：准备登录配置
 
-### bank
-
-`bank` 下必须按银行账户建立一级子目录，每个账户生成独立映射和凭证草稿：
+登录配置位于：
 
 ```text
-maps/bank/{bank_account}/bank_map.json
-maps/bank/{bank_account}/bank_map.report.json
-receipts_bank_map/{bank_account}/
+D:\receipt-uploader\config\kdzwy.json
 ```
 
-### misc
+只需要配置登录账号、密码和要登录的公司名称。该文件包含敏感信息，不得提交到版本库或发给无关人员。
 
-无法归入 sales、purchase 或 bank 的资料放入 `misc/`。规则未明确前不会真实上传。
+### 步骤 4：建立公司登录会话
 
-## 5. 核心配置
+运行：
 
-### `config/datasets.json`：资料公司
+```bat
+start_http_login.bat
+```
+
+成功后，每家公司生成独立会话：
+
+```text
+D:\receipt-uploader\http_sessions\companies\{公司全名}.accountbook.cookies.json
+```
+
+登录是纯 HTTP，不使用 Playwright。
+
+如果还没有公司配置，可以先运行：
+
+```bat
+start_discover_companies.bat
+```
+
+该入口会：
+
+1. 显示可选择公司。
+2. 保存所选账套到 `config/accountbooks.json`。
+3. 为新公司创建默认禁用的 `config/companies/{key}.json`。
+4. 建立所选公司的 HTTP 会话。
+5. 已完成配置且启用的公司会继续执行；新建但未配置的公司会安全跳过。
+
+---
+
+## 5. 新公司接入
+
+### 步骤 1：确认账套已经发现并登录
+
+先运行：
+
+```bat
+start_discover_companies.bat
+```
+
+确认 `config/accountbooks.json` 和 `D:\receipt-uploader\http_sessions\companies\` 中已有该公司。
+
+### 步骤 2：创建公司配置和模板副本
+
+```bat
+create_company.bat --name "公司完整中文名称"
+```
+
+创建完成后会得到：
+
+```text
+config/companies/{company_key}.json
+templates/{company_key}/
+```
+
+新公司配置默认不会直接运行，需要先填写 `dataset`、`month`，再启用一个业务板块。
+
+### 步骤 3：动态刷新公司科目和辅助核算目录
+
+这是公司初始化或账套科目发生大改时使用的维护操作，不是每日操作：
+
+```powershell
+python initialize_company_template.py --accountbook 公司英文key --company-template 公司英文key
+```
+
+程序会只读获取全部科目、凭证字、币别、客户、供应商、职员、项目、存货、部门和辅助核算要求。
+
+输出位置：
+
+```text
+templates/{company}/catalog/accounts.json
+templates/{company}/catalog/auxiliary_items.json
+templates/{company}/workspace.json
+```
+
+重复执行会刷新动态目录，但不会覆盖用户已经编辑过的提示词。只有明确需要重建提示词时才使用 `--overwrite-prompts`。
+
+---
+
+## 6. 公司运行配置怎么填写
+
+日常操作主要修改：
+
+```text
+config/companies/{company_key}.json
+```
+
+安全示例：
 
 ```json
 {
-  "key": "weiyu",
-  "entity_name": "上海微誉信息技术有限公司",
-  "data_root": "data/inbox/weiyu",
-  "enabled": true
-}
-```
-
-### `config/accountbooks.json`：目标账套
-
-```json
-{
-  "key": "xinghai",
-  "name": "星海公司",
-  "session_file": "../http_sessions/companies/星海公司.accountbook.cookies.json",
-  "enabled": true
-}
-```
-
-### `config/template_companies.json`：模板公司
-
-```json
-{
-  "key": "weiyu",
-  "name": "上海微誉信息技术有限公司",
-  "directory": "weiyu",
-  "enabled": true
-}
-```
-
-模板键和目录必须以英文小写字母开头，只能包含英文小写、数字、下划线和连字符。
-
-### `config/companies/<company_key>.json`：公司运行配置
-
-```json
-{
+  "version": 1,
   "company_key": "xinghai",
   "enabled": true,
   "dataset": "weiyu",
@@ -145,6 +216,9 @@ receipts_bank_map/{bank_account}/
   "month": "7月",
   "defaults": {
     "mode": "analysis-only",
+    "analysis_stage": "ocr",
+    "analysis_validation": "strict",
+    "preload_items": false,
     "purpose": "test",
     "allow_cross_entity": true
   },
@@ -157,21 +231,355 @@ receipts_bank_map/{bank_account}/
 }
 ```
 
-命令行参数可以覆盖任务的模式、阶段、板块和模板公司，但不会修改配置文件。
+### 关键字段
 
-其他配置：
-
-| 文件 | 作用 |
+| 字段 | 说明 |
 |---|---|
-| `config/pipeline.defaults.json` | 全局默认流程、路径和开关 |
-| `config/app.json` | HTTP 地址、会话和超时等基础配置 |
-| `runtime/jobs/<账套>/<数据集>/<月份>/<source>/run.json` | 主入口为每个任务生成的实际运行快照 |
+| `company_key` | 目标账套英文 key |
+| `dataset` | 原始资料公司英文 key |
+| `template_company` | 模板公司英文 key |
+| `month` | 月份目录名称，必须和资料目录一致 |
+| `mode` | 安全级别 |
+| `analysis_stage` | OCR、DeepSeek 或复用已有分析 |
+| `preload_items` | 是否检查并创建缺失客户/供应商 |
+| `allow_cross_entity` | 是否允许资料主体和目标账套不同 |
+| `sources` | 本次处理哪个业务板块 |
 
-Cookie、DeepSeek API Key 和访问令牌不得写进 README、普通配置或版本库。
+### mode 含义
 
-## 6. 初始化公司模板
+| 值 | 行为 |
+|---|---|
+| `analysis-only` | 只处理映射、OCR 或 DeepSeek，不生成上传凭证 |
+| `prepare` | 读取账套并生成准备数据，不上传 |
+| `dry-run` | 生成正式结构的 receipt 并本地校验，不调用保存接口 |
+| `confirm` | 真实保存凭证和上传附件 |
 
-每家公司的模板结构：
+### analysis_stage 含义
+
+| 值 | 行为 |
+|---|---|
+| `ocr` | 只做 OCR，不调用 DeepSeek，不需要账套会话 |
+| `deepseek` | 读取已有 OCR，调用 DeepSeek，并读取动态账套科目和 Item |
+| `existing` | 不做 OCR、不调用 DeepSeek，复用已经人工批准的分析 |
+| `all` | OCR 后立刻执行 DeepSeek；首次运行不建议使用 |
+
+### preload_items 特别说明
+
+| 值 | 行为 |
+|---|---|
+| `false` | 不创建远端客户或供应商，最安全 |
+| `once` | 输入 Excel 变化后检查一次，并创建缺失客户或供应商 |
+| `auto` | 每次都检查并可能创建，日常不建议使用 |
+
+`preload_items=once/auto` 是远端写操作，即使当前是分析流程也可能创建辅助核算对象。第一次 OCR 建议设置为 `false`；确认 Excel 中客户和供应商名称无误后再决定是否启用。
+
+---
+
+## 7. 每月资料怎么放
+
+第一次运行 `run_company.bat` 时会根据公司配置自动创建目录。
+
+标准结构：
+
+```text
+data/inbox/{dataset}/{month}/
+├─ input/
+│  ├─ sales/
+│  ├─ purchase/
+│  ├─ bank/
+│  ├─ misc/
+│  ├─ 收入成本表.xlsx
+│  └─ 用途确认信息.xlsx
+├─ generated/
+└─ {dataset}_{month}.conf
+```
+
+用户只维护 `input/` 和月份 `.conf`。`generated/` 全部由程序生成。
+
+### sales 资料
+
+- 销项发票 PDF 放在 `input/sales/`。
+- `收入成本表.xlsx` 用于生成金额和客户映射。
+- 资料公司必须是发票销售方，购买方作为客户。
+
+### purchase 资料
+
+- 进项和费用发票 PDF 放在 `input/purchase/`。
+- `用途确认信息.xlsx` 是特殊匹配依据，不能省略。
+- 资料公司必须是购买方，销售方作为供应商。
+- 不能只凭 OCR 商品名称猜测采购用途。
+
+当前基础映射阶段会同时读取两张 XLSX，因此建议每个月份目录都保留 `收入成本表.xlsx` 和 `用途确认信息.xlsx`。
+
+### bank 资料
+
+银行原始合并 PDF 和裁剪配置放在：
+
+```text
+data/inbox/{dataset}/{month}/input/bank/
+```
+
+示例：
+
+```text
+input/bank/
+├─ bank_split.json
+├─ shanghaiyinhang.pdf
+└─ shanghainongshangyinhang.pdf
+```
+
+`bank_split.json`：
+
+```json
+{
+  "shanghaiyinhang": 2,
+  "shanghainongshangyinhang": 3
+}
+```
+
+含义是：上海银行 PDF 每页有 2 张回单，上海农商银行 PDF 每页有 3 张回单。
+
+银行 key 必须使用英文小写、数字、下划线或连字符；原始 PDF 文件名必须和 key 完全一致。
+
+---
+
+## 8. sales 完整操作流程
+
+以下示例使用 `xinghai` 公司配置。每一步完成后都先检查输出，再进入下一步。
+
+### 第 1 步：只启用 sales
+
+编辑 `config/companies/xinghai.json`：
+
+```json
+"sources": {
+  "sales": { "enabled": true },
+  "purchase": { "enabled": false },
+  "bank": { "enabled": false },
+  "misc": { "enabled": false }
+}
+```
+
+### 第 2 步：执行 OCR
+
+设置：
+
+```json
+"mode": "analysis-only",
+"analysis_stage": "ocr",
+"preload_items": false
+```
+
+运行：
+
+```bat
+run_company.bat xinghai analysis-only
+```
+
+检查：
+
+```text
+data/inbox/weiyu/7月/generated/ocr/sales/ocr_stage.report.json
+data/inbox/weiyu/7月/generated/ocr/sales/
+```
+
+必须确认发票数量正确、发票号可识别、销售方是资料公司、购买方与金额没有大面积缺失，并且 `successTextCount` 不是 0。
+
+### 第 3 步：执行 DeepSeek
+
+先确保 DeepSeek API Key 已配置为用户环境变量。若尚未配置，可以在 PowerShell 中执行：
+
+```powershell
+[Environment]::SetEnvironmentVariable("DEEPSEEK_API_KEY", (Read-Host "请输入 DeepSeek API Key"), "User")
+```
+
+设置完成后重新打开终端。
+
+把公司配置改为：
+
+```json
+"mode": "analysis-only",
+"analysis_stage": "deepseek"
+```
+
+运行：
+
+```bat
+run_company.bat xinghai analysis-only
+```
+
+检查：
+
+```text
+data/inbox/weiyu/7月/generated/ocr/sales/template_analysis.json
+```
+
+DeepSeek 只能从 `templates/weiyu/sales/` 选择模板，不能访问 purchase、bank 或 misc 模板。
+
+### 第 4 步：生成人工复核简表
+
+运行：
+
+```bat
+generate_analysis_report.bat xinghai sales
+```
+
+输出：
+
+```text
+data/inbox/weiyu/7月/generated/ocr/sales/concise_template_analysis.md
+```
+
+逐张检查发票号、模板名称、借贷科目、金额、税额、客户辅助核算、统一摘要和 `blocked` 状态。
+
+有任何错误就修改模板或提示词，然后重新运行 DeepSeek。不要带着错误进入 dry-run。
+
+### 第 5 步：执行 dry-run
+
+把公司配置改为：
+
+```json
+"mode": "dry-run",
+"analysis_stage": "existing"
+```
+
+运行：
+
+```bat
+run_company.bat xinghai dry-run
+```
+
+检查：
+
+```text
+data/inbox/weiyu/7月/generated/receipts/sales/
+data/inbox/weiyu/7月/generated/maps/sales/preupload_review.report.json
+```
+
+进入真实上传前必须满足：无效 receipt 为 0、预审警告为 0、借贷平衡、科目和客户 ID 来自当前账套、PDF 与发票号一致。
+
+### 第 6 步：真实上传一张
+
+公司配置必须保持：
+
+```json
+"analysis_stage": "existing"
+```
+
+运行：
+
+```bat
+confirm_one.bat xinghai
+```
+
+按提示输入 `xinghai` 才会继续。程序只处理一张。
+
+随后立即到网页检查目标账套、日期、凭证字、制单人、统一摘要、科目、客户辅助核算、金额和发票附件。系统不会自动添加审核员。
+
+单张验证结束后，如果下一步要从头执行整批，必须先在网页删除这张测试凭证，并再次确认它已经不存在。系统不会自动跳过这张单测凭证。
+
+### 第 7 步：真实批量上传
+
+只有单张网页回读完全正确，并且用于测试的单张凭证已经从线上删除后，才运行：
+
+```bat
+confirm_all.bat xinghai
+```
+
+按提示输入：
+
+```text
+UPLOAD ALL xinghai
+```
+
+任意一张保存、附件或回读不明确时，批次会立即停止，后续凭证不会继续。
+
+---
+
+## 9. purchase 操作流程
+
+purchase 的执行顺序与 sales 一致：
+
+1. 只启用 `purchase`。
+2. 设置 `analysis-only + ocr` 并运行 `run_company.bat xinghai analysis-only`。
+3. 检查 OCR 和用途确认匹配。
+4. 设置 `analysis-only + deepseek` 并再次运行。
+5. 运行 `generate_analysis_report.bat xinghai purchase`。
+6. 人工检查模板、分录、供应商和税额。
+7. 设置 `dry-run + existing` 并运行 `run_company.bat xinghai dry-run`。
+
+purchase 必须额外检查：
+
+- 资料公司是否为购买方。
+- 发票销售方是否与用途确认表中的供应商一致。
+- 发票号是否进入用途确认范围。
+- 采购商品、原材料、固定资产和费用分类是否正确。
+- 专票进项税、待抵扣税额和普票价税合计取值是否正确。
+- 应付账款行是否使用供应商辅助核算。
+- 同一凭证的摘要是否按模板统一生成并包含发票号。
+
+当前 purchase 尚未批准批量真实上传。即使 dry-run 通过，也只能在明确批准后进行单张测试。
+
+---
+
+## 10. bank 当前操作流程
+
+银行目前只开放预处理，不会生成或上传凭证。
+
+### 第 1 步：准备银行 PDF 和配置
+
+将 `bank_split.json` 和各银行合并 PDF 放进 `input/bank/`。
+
+### 第 2 步：只启用 bank
+
+```json
+"sources": {
+  "sales": { "enabled": false },
+  "purchase": { "enabled": false },
+  "bank": { "enabled": true },
+  "misc": { "enabled": false }
+}
+```
+
+设置：
+
+```json
+"mode": "analysis-only",
+"analysis_stage": "ocr",
+"preload_items": false
+```
+
+### 第 3 步：运行银行预处理
+
+```bat
+run_company.bat xinghai analysis-only
+```
+
+输出：
+
+```text
+data/inbox/weiyu/7月/generated/bank_receipts/{bank_key}/
+data/inbox/weiyu/7月/generated/bank_receipts/{bank_key}/split.manifest.json
+data/inbox/weiyu/7月/generated/bank_receipts/split.report.json
+```
+
+程序会按配置等高裁剪，优先读取 PDF 原生文字，必要时使用 RapidOCR，并用回单号、流水号、凭证号等唯一号码命名单张 PDF。输入和配置未变化时会复用已有裁剪结果。
+
+如果号码无法识别或发生重复，文件进入：
+
+```text
+generated/bank_receipts/{bank_key}/unrecognized/
+```
+
+同时任务失败并停止。必须人工修正，不能直接进入后续银行流程。
+
+当前裁剪完成后程序会明确结束。银行专用 OCR、银行流水匹配、每账户独立 `bank_map`、receipt 和上传将在下一阶段接入。
+
+---
+
+## 11. 模板和提示词
+
+每家公司模板结构：
 
 ```text
 templates/{company}/
@@ -193,117 +601,16 @@ templates/{company}/
 └─ workspace.json
 ```
 
-从任意已配置账套初始化或刷新模板工作区：
-
-```powershell
-python initialize_company_template.py --accountbook xinghai --company-template xinghai
-```
-
-该命令只读访问账套并完成：
-
-- 动态读取全部科目及其辅助核算属性。
-- 动态读取客户、职员、项目、存货、供应商和部门 Item。
-- 创建四个业务模板目录和四份公司提示词。
-- 自动注册新的模板公司。
-- 重复运行时刷新动态目录，不覆盖用户修改过的提示词。
-
-确实需要重建提示词时使用：
-
-```powershell
-python initialize_company_template.py --accountbook xinghai --company-template xinghai --overwrite-prompts
-```
-
-程序固定注入以下规则，公司提示词不能覆盖：
+固定规则由程序注入，公司提示词不能覆盖：
 
 - `dc=1` 是借方，`dc=-1` 是贷方。
 - 借方合计必须等于贷方合计。
-- 科目必须来自本次运行的动态科目目录，且必须是可记账明细科目。
-- 科目要求辅助核算时，Item 必须来自对应动态 ItemClass。
-- 不确定时返回 `blocked`，不得臆造。
-- 同一凭证全部分录必须使用相同摘要。
+- 科目必须来自本次目标账套动态目录，并且是可记账明细科目。
+- 科目要求辅助核算时，Item 必须来自对应 ItemClass。
+- 同一凭证所有分录摘要必须完全一致。
+- 不确定时必须返回 `blocked`。
 
-## 7. OCR 与 DeepSeek 分阶段运行
-
-| `--stage` | 行为 | 调用 DeepSeek | 需要账套会话 |
-|---|---|---:|---:|
-| `ocr` | 只扫描指定板块并生成 OCR | 否 | 否 |
-| `deepseek` | 复用 OCR，读取动态科目和 Item 后分析 | 是 | 是 |
-| `existing` | 复用已经批准的分析结果 | 否 | 是 |
-| `all` | 明确串行执行 OCR 和 DeepSeek | 是 | 是 |
-
-推荐始终按板块、按阶段运行。第一次不要直接使用 `--source all --stage all`。
-
-### Purchase 第一次测试流程
-
-1. 只检查任务计划：
-
-```powershell
-python run_companies.py --mode analysis-only --stage ocr --source purchase --accountbook xinghai --dataset weiyu --month 7月 --company-template weiyu --plan
-```
-
-2. 只执行 OCR：
-
-```powershell
-python run_companies.py --mode analysis-only --stage ocr --source purchase --accountbook xinghai --dataset weiyu --month 7月 --company-template weiyu
-```
-
-3. 检查 OCR：
-
-```text
-data/inbox/weiyu/7月/receipts_ocr/purchase/
-data/inbox/weiyu/7月/receipts_ocr/purchase/ocr_stage.report.json
-```
-
-4. 确认 purchase 模板和提示词正确后，只执行 DeepSeek：
-
-```powershell
-python run_companies.py --mode analysis-only --stage deepseek --source purchase --accountbook xinghai --dataset weiyu --month 7月 --company-template weiyu
-```
-
-5. 生成普通用户可读的凭证简表：
-
-```powershell
-python concise_template_analysis.py --dataset weiyu --month 7月
-```
-
-输出：
-
-```text
-data/inbox/weiyu/7月/receipts_ocr/purchase/concise_template_analysis.md
-```
-
-## 8. 运行模式
-
-| `--mode` | 行为 | 创建缺失 Item | 保存凭证 |
-|---|---|---:|---:|
-| `analysis-only` | Excel 映射、OCR/分析，不生成上传凭证 | 否 | 否 |
-| `prepare` | 读取账套基础资料并生成准备数据 | 否 | 否 |
-| `dry-run` | 生成凭证草稿并执行只读校验 | 否 | 否 |
-| `confirm` | 串行保存凭证、上传附件并回读验证 | 是，可配置 | 是 |
-
-`confirm` 就是真实上传许可，不是“确认一下配置”。
-
-## 9. 客户和供应商预加载
-
-在 `prepare`、`dry-run` 和 `confirm` 的实时账套流程中，系统会：
-
-1. 从 `收入成本表.xlsx / 信息汇总表 / H列` 收集客户。
-2. 从 `用途确认信息.xlsx / 发票 / J列` 收集供应商。
-3. 与目标账套动态 Item 按名称比对。
-4. 将真实 `customerId` 或 `supplierId` 写入映射和凭证草稿。
-5. 仅在 `confirm` 且 `preload_create_missing_items=true` 时创建缺失 Item。
-
-报告位置：
-
-```text
-data/inbox/{dataset}/{month}/maps/item_preload.report.json
-```
-
-`analysis-only` 不创建客户或供应商。
-
-## 10. 摘要和分录规则
-
-每个模板应显式定义：
+模板应明确配置摘要：
 
 ```json
 {
@@ -313,147 +620,134 @@ data/inbox/{dataset}/{month}/maps/item_preload.report.json
 }
 ```
 
-最终摘要示例：
+最终结果为 `销售商品收入 26312000004167256876`。DeepSeek 可以选择模板和填充模板允许的字段，但不能擅自改变模板分录数量、借贷方向或每行摘要。
+
+---
+
+## 12. 状态和日志怎么查看
+
+运行：
+
+```bat
+pipeline_status.bat
+```
+
+每个任务的状态目录：
 
 ```text
-销售商品收入 26312000004167256876
+runtime/jobs/{accountbook}/{dataset}/{month}/{source}/
+├─ run.json
+├─ app.json
+├─ state.json
+├─ events.jsonl
+└─ job.lock
 ```
 
-同一凭证全部分录使用完全相同的摘要。DeepSeek 只能选择模板并填充模板允许的动态内容，不能逐行改写摘要或擅自增删分录。
+`state.json` 是当前任务的唯一任务级状态，记录账套、资料、月份、业务板块、模式、阶段、运行编号、当前步骤、产物、计数、退出码和错误。
 
-purchase 还必须验证用途确认匹配、购买方、销售方、供应商、发票号、价款、税额、价税合计、科目、辅助核算、借贷平衡和附件映射。任何一项不确定都进入 `blocked`。
+`events.jsonl` 是只追加的事件历史，重新执行不会删除以前的任务过程。
 
-## 11. 正式上传安全规则
+| 状态 | 含义 |
+|---|---|
+| `running` | 任务正在运行，进程锁有效 |
+| `succeeded` | 本次任务正常结束 |
+| `failed` | 本次任务失败 |
+| `cancelled` | 用户按 Ctrl+C 中断 |
+| `interrupted` | 进程被强制关闭，未正常收尾 |
+| `abandoned` | 再次启动时，上一未完成尝试被登记为遗留任务 |
 
-正式上传前至少完成：
+同一个账套、资料、月份和业务板块不能同时运行两个进程。
 
-1. `analysis-only --stage ocr`
-2. 人工抽查 OCR
-3. `analysis-only --stage deepseek`
-4. 人工检查 `concise_template_analysis.md`
-5. `dry-run`
-6. 核对预上传报告警告为 0
-7. 先用 `--limit 1` 上传一张
-8. 网页回读确认凭证和附件正确后再批量上传
-
-跨主体单张测试示例：
-
-```powershell
-python run_companies.py --mode confirm --stage existing --source sales --accountbook xinghai --dataset weiyu --month 7月 --company-template weiyu --allow-cross-entity-confirm --limit 1
-```
-
-安全约束：
-
-- `confirm` 不根据本地历史成功日志自动跳过，重复执行可能重复入账。
-- 用户中断并清空线上凭证后可以重新执行，但必须先确认线上确实已清空。
-- 凭证之间默认间隔 1 秒。
-- 附件识别出现明确的 Tunnel 502 时，只重试附件，间隔 2、5、10 秒，不重复保存凭证。
-- 任一保存、附件上传或回读结果不明确时，立即停止后续任务。
-- 当前 bank 和 misc 不允许真实上传。
-- 当前 purchase 尚未批准批量真实上传。
-
-## 12. 主要输出
+其他日志：
 
 ```text
-data/inbox/{dataset}/{month}/
-├─ maps/
-│  ├─ xlsx_pdf_map.json
-│  ├─ sales_map.json
-│  ├─ purchase_map.json
-│  ├─ item_preload.report.json
-│  ├─ upload_pdf_map.json
-│  └─ preupload_review.report.json
-├─ receipts_ocr/
-│  ├─ sales/
-│  ├─ purchase/
-│  ├─ template_analysis.json
-│  └─ concise_template_analysis.md
-└─ receipts_sales_map/
+runtime/logs/run_companies*.log
+runtime/logs/run_pipeline*.log
+runtime/logs/batch_receipts*.log
+runtime/logs/run.jsonl
+runtime/submitted/
+runtime/failed/
 ```
+
+任务状态只用于观察和故障定位，不会根据本地状态自动跳过真实上传。
+
+---
+
+## 13. 失败和中断怎么处理
+
+### OCR 看起来卡住
+
+先查看日志中的当前文件编号，再运行 `pipeline_status.bat`。RapidOCR 处理图片型 PDF 时可能较慢，只要日志编号仍在前进就不是死锁。
+
+### DeepSeek 返回 blocked
+
+不要进入 dry-run。检查 OCR、当前板块提示词、模板目录、动态科目、辅助核算、金额和借贷平衡。修改后只重新执行 DeepSeek，不需要重新 OCR。
+
+### Tunnel 502
+
+附件接口出现明确 Tunnel 502 时，程序只重试附件，等待 2、5、10 秒，不会重复保存凭证。
+
+如果最终仍失败，日志会显示已经保存的 `voucherId` 和 `voucherNo`。此时不要直接完整重跑 confirm；先到网页确认凭证是否存在，再决定单独恢复附件或清空线上记录后重跑。
+
+### 用户中途停止
+
+- Ctrl+C 会记录为 `cancelled`。
+- 强制关闭窗口会显示 `interrupted`。
+- 任意失败都会停止后续凭证。
+- 已成功保存的线上凭证不会因为本地停止而自动删除。
+
+### 用户已经清空线上凭证
+
+确认线上相关凭证确实全部清空后，可以重新运行完整 confirm。当前系统不会根据旧的本地成功日志自动跳过。
+
+如需清理旧 receipt 中可能存在的上传标记和对应审计记录，可运行：
+
+```bat
+reset_upload_state.bat xinghai
+```
+
+该工具会先备份审计日志，但不会删除线上凭证。没有确认线上状态前不要使用。
+
+### 会话失效或公司不匹配
+
+重新运行 `start_http_login.bat`。程序会严格检查当前会话公司名是否等于目标账套公司名，名称不一致时不会继续上传。
+
+---
+
+## 14. 正式上传验收清单
+
+- [ ] 公司配置只启用了一个业务板块。
+- [ ] dataset、template company、accountbook 和 month 正确。
+- [ ] 跨主体任务已经明确允许。
+- [ ] OCR 数量和原始 PDF 数量一致。
+- [ ] DeepSeek 分析不存在 blocked。
+- [ ] 简明报告已逐张检查。
+- [ ] 所有科目来自当前目标账套。
+- [ ] 客户或供应商 ID 来自当前目标账套。
+- [ ] 全部分录摘要符合模板且保持一致。
+- [ ] 借方合计等于贷方合计。
+- [ ] 预上传审查警告为 0。
+- [ ] dry-run 无效 receipt 为 0。
+- [ ] `confirm_one.bat` 单张上传已通过网页检查。
+- [ ] 单张附件能够打开。
+- [ ] 已确认本次批量不会和线上已有凭证重复。
+
+---
+
+## 15. 核心实现边界
 
 ```text
-runtime/
-├─ logs/
-├─ jobs/{accountbook}/{dataset}/{month}/
-├─ processing/
-├─ failed/
-└─ submitted/
+BAT入口
+  → 公司任务编排 run_companies.py
+  → 单任务流水线 pipeline_runner.py
+  → XLSX/PDF映射
+  → OCR与DeepSeek
+  → 模板渲染和receipt生成
+  → 本地校验与预审
+  → 串行上传cli.py
+  → HTTP保存、附件绑定和回读workflow.py
 ```
 
-原始 PDF、XLSX、失败记录和成功记录都不是普通缓存，不应随意删除。
+关键原则：HTTP 客户端只负责请求；公司注册表只负责资料、模板和账套关系；模板负责会计结构；动态 ID 只能来自当前账套；状态管理只负责观察；任一不明确结果立即停止。
 
-## 13. 常用命令
-
-安装依赖：
-
-```powershell
-python -m pip install -r requirements.txt
-```
-
-查看任务计划：
-
-```powershell
-python run_companies.py --plan
-```
-
-销售 OCR：
-
-```powershell
-python run_companies.py --mode analysis-only --stage ocr --source sales --accountbook xinghai --dataset weiyu --month 7月 --company-template weiyu
-```
-
-purchase OCR：
-
-```powershell
-python run_companies.py --mode analysis-only --stage ocr --source purchase --accountbook xinghai --dataset weiyu --month 7月 --company-template weiyu
-```
-
-purchase DeepSeek：
-
-```powershell
-python run_companies.py --mode analysis-only --stage deepseek --source purchase --accountbook xinghai --dataset weiyu --month 7月 --company-template weiyu
-```
-
-只读校验：
-
-```powershell
-python run_companies.py --mode dry-run --stage existing --source sales --accountbook xinghai --dataset weiyu --month 7月 --company-template weiyu
-```
-
-## 14. 参数速查
-
-| 参数 | 可选值/示例 | 说明 |
-|---|---|---|
-| `--accountbook` | `xinghai` | 目标账套，可重复指定 |
-| `--dataset` | `weiyu` | 资料公司，可重复指定 |
-| `--month` | `7月` | 月份目录，可重复指定 |
-| `--company-template` | `weiyu` | 公司模板目录 |
-| `--source` | `sales/purchase/bank/misc/all` | 业务板块 |
-| `--stage` | `ocr/deepseek/existing/all` | 分析阶段 |
-| `--mode` | `analysis-only/prepare/dry-run/confirm` | 运行安全级别 |
-| `--plan` | 无值 | 只检查计划，不执行流水线 |
-| `--limit` | `1` | confirm 时限制处理数量 |
-| `--receipt-id` | receipt ID | confirm 时只处理指定凭证 |
-| `--allow-cross-entity-confirm` | 无值 | 明确允许跨主体真实上传 |
-
-## 15. 常见问题
-
-### 为什么 OCR 不需要登录？
-
-OCR 只读取本地 PDF。DeepSeek 阶段为了严格校验动态科目和 Item，需要有效账套会话。
-
-### 为什么 analysis-only 没有创建客户或供应商？
-
-这是安全设计。缺失 Item 只有在真实 `confirm` 且配置允许时才创建。
-
-### 为什么一张失败后不继续？
-
-保存结果或附件结果不明确时继续运行可能产生重复凭证，因此流水线必须停止并人工核对。
-
-### 为什么模板、资料公司和账套要分开？
-
-它们分别代表业务规则、原始资料和写入目标。分离后可以使用生产资料和生产模板在测试账套验证，也可以让不同公司拥有独立科目和提示词。
-
-### 为什么账期不同仍能分析？
-
-测试阶段允许资料月份与账套当前期间不同，差异只提示。正式上传前必须人工确认凭证日期和目标会计期间。
+更详细的代码架构见 [ARCHITECTURE.md](ARCHITECTURE.md)，长期业务决策见 [PROJECT_MEMORY.md](PROJECT_MEMORY.md)。
