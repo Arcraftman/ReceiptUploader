@@ -56,7 +56,6 @@ def main() -> int:
         if state_store is not None:
             state_store.update(phase=phase, artifacts=artifacts, counters=counters, event=event)
 
-    logger = configure_pipeline_logger(ROOT / "runtime" / "logs", "run_pipeline")
     run_config_path = args.run_config if args.run_config.is_absolute() else ROOT / args.run_config
     app_config_path = args.app_config if args.app_config.is_absolute() else ROOT / args.app_config
     settings = json.loads(run_config_path.read_text(encoding="utf-8"))
@@ -66,6 +65,11 @@ def main() -> int:
     month = str(settings["month"])
     pipeline_source = str(settings.get("source", "all")).lower()
     pipeline_source_key = normalize_source_key(pipeline_source) or "all"
+    workspace_root = resolve_config_path(
+        str(settings["workspace_root"]),
+        ROOT, company, month, pipeline_source_key,
+    )
+    logger = configure_pipeline_logger(workspace_root / "logs" / pipeline_source_key, "run_pipeline")
     paths_config = settings.get("paths", settings)
     month_dir = resolve_config_path(str(paths_config["month_dir"]), ROOT, company, month, pipeline_source_key)
     input_dir = resolve_config_path(str(paths_config.get("input_dir", "data/inbox/{company}/{month}/input")), ROOT, company, month, pipeline_source_key)
@@ -102,11 +106,11 @@ def main() -> int:
             ROOT, company, month, pipeline_source_key,
         )
         bank_split_output = resolve_config_path(
-            str(paths_config.get("bank_split_output_dir", "data/inbox/{company}/{month}/generated/bank_receipts")),
+            str(paths_config.get("bank_split_output_dir", workspace_root / "generated" / "bank_receipts")),
             ROOT, company, month, pipeline_source_key,
         )
         bank_split_report_path = resolve_config_path(
-            str(paths_config.get("bank_split_report_file", "data/inbox/{company}/{month}/generated/bank_receipts/split.report.json")),
+            str(paths_config.get("bank_split_report_file", workspace_root / "generated" / "bank_receipts" / "split.report.json")),
             ROOT, company, month, pipeline_source_key,
         )
         try:
@@ -224,7 +228,7 @@ def main() -> int:
     if not final_sample_path.is_file():
         raise RuntimeError(f"最终模板样例不存在：{final_sample_path}")
     final_sample = load_final_template_sample(final_sample_path)
-    receipts_ocr_dir = resolve_config_path(str(paths_config.get("receipts_ocr_dir", "data/inbox/{company}/{month}/receipts_ocr/{source}")), ROOT, company, month, pipeline_source_key)
+    receipts_ocr_dir = resolve_config_path(str(paths_config.get("receipts_ocr_dir", workspace_root / "generated" / "ocr" / pipeline_source_key)), ROOT, company, month, pipeline_source_key)
     ocr_analysis_by_invoice: dict[str, dict[str, object]] = {}
     account_api_for_analysis = None
     runtime_account_catalog: list[dict[str, object]] = []
@@ -383,7 +387,7 @@ def main() -> int:
         )
     if mode == "analysis-only":
         analysis_report_path = receipts_ocr_dir / "template_analysis.json"
-        review_path = resolve_config_path(str(paths_config.get("preupload_review_file", "data/inbox/{company}/{month}/maps/{source}/preupload_review.report.json")), ROOT, company, month, pipeline_source_key)
+        review_path = resolve_config_path(str(paths_config.get("preupload_review_file", workspace_root / "generated" / "maps" / pipeline_source_key / "preupload_review.report.json")), ROOT, company, month, pipeline_source_key)
         if preload_result is not None:
             catalog_note = f"ItemClass已预加载，新增{len(preload_result.created)}个辅助核算对象"
         else:
@@ -414,7 +418,7 @@ def main() -> int:
         default_item_class = str(settings.get("item_class", "客户"))
         default_item_class_id = resolve_item_class_id(default_item_class, settings.get("item_class_id"))
         item_class_map_path = resolve_config_path(
-            str(paths_config.get("item_class_map_file", "data/inbox/{company}/{month}/maps/{source}/item_class_maps.json")), ROOT, company, month, pipeline_source_key
+            str(paths_config.get("item_class_map_file", workspace_root / "generated" / "maps" / pipeline_source_key / "item_class_maps.json")), ROOT, company, month, pipeline_source_key
         )
         item_class_maps = ItemClassMapStore.load(item_class_map_path)
         for label, report in auxiliary_lists.items():
@@ -470,7 +474,7 @@ def main() -> int:
     else:
         print(f"不支持的 accountbook_source：{account_source}")
         return 2
-    upload_map_path = resolve_config_path(str(paths_config.get("upload_map_file", "data/inbox/{company}/{month}/maps/{source}/upload_pdf_map.json")), ROOT, company, month, pipeline_source_key)
+    upload_map_path = resolve_config_path(str(paths_config.get("upload_map_file", workspace_root / "generated" / "maps" / pipeline_source_key / "upload_pdf_map.json")), ROOT, company, month, pipeline_source_key)
     all_pdfs, _ = discover_source_pdfs(input_dir, pdf_folders)
     logger.info("附件索引完成：待上传映射发票数=%s", len(all_pdfs))
     upload_map = {code: str(paths[0]) for code, paths in all_pdfs.items() if paths}
@@ -500,7 +504,7 @@ def main() -> int:
     print(f"map：{map_path}")
     print(f"生成 receipt：{receipt_report['summary']['generatedCount']}，已存在：{receipt_report['summary']['skippedCount']}，扫描 PDF：{receipt_report['summary']['pdfInvoiceCodeCount']}，重复：{receipt_report['summary']['duplicateInvoiceCodeCount']}，无效 PDF：{receipt_report['summary']['invalidPdfCount']}")
     checkpoint("receipt_generation_complete", artifacts={"receiptDirectory": str(receipt_dir.resolve()), "uploadPdfMap": str(upload_map_path.resolve())}, counters={"receiptGeneratedCount": receipt_report["summary"]["generatedCount"], "receiptInvalidPdfCount": receipt_report["summary"]["invalidPdfCount"]})
-    review_path = resolve_config_path(str(paths_config.get("preupload_review_file", "data/inbox/{company}/{month}/maps/{source}/preupload_review.report.json")), ROOT, company, month, pipeline_source_key)
+    review_path = resolve_config_path(str(paths_config.get("preupload_review_file", workspace_root / "generated" / "maps" / pipeline_source_key / "preupload_review.report.json")), ROOT, company, month, pipeline_source_key)
     review_report = build_preupload_report(
         receipt_dir,
         review_path,
@@ -526,7 +530,7 @@ def main() -> int:
         print("准备阶段完成：receipt 仍是待补业务字段草稿，未进入批量校验或真实提交。")
         print("补齐 receipt.json 的 date/groupId/summary/userName/entries 后，将对应任务配置的 mode 改为 dry-run。")
         return 0
-    command = [sys.executable, str(ROOT / "batch_receipts.py"), "--project-root", str(ROOT), "--config", str(app_config_path), "--expected-company", expected_company, "--input-dir", str(receipt_dir), "--pdf-map", str(upload_map_path), "--source", pipeline_source_key]
+    command = [sys.executable, str(ROOT / "batch_receipts.py"), "--project-root", str(ROOT), "--runtime-root", str(workspace_root), "--config", str(app_config_path), "--expected-company", expected_company, "--input-dir", str(receipt_dir), "--pdf-map", str(upload_map_path), "--source", pipeline_source_key]
     if mode == "confirm":
         from kdzwy_receipt_uploader.preupload_review import require_review_confirmation, PreuploadReviewError
         try:

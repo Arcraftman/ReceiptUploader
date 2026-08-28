@@ -1,5 +1,6 @@
 param(
-    [string]$ConfigPath = (Join-Path $PSScriptRoot '..\config\kdzwy.json')
+    [string]$ConfigPath = (Join-Path $PSScriptRoot '..\config\kdzwy.json'),
+    [string]$AccountKey = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -58,18 +59,53 @@ function Find-CompanyRecords {
     }
 }
 
+function Get-LoginAccounts {
+    param($Config)
+
+    if ($Config.accounts) {
+        $accounts = @($Config.accounts | Where-Object { $_.enabled -ne $false })
+    }
+    elseif ($Config.username -and $Config.password) {
+        $accounts = @([pscustomobject][ordered]@{
+            key = 'default'
+            name = '默认账号'
+            enabled = $true
+            username = [string]$Config.username
+            password = [string]$Config.password
+        })
+    }
+    else {
+        throw '配置缺少 accounts，或旧格式 username/password。'
+    }
+
+    foreach ($account in $accounts) {
+        if (-not $account.key -or -not $account.username -or -not $account.password) {
+            throw '每个启用账号都必须配置 key、username 和 password。'
+        }
+    }
+    return @($accounts)
+}
+
 if (-not (Test-Path -LiteralPath $ConfigPath)) {
     throw "找不到配置文件：$ConfigPath"
 }
 $config = Get-Content -LiteralPath $ConfigPath -Raw | ConvertFrom-Json
-if (-not $config.username -or -not $config.password) {
-    throw '配置缺少 username 或 password。'
+$accounts = @(Get-LoginAccounts -Config $config)
+if ($AccountKey) {
+    $account = $accounts | Where-Object { [string]$_.key -eq $AccountKey } | Select-Object -First 1
+    if ($null -eq $account) { throw "找不到启用的登录账号：$AccountKey" }
+}
+elseif ($accounts.Count -eq 1) {
+    $account = $accounts[0]
+}
+else {
+    throw '配置中有多个账号，调用公司发现时必须指定 AccountKey。'
 }
 
-$encryptedPassword = Protect-PasswordWithDes -Username ([string]$config.username) -Password ([string]$config.password)
+$encryptedPassword = Protect-PasswordWithDes -Username ([string]$account.username) -Password ([string]$account.password)
 $redirectUri = 'https://vip1-gj.kdzwy.com/acct-web/guanjia/'
 $loginQuery = [Web.HttpUtility]::ParseQueryString('')
-$loginQuery['username'] = [string]$config.username
+$loginQuery['username'] = [string]$account.username
 $loginQuery['password'] = $encryptedPassword
 $loginQuery['captcha'] = ''
 $loginQuery['encode'] = '1'
@@ -107,6 +143,8 @@ try {
 
     [pscustomobject]@{
         login = 'ok'
+        login_account = [string]$account.key
+        account_name = if ($account.name) { [string]$account.name } else { [string]$account.key }
         interface = $listUri
         company_count = $companies.Count
         companies = $companies

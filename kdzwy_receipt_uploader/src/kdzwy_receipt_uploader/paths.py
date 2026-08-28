@@ -17,10 +17,10 @@ class ProjectPaths:
     schema: Path
 
     @classmethod
-    def from_root(cls, root: Path) -> "ProjectPaths":
+    def from_root(cls, root: Path, runtime_root: Path | None = None) -> "ProjectPaths":
         root = root.resolve()
         data = root / "data"
-        runtime = root / "runtime"
+        runtime = (runtime_root or (root / "runtime")).resolve()
         return cls(
             root=root,
             data=data,

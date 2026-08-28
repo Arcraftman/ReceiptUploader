@@ -27,65 +27,66 @@ function Set-ObjectProperty {
     }
 }
 
-function Get-SelectedIndexes {
-    param([string]$Text, [int]$Maximum)
-
-    $indexes = New-Object 'Collections.Generic.HashSet[int]'
-    $answer = $Text.Trim()
-    if ($answer -in @('a', 'A', 'all', 'ALL', '全部')) {
-        1..$Maximum | ForEach-Object { [void]$indexes.Add($_) }
-        return @($indexes | Sort-Object)
-    }
-    foreach ($part in ($answer -split '[,，;；\s]+')) {
-        if (-not $part) { continue }
-        if ($part -match '^(\d+)[-~～](\d+)$') {
-            $first = [int]$Matches[1]
-            $last = [int]$Matches[2]
-            if ($first -gt $last) { throw "选择范围无效：$part" }
-            $first..$last | ForEach-Object { [void]$indexes.Add($_) }
-        }
-        elseif ($part -match '^\d+$') {
-            [void]$indexes.Add([int]$part)
-        }
-        else {
-            throw "无法识别的选择：$part"
-        }
-    }
-    foreach ($index in $indexes) {
-        if ($index -lt 1 -or $index -gt $Maximum) { throw "公司编号超出范围：$index" }
-    }
-    return @($indexes | Sort-Object)
-}
-
 function Copy-JsonObject {
     param($Value)
     return ($Value | ConvertTo-Json -Depth 12 | ConvertFrom-Json)
 }
 
-Write-Host '正在登录并获取当前账号可访问的公司...'
-$discoveryText = (& (Join-Path $PSScriptRoot 'discover_companies.ps1') -ConfigPath $ConfigPath | Out-String)
-if (-not $discoveryText.Trim()) { throw '获取公司列表失败：接口没有返回内容。' }
-$discovery = $discoveryText | ConvertFrom-Json
-$companies = @($discovery.companies)
-if ($companies.Count -eq 0) { throw '当前账号没有返回可访问的公司。' }
+function Get-LoginAccounts {
+    param($Config)
 
-Write-Host ''
-Write-Host "共找到 $($companies.Count) 家公司："
-for ($i = 0; $i -lt $companies.Count; $i++) {
-    Write-Host ('  [{0}] {1}' -f ($i + 1), $companies[$i].company_name)
+    if ($Config.accounts) {
+        $accounts = @($Config.accounts | Where-Object { $_.enabled -ne $false })
+    }
+    elseif ($Config.username -and $Config.password) {
+        $accounts = @([pscustomobject][ordered]@{
+            key = 'default'
+            name = '默认账号'
+            enabled = $true
+            username = [string]$Config.username
+            password = [string]$Config.password
+        })
+    }
+    else {
+        throw '配置缺少 accounts，或旧格式 username/password。'
+    }
+    foreach ($account in $accounts) {
+        if (-not $account.key -or -not $account.username -or -not $account.password) {
+            throw '每个启用账号都必须配置 key、username 和 password。'
+        }
+    }
+    return @($accounts)
 }
-Write-Host ''
-$answer = Read-Host '请选择公司编号（例如 1,3-5；输入 A 选择全部）'
-$indexes = @(Get-SelectedIndexes -Text $answer -Maximum $companies.Count)
-if ($indexes.Count -eq 0) { throw '没有选择任何公司。' }
-$selectedCompanies = @($indexes | ForEach-Object { $companies[$_ - 1] })
 
-$config = Get-Content -LiteralPath $ConfigPath -Raw | ConvertFrom-Json
-if ($config.PSObject.Properties['company_name']) {
-    $config.PSObject.Properties.Remove('company_name')
+$loginConfig = Get-Content -LiteralPath $ConfigPath -Raw | ConvertFrom-Json
+$loginAccounts = @(Get-LoginAccounts -Config $loginConfig)
+$selectedCompanies = @()
+
+foreach ($loginAccount in $loginAccounts) {
+    $accountLabel = if ($loginAccount.name) { [string]$loginAccount.name } else { [string]$loginAccount.key }
+    Write-Host "正在登录账号 $accountLabel 并获取可访问的公司..."
+    $discoveryText = (& (Join-Path $PSScriptRoot 'discover_companies.ps1') -ConfigPath $ConfigPath -AccountKey ([string]$loginAccount.key) | Out-String)
+    if (-not $discoveryText.Trim()) { throw "账号 $accountLabel 获取公司列表失败：接口没有返回内容。" }
+    $discovery = $discoveryText | ConvertFrom-Json
+    $companies = @($discovery.companies)
+    if ($companies.Count -eq 0) {
+        Write-Host "账号 $accountLabel 没有返回可访问的公司，已跳过。"
+        continue
+    }
+
+    Write-Host ''
+    Write-Host "账号 $accountLabel 共找到 $($companies.Count) 家公司，全部自动启用："
+    for ($i = 0; $i -lt $companies.Count; $i++) {
+        Write-Host ('  [{0}] {1}' -f ($i + 1), $companies[$i].company_name)
+    }
+    foreach ($discoveredCompany in $companies) {
+        $company = Copy-JsonObject $discoveredCompany
+        Set-ObjectProperty -Object $company -Name 'login_account' -Value ([string]$loginAccount.key)
+        $selectedCompanies += $company
+    }
+    Write-Host ''
 }
-Set-ObjectProperty -Object $config -Name 'company_names' -Value @($selectedCompanies | ForEach-Object company_name)
-Write-JsonUtf8 -Value $config -Path $ConfigPath
+if ($selectedCompanies.Count -eq 0) { throw '所有启用账号均未选择公司。' }
 
 $accountbooksConfig = Get-Content -LiteralPath $AccountbooksPath -Raw | ConvertFrom-Json
 $existingAccountbooks = @($accountbooksConfig.accountbooks)
@@ -94,18 +95,28 @@ $selectedKeys = New-Object 'Collections.Generic.HashSet[string]'
 
 foreach ($company in $selectedCompanies) {
     $name = [string]$company.company_name
-    $accountbook = $existingAccountbooks | Where-Object { $_.name -eq $name } | Select-Object -First 1
+    $loginAccountKey = [string]$company.login_account
+    $accountbook = $existingAccountbooks | Where-Object {
+        $_.name -eq $name -and (([string]$_.login_account -eq $loginAccountKey) -or (-not $_.login_account -and $loginAccounts.Count -eq 1))
+    } | Select-Object -First 1
     if ($null -eq $accountbook) {
         $keyPart = ([string]$company.company_id -replace '[^a-zA-Z0-9_-]', '_').ToLowerInvariant()
         if (-not $keyPart) { throw "公司缺少有效 companyId：$name" }
+        $newKey = 'company_' + $keyPart
+        if ($existingAccountbooks.key -contains $newKey -or $selectedAccountbooks.key -contains $newKey) {
+            $newKey += '_' + ($loginAccountKey -replace '[^a-zA-Z0-9_-]', '_').ToLowerInvariant()
+        }
         $accountbook = [pscustomobject][ordered]@{
-            key = 'company_' + $keyPart
+            key = $newKey
             name = $name
+            login_account = $loginAccountKey
             enabled = $true
-            session_file = '../http_sessions/companies/' + $name + '.accountbook.cookies.json'
+            session_file = '../http_sessions/accounts/' + $loginAccountKey + '/companies/' + $name + '.accountbook.cookies.json'
             pipeline_overrides = [pscustomobject]@{}
         }
     }
+    Set-ObjectProperty -Object $accountbook -Name 'login_account' -Value $loginAccountKey
+    Set-ObjectProperty -Object $accountbook -Name 'session_file' -Value ('../http_sessions/accounts/' + $loginAccountKey + '/companies/' + $name + '.accountbook.cookies.json')
     Set-ObjectProperty -Object $accountbook -Name 'enabled' -Value $true
     [void]$selectedKeys.Add([string]$accountbook.key)
     $selectedAccountbooks += $accountbook
@@ -149,26 +160,10 @@ foreach ($accountbook in $selectedAccountbooks | Where-Object enabled) {
 }
 
 Write-Host ''
-Write-Host '已保存选择，开始为所选公司建立 HTTP 会话...'
+Write-Host '已保存全部账号和公司，开始为所有公司建立 HTTP 会话...'
 & (Join-Path $PSScriptRoot 'start_http_login.bat') --no-pause
 if ($LASTEXITCODE -ne 0) { throw "HTTP 登录失败，退出码：$LASTEXITCODE" }
 
 Write-Host ''
-Write-Host '开始逐家公司运行已启用的公司配置...'
-foreach ($accountbook in $selectedAccountbooks | Where-Object enabled) {
-    $companyConfigPath = Join-Path $CompanyConfigDirectory ([string]$accountbook.key + '.json')
-    $companyRunConfig = Get-Content -LiteralPath $companyConfigPath -Raw | ConvertFrom-Json
-    if (-not $companyRunConfig.enabled) {
-        Write-Host "跳过未配置公司：$($accountbook.name)。请先完善 $companyConfigPath"
-        continue
-    }
-    Write-Host ''
-    Write-Host ('===== {0}（{1}）=====' -f $accountbook.name, $accountbook.key)
-    & (Join-Path $PSScriptRoot 'run_company.bat') ([string]$accountbook.key)
-    if ($LASTEXITCODE -ne 0) {
-        throw "公司运行失败：$($accountbook.name)，退出码：$LASTEXITCODE"
-    }
-}
-
-Write-Host ''
-Write-Host "全部完成：$($selectedCompanies.Count) 家公司。"
+Write-Host "公司发现和会话建立完成：$($loginAccounts.Count) 个启用账号，自动启用 $($selectedCompanies.Count) 家公司。"
+Write-Host '本入口不会运行任何公司任务；请配置完成后单独执行 run_company.bat COMPANY_KEY。'

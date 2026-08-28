@@ -184,10 +184,16 @@ def main() -> int:
                 print("[提示] preload_items=once；仅首次或输入Excel变化后预加载，并创建远端不存在的客户/供应商。")
             elif preload_mode == "auto":
                 print("[警告] preload_items=auto；每次都会检查并创建远端不存在的客户/供应商。")
-            needs_session = job.mode != "analysis-only" or effective_stage in {"deepseek", "existing", "all"}
+            preload_needs_session = preload_mode is True or str(preload_mode).strip().lower() in {"once", "auto"}
+            needs_session = (
+                job.mode != "analysis-only"
+                or effective_stage in {"deepseek", "existing", "all"}
+                or preload_needs_session
+            )
             if settings.get("accountbook_source", "live") == "live" and needs_session:
                 session_path = validate_accountbook_session(ROOT, accountbook)
-            runtime_dir = ROOT / "runtime" / "jobs" / safe_part(accountbook.key) / safe_part(dataset.key) / safe_part(job.month) / safe_part(source_key)
+            workspace_root = resolve_project_path(ROOT, str(settings["workspace_root"]))
+            runtime_dir = workspace_root / "state" / safe_part(source_key)
             plans.append((accountbook, dataset, job, settings, runtime_dir, session_path))
             relation = "跨主体测试" if cross_entity else "同主体"
             logger.info("计划任务: dataset=%s accountbook=%s month=%s mode=%s source=%s relation=%s", dataset.entity_name, accountbook.name, job.month, job.mode, job.source, relation)
@@ -221,6 +227,7 @@ def main() -> int:
         identity = {
             "accountbook": accountbook.key,
             "accountbookName": accountbook.name,
+            "loginAccount": accountbook.login_account,
             "dataset": dataset.key,
             "datasetName": dataset.entity_name,
             "month": job.month,

@@ -53,8 +53,7 @@ def clear_receipt_markers(receipt_root: Path) -> tuple[set[str], int, int]:
     return receipt_ids, scanned, changed
 
 
-def reset_audit(receipt_ids: set[str]) -> tuple[Path | None, int]:
-    audit_path = ROOT / "runtime" / "logs" / "run.jsonl"
+def reset_audit(receipt_ids: set[str], audit_path: Path) -> tuple[Path | None, int]:
     if not audit_path.is_file():
         return None, 0
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -92,15 +91,24 @@ def main() -> int:
     if not dataset or not month:
         raise SystemExit(f"公司配置缺少dataset或month：{config_path}")
 
-    receipt_root = ROOT / "data" / "inbox" / dataset / month / "generated" / "receipts"
+    accountbooks = read_json(ROOT / "config" / "accountbooks.json")
+    accountbook = next((row for row in accountbooks.get("accountbooks", []) if isinstance(row, dict) and str(row.get("key", "")).strip().lower() == company_key), None)
+    if accountbook is None:
+        raise SystemExit(f"找不到账套配置：{company_key}")
+    login_account = str(accountbook.get("login_account") or "default").strip()
+    workspace_root = ROOT / "workspaces" / login_account / company_key / dataset / month
+    receipt_root = workspace_root / "generated" / "receipts"
+    audit_path = workspace_root / "logs" / "run.jsonl"
     receipt_ids, scanned, changed = clear_receipt_markers(receipt_root)
-    backup_path, removed = reset_audit(receipt_ids)
+    backup_path, removed = reset_audit(receipt_ids, audit_path)
 
     print(json.dumps({
         "status": "ok",
         "company_key": company_key,
         "dataset": dataset,
         "month": month,
+        "login_account": login_account,
+        "workspace_root": str(workspace_root),
         "receipt_root": str(receipt_root),
         "scanned_receipts": scanned,
         "cleared_receipt_markers": changed,

@@ -1,0 +1,113 @@
+# =============================================================================
+# receipt-uploader repository ignore rules
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Secrets, login sessions and local credentials
+# -----------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+http_sessions/
+**/http_sessions/
+**/*.cookies.json
+**/*.session.json
+**/*.sessions.json
+**/credentials.json
+**/secrets.json
+**/config/kdzwy.json
+**/config/app.json
+**/config/accounts.json
+
+# Never commit private keys or certificates.
+*.pem
+*.key
+*.p12
+*.pfx
+
+# -----------------------------------------------------------------------------
+# Python environments, caches and build artifacts
+# -----------------------------------------------------------------------------
+.auto/
+.venv/
+venv/
+env/
+ENV/
+
+**/__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# -----------------------------------------------------------------------------
+# JavaScript tooling, if local helper tools are used
+# -----------------------------------------------------------------------------
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# -----------------------------------------------------------------------------
+# Logs, locks, local databases and temporary artifacts
+# -----------------------------------------------------------------------------
+*.log
+*.log.*
+*.lock
+*.pid
+*.tmp
+*.temp
+*.part
+*.bak
+*.swp
+*.swo
+*~
+
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+logs/
+tmp/
+temp/
+outputs/
+
+# Microsoft Office temporary files.
+~$*
+
+# -----------------------------------------------------------------------------
+# IDE, Codex-local metadata and operating-system files
+# -----------------------------------------------------------------------------
+.idea/
+.vscode/
+.vs/
+.codex/
+.agents/
+
+.DS_Store
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/

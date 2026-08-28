@@ -15,6 +15,7 @@ if str(SRC) not in sys.path:
 
 from kdzwy_receipt_uploader.company_registry import (  # noqa: E402
     CompanyRegistryError,
+    load_accountbooks,
     load_datasets,
     load_template_companies,
 )
@@ -90,10 +91,24 @@ def main() -> int:
         if not template_index.is_file():
             raise CompanyRegistryError(f"模板缺少 index.json：{template_index}")
 
+        accountbooks = load_accountbooks(ROOT / "config" / "accountbooks.json")
+        accountbook = accountbooks.get(company_key)
+        if accountbook is None or not accountbook.enabled:
+            raise CompanyRegistryError(f"账套不存在或未启用：{company_key}")
+        login_account = accountbook.login_account or "default"
+
         inbox_root = (ROOT / "data" / "inbox").resolve()
         dataset_root = ensure_inside(ROOT / dataset.data_root, inbox_root, "dataset.data_root")
         month_root = ensure_inside(dataset_root / month, dataset_root, "月份目录")
         month_root.mkdir(parents=True, exist_ok=True)
+
+        workspaces_root = (ROOT / "workspaces").resolve()
+        workspace_root = ensure_inside(
+            workspaces_root / login_account / company_key / dataset_key / safe_filename_part(month),
+            workspaces_root,
+            "账套工作区",
+        )
+        workspace_generated = workspace_root / "generated"
 
         created_directories: list[str] = []
         canonical_sources: list[str] = []
@@ -106,10 +121,11 @@ def main() -> int:
             canonical_sources.append(source)
             directories = (
                 month_root / "input" / source,
-                month_root / "generated" / "maps" / source,
-                month_root / "generated" / "receipts" / source,
-                month_root / "generated" / "ocr" / source,
-                ROOT / "runtime" / "jobs" / company_key / dataset_key / safe_filename_part(month) / source,
+                workspace_generated / "maps" / source,
+                workspace_generated / "receipts" / source,
+                workspace_generated / "ocr" / source,
+                workspace_root / "state" / source,
+                workspace_root / "logs" / source,
             )
             for directory in directories:
                 if not directory.exists():
@@ -133,6 +149,7 @@ def main() -> int:
             "template_company": template_key,
             "month": month,
             "month_directory": str(month_root),
+            "workspace_directory": str(workspace_root),
             "sources": canonical_sources,
             "created_directories": created_directories,
             "month_config": str(month_config_path),

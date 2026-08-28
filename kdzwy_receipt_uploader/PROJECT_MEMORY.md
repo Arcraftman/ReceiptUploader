@@ -1,6 +1,21 @@
 # 项目业务决策记忆
 
-更新日期：2026-08-25
+更新日期：2026-08-27
+
+## 多账号与工作区隔离
+
+- `config/kdzwy.json` 支持多个启用账号；每个账号必须有唯一 `key`、`username` 和 `password`。
+- `start_discover_companies.bat` 不再要求用户逐家公司选择；它会遍历全部启用账号，并自动导入、启用每个账号返回的所有公司。
+- 自动启用指 `accountbooks.json` 中的账套登录和会话启用；新生成的公司业务配置仍默认 `enabled=false`，必须填写 dataset、模板、月份和来源后才能运行。
+- `start_discover_companies.bat` 在公司发现和 HTTP 会话建立完成后立即结束，禁止自动调用任何 `run_company.bat`，避免发现公司时误触发 analysis、prepare 或 confirm。
+- `accountbooks.json` 的每个账套必须记录 `login_account`，会话固定存放在 `http_sessions/accounts/<login_account>/companies/`。
+- 原始资料和月份 `.conf` 保持现有位置：`data/inbox/<dataset>/<month>/`；运行过程只读取 input，不移动用户资料。
+- 每个任务的生成物固定写入 `workspaces/<login_account>/<company_key>/<dataset>/<month>/generated/`。
+- OCR、DeepSeek、maps、receipts、银行裁剪、日志、失败归档、上传审计和任务状态均按工作区隔离。
+- 不兼容旧 `data/inbox/<dataset>/<month>/generated`；程序不读取、不复制、不回退到旧生成目录。
+- 新工作区没有分析结果时必须从 OCR 阶段重新生成，`existing` 只读取当前账号账套的工作区。
+- 同一账号/账套/dataset/month/source 继续使用操作系统文件锁，禁止重复运行；不同工作区可以并行。
+- 公司发现和 HTTP 登录分别使用全局进程锁；每个入口只能同时运行一个实例。
 
 ## 银行回单裁剪规则
 

@@ -15,7 +15,7 @@ from kdzwy_receipt_uploader.pipeline_state import PipelineStateError, exclusive_
 
 
 def main() -> int:
-    state_paths = sorted((ROOT / "runtime" / "jobs").glob("**/state.json"))
+    state_paths = sorted((ROOT / "workspaces").glob("**/state.json"))
     if not state_paths:
         print("还没有任务状态。运行一次公司流程后会自动生成。")
         return 0
@@ -40,7 +40,7 @@ def main() -> int:
         if status in {"failed", "interrupted"}:
             failed += 1
         print(
-            f"{identity.get('accountbook', '?')} / {identity.get('dataset', '?')} / "
+            f"{identity.get('loginAccount', 'default')}:{identity.get('accountbook', '?')} / {identity.get('dataset', '?')} / "
             f"{identity.get('month', '?')} / {identity.get('source', '?')} | "
             f"{state.get('mode', '?')} / {state.get('stage', '?')} | "
             f"{status} / {state.get('phase', '?')} | {state.get('updatedAt', '?')}"

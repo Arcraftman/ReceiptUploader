@@ -1,9 +1,6 @@
 ﻿param(
     [string]$ConfigPath = (Join-Path $PSScriptRoot '..\config\kdzwy.json'),
-    [string[]]$CompanyName,
-    [string]$CompanyListPath,
-    [string]$SessionDirectory = (Join-Path $PSScriptRoot '..\http_sessions\companies'),
-    [string]$SessionPath = (Join-Path $PSScriptRoot '..\http_sessions\kdzwy.accountbook.cookies.json'),
+    [string]$AccountbooksPath = (Join-Path $PSScriptRoot 'config\accountbooks.json'),
     [string]$ManifestPath = (Join-Path $PSScriptRoot '..\http_sessions\kdzwy.company_sessions.json')
 )
 
@@ -135,60 +132,93 @@ function Write-JsonAtomically {
     $directory = Split-Path -Parent $Path
     if ($directory) { [IO.Directory]::CreateDirectory($directory) | Out-Null }
     $tempPath = $Path + '.tmp'
-    $Value | ConvertTo-Json -Depth $Depth | Set-Content -LiteralPath $tempPath -Encoding utf8
+    $json = $Value | ConvertTo-Json -Depth $Depth
+    [IO.File]::WriteAllText([IO.Path]::GetFullPath($tempPath), $json + [Environment]::NewLine, [Text.UTF8Encoding]::new($false))
     Move-Item -LiteralPath $tempPath -Destination $Path -Force
+}
+
+function Get-LoginAccounts {
+    param($Config)
+
+    if ($Config.accounts) {
+        $accounts = @($Config.accounts | Where-Object { $_.enabled -ne $false })
+    }
+    elseif ($Config.username -and $Config.password) {
+        $accounts = @([pscustomobject][ordered]@{
+            key = 'default'
+            name = '默认账号'
+            enabled = $true
+            username = [string]$Config.username
+            password = [string]$Config.password
+        })
+    }
+    else {
+        throw '配置缺少 accounts，或旧格式 username/password。'
+    }
+    foreach ($account in $accounts) {
+        if (-not $account.key -or -not $account.username -or -not $account.password) {
+            throw '每个启用账号都必须配置 key、username 和 password。'
+        }
+    }
+    return @($accounts)
+}
+
+function Resolve-CompanySessionPath {
+    param($Accountbook, [string]$LoginAccountKey, [string]$CompanyName)
+
+    if ($Accountbook.session_file) {
+        $configured = [string]$Accountbook.session_file
+        if ([IO.Path]::IsPathRooted($configured)) { return [IO.Path]::GetFullPath($configured) }
+        return [IO.Path]::GetFullPath((Join-Path $PSScriptRoot $configured))
+    }
+    $safeName = Get-SafeCompanyFileName $CompanyName
+    return Join-Path (Join-Path (Join-Path $PSScriptRoot '..\http_sessions\accounts') $LoginAccountKey) ('companies\' + $safeName + '.accountbook.cookies.json')
 }
 
 if (-not (Test-Path -LiteralPath $ConfigPath)) {
     throw "找不到配置文件：$ConfigPath"
 }
 $config = Get-Content -LiteralPath $ConfigPath -Raw | ConvertFrom-Json
-if (-not $config.username -or -not $config.password) {
-    throw '配置缺少 username 或 password。'
+$loginAccounts = @(Get-LoginAccounts -Config $config)
+
+if (-not (Test-Path -LiteralPath $AccountbooksPath)) {
+    throw "找不到账套清单：$AccountbooksPath；请先运行 start_discover_companies.bat。"
+}
+$accountbooksConfig = Get-Content -LiteralPath $AccountbooksPath -Raw | ConvertFrom-Json
+$enabledAccountbooks = @($accountbooksConfig.accountbooks | Where-Object { $_.enabled -eq $true })
+if ($enabledAccountbooks.Count -eq 0) {
+    throw "账套清单没有 enabled=true 的公司：$AccountbooksPath；请先运行 start_discover_companies.bat。"
 }
 
-$requestedNames = [Collections.Generic.List[string]]::new()
-foreach ($item in @($CompanyName)) {
-    foreach ($name in ([string]$item -split '[,，;；\r\n]+')) {
-        $trimmed = $name.Trim()
-        if ($trimmed) { $requestedNames.Add($trimmed) }
-    }
-}
-if ($CompanyListPath) {
-    foreach ($line in Get-Content -LiteralPath $CompanyListPath) {
-        $trimmed = ([string]$line).Trim()
-        if ($trimmed -and -not $trimmed.StartsWith('#')) { $requestedNames.Add($trimmed) }
-    }
-}
-if ($requestedNames.Count -eq 0 -and $config.company_names -is [System.Array]) {
-    foreach ($name in @($config.company_names)) {
-        $trimmed = ([string]$name).Trim()
-        if ($trimmed) { $requestedNames.Add($trimmed) }
-    }
-}
-if ($requestedNames.Count -eq 0 -and $config.company_name) {
-    $requestedNames.Add(([string]$config.company_name).Trim())
-}
+$results = @()
+$manifestEntries = @()
+$successfulPayloads = @()
+$requestedCount = 0
 
-$seenNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-$companyNames = @($requestedNames | Where-Object { $seenNames.Add($_) })
+foreach ($loginAccount in $loginAccounts) {
+    $accountKey = [string]$loginAccount.key
+    $accountbooksForLogin = @($enabledAccountbooks | Where-Object {
+        ([string]$_.login_account -eq $accountKey) -or (-not $_.login_account -and $loginAccounts.Count -eq 1)
+    })
+    if ($accountbooksForLogin.Count -eq 0) { continue }
+    $requestedCount += $accountbooksForLogin.Count
 
-$cookies = [System.Net.CookieContainer]::new()
-$handler = [System.Net.Http.HttpClientHandler]::new()
-$handler.CookieContainer = $cookies
-$handler.UseCookies = $true
-$handler.AllowAutoRedirect = $true
-$handler.AutomaticDecompression = [System.Net.DecompressionMethods]::GZip -bor [System.Net.DecompressionMethods]::Deflate
-$client = [System.Net.Http.HttpClient]::new($handler)
-$client.Timeout = [TimeSpan]::FromSeconds(45)
-$client.DefaultRequestHeaders.UserAgent.ParseAdd('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36')
-$client.DefaultRequestHeaders.Accept.ParseAdd('application/json, text/plain, */*')
+    $cookies = [System.Net.CookieContainer]::new()
+    $handler = [System.Net.Http.HttpClientHandler]::new()
+    $handler.CookieContainer = $cookies
+    $handler.UseCookies = $true
+    $handler.AllowAutoRedirect = $true
+    $handler.AutomaticDecompression = [System.Net.DecompressionMethods]::GZip -bor [System.Net.DecompressionMethods]::Deflate
+    $client = [System.Net.Http.HttpClient]::new($handler)
+    $client.Timeout = [TimeSpan]::FromSeconds(45)
+    $client.DefaultRequestHeaders.UserAgent.ParseAdd('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36')
+    $client.DefaultRequestHeaders.Accept.ParseAdd('application/json, text/plain, */*')
 
-try {
-    $encryptedPassword = Protect-PasswordWithDes -Username ([string]$config.username) -Password ([string]$config.password)
+    try {
+    $encryptedPassword = Protect-PasswordWithDes -Username ([string]$loginAccount.username) -Password ([string]$loginAccount.password)
     $redirectUri = 'https://vip1-gj.kdzwy.com/acct-web/guanjia/'
     $loginQuery = [System.Web.HttpUtility]::ParseQueryString('')
-    $loginQuery['username'] = [string]$config.username
+    $loginQuery['username'] = [string]$loginAccount.username
     $loginQuery['password'] = $encryptedPassword
     $loginQuery['captcha'] = ''
     $loginQuery['encode'] = '1'
@@ -201,22 +231,8 @@ try {
     $loginResponse = $client.PostAsync($loginUri, $emptyBody).GetAwaiter().GetResult()
     [void](Get-ResponseText $loginResponse)
 
-    if ($companyNames.Count -eq 0) {
-        $companyListUri = 'https://vip1-gj.kdzwy.com/guanjia/customer/search?customerName='
-        $companyListResponse = $client.GetAsync($companyListUri).GetAwaiter().GetResult()
-        $companyListJson = (Get-ResponseText $companyListResponse) | ConvertFrom-Json
-        $companyRecords = @(Get-CompanyRecords -Value $companyListJson | Sort-Object companyId -Unique)
-        $companyNames = @($companyRecords | ForEach-Object companyName)
-        if ($companyNames.Count -eq 0) {
-            throw '登录成功，但公司列表接口没有返回任何公司。'
-        }
-    }
-
-    $results = [Collections.Generic.List[object]]::new()
-    $manifestEntries = [Collections.Generic.List[object]]::new()
-    $successfulPayloads = [Collections.Generic.List[object]]::new()
-
-    foreach ($targetCompany in $companyNames) {
+    foreach ($accountbook in $accountbooksForLogin) {
+        $targetCompany = ([string]$accountbook.name).Trim()
         try {
             $searchUri = 'https://vip1-gj.kdzwy.com/guanjia/customer/search?customerName=' + [Uri]::EscapeDataString($targetCompany)
             $searchResponse = $client.GetAsync($searchUri).GetAwaiter().GetResult()
@@ -288,6 +304,7 @@ try {
 
             $verifiedAt = [DateTimeOffset]::Now.ToString('o')
             $sessionPayload = [ordered]@{
+                login_account = $accountKey
                 target_url = $accountUri.AbsoluteUri
                 cookies = $sessionCookies
                 access_token = [string]$accessToken
@@ -296,12 +313,12 @@ try {
                 verified_at = $verifiedAt
             }
 
-            $safeName = Get-SafeCompanyFileName $targetCompany
-            $companySessionPath = Join-Path $SessionDirectory ($safeName + '.accountbook.cookies.json')
+            $companySessionPath = Resolve-CompanySessionPath -Accountbook $accountbook -LoginAccountKey $accountKey -CompanyName $targetCompany
             Write-JsonAtomically -Value $sessionPayload -Path $companySessionPath
-            $successfulPayloads.Add($sessionPayload)
-            $manifestEntries.Add([ordered]@{ company_name = [string]$liveCompany; company_name_expected = $targetCompany; company_matched = $companyMatched; session_file = [IO.Path]::GetFullPath($companySessionPath); verified_at = $verifiedAt })
-            $results.Add([ordered]@{
+            $successfulPayloads += $sessionPayload
+            $manifestEntries += [ordered]@{ login_account = $accountKey; company_name = [string]$liveCompany; company_name_expected = $targetCompany; company_matched = $companyMatched; session_file = [IO.Path]::GetFullPath($companySessionPath); verified_at = $verifiedAt }
+            $results += [ordered]@{
+                login_account = $accountKey
                 company_name = [string]$liveCompany
                 status = if ($companyMatched) { 'ok' } else { 'ok-mismatch' }
                 company_match = if ($companyMatched) { 'exact' } else { 'fuzzy' }
@@ -309,37 +326,45 @@ try {
                 accounting_host = $accountUri.Host
                 accounting_path = $accountUri.AbsolutePath
                 session_file = [IO.Path]::GetFullPath($companySessionPath)
-            })
+            }
         }
         catch {
-            $results.Add([ordered]@{ company_name = $targetCompany; status = 'failed'; error = $_.Exception.Message })
+            $results += [ordered]@{ login_account = $accountKey; company_name = $targetCompany; status = 'failed'; error = $_.Exception.Message }
         }
     }
-
-    if ($successfulPayloads.Count -eq 1) {
-        Write-JsonAtomically -Value $successfulPayloads[0] -Path $SessionPath
     }
-
-    Write-JsonAtomically -Value ([ordered]@{
-        generated_at = [DateTimeOffset]::Now.ToString('o')
-        requested_count = $companyNames.Count
-        success_count = $successfulPayloads.Count
-        sessions = @($manifestEntries)
-    }) -Path $ManifestPath
-
-    [pscustomobject]@{
-        login = 'ok'
-        company_list_interface = 'https://vip1-gj.kdzwy.com/guanjia/customer/search?customerName='
-        requested_count = $companyNames.Count
-        success_count = $successfulPayloads.Count
-        failure_count = $companyNames.Count - $successfulPayloads.Count
-        results = @($results)
-        manifest_file = [IO.Path]::GetFullPath($ManifestPath)
-    } | ConvertTo-Json -Depth 6
-
-    if ($successfulPayloads.Count -ne $companyNames.Count) { exit 2 }
+    catch {
+        foreach ($accountbook in $accountbooksForLogin) {
+            $results += [ordered]@{ login_account = $accountKey; company_name = [string]$accountbook.name; status = 'failed'; error = $_.Exception.Message }
+        }
+    }
+    finally {
+        $client.Dispose()
+        $handler.Dispose()
+    }
 }
-finally {
-    $client.Dispose()
-    $handler.Dispose()
+
+if ($requestedCount -eq 0) {
+    throw '启用的账套没有关联到任何启用登录账号，请重新运行 start_discover_companies.bat。'
 }
+
+Write-JsonAtomically -Value ([ordered]@{
+    generated_at = [DateTimeOffset]::Now.ToString('o')
+    account_count = $loginAccounts.Count
+    requested_count = $requestedCount
+    success_count = $successfulPayloads.Count
+    sessions = @($manifestEntries)
+}) -Path $ManifestPath
+
+[pscustomobject]@{
+    login = 'ok'
+    account_count = $loginAccounts.Count
+    company_list_interface = 'https://vip1-gj.kdzwy.com/guanjia/customer/search?customerName='
+    requested_count = $requestedCount
+    success_count = $successfulPayloads.Count
+    failure_count = $requestedCount - $successfulPayloads.Count
+    results = @($results)
+    manifest_file = [IO.Path]::GetFullPath($ManifestPath)
+} | ConvertTo-Json -Depth 6
+
+if ($successfulPayloads.Count -ne $requestedCount) { exit 2 }

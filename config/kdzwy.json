@@ -1,9 +1,14 @@
 {
-    "username":  "18249555724",
-    "password":  "Sgl197683!",
-    "keep_browser_open":  false,
-    "headless":  false,
-    "company_names":  [
-                          "星海公司"
-                      ]
+    "version": 2,
+    "accounts": [
+        {
+            "key": "account_1",
+            "name": "账号1",
+            "enabled": true,
+            "username": "18249555724",
+            "password": "Sgl197683!"
+        }
+    ],
+    "keep_browser_open": false,
+    "headless": false
 }

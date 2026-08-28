@@ -1,14 +1,112 @@
-﻿{
-    "generated_at":  "2026-08-24T16:23:29.1927054+08:00",
-    "requested_count":  1,
-    "success_count":  1,
+{
+    "generated_at":  "2026-08-27T13:13:00.2195035+08:00",
+    "account_count":  1,
+    "requested_count":  13,
+    "success_count":  13,
     "sessions":  [
                      {
+                         "login_account":  "account_1",
+                         "company_name":  "上海微誉信息技术有限公司",
+                         "company_name_expected":  "上海微誉信息技术有限公司",
+                         "company_matched":  false,
+                         "session_file":  "C:\\Users\\chqte\\Documents\\Codex\\receipt-uploader\\http_sessions\\accounts\\account_1\\companies\\上海微誉信息技术有限公司.accountbook.cookies.json",
+                         "verified_at":  "2026-08-27T13:12:52.8080071+08:00"
+                     },
+                     {
+                         "login_account":  "account_1",
+                         "company_name":  "上海纤之苏科技中心（有限合伙）",
+                         "company_name_expected":  "上海纤之苏科技中心（有限合伙）",
+                         "company_matched":  false,
+                         "session_file":  "C:\\Users\\chqte\\Documents\\Codex\\receipt-uploader\\http_sessions\\accounts\\account_1\\companies\\上海纤之苏科技中心（有限合伙）.accountbook.cookies.json",
+                         "verified_at":  "2026-08-27T13:12:53.4557402+08:00"
+                     },
+                     {
+                         "login_account":  "account_1",
+                         "company_name":  "上海纤之循环保科技有限公司",
+                         "company_name_expected":  "上海纤之循环保科技有限公司",
+                         "company_matched":  false,
+                         "session_file":  "C:\\Users\\chqte\\Documents\\Codex\\receipt-uploader\\http_sessions\\accounts\\account_1\\companies\\上海纤之循环保科技有限公司.accountbook.cookies.json",
+                         "verified_at":  "2026-08-27T13:12:54.0554634+08:00"
+                     },
+                     {
+                         "login_account":  "account_1",
+                         "company_name":  "千云（上海）信息科技有限公司",
+                         "company_name_expected":  "千云（上海）信息科技有限公司",
+                         "company_matched":  false,
+                         "session_file":  "C:\\Users\\chqte\\Documents\\Codex\\receipt-uploader\\http_sessions\\accounts\\account_1\\companies\\千云（上海）信息科技有限公司.accountbook.cookies.json",
+                         "verified_at":  "2026-08-27T13:12:54.7254644+08:00"
+                     },
+                     {
+                         "login_account":  "account_1",
                          "company_name":  "星海公司",
                          "company_name_expected":  "星海公司",
                          "company_matched":  false,
-                         "session_file":  "C:\\Users\\chqte\\Documents\\Codex\\receipt-uploader\\http_sessions\\companies\\星海公司.accountbook.cookies.json",
-                         "verified_at":  "2026-08-24T16:23:29.1587764+08:00"
+                         "session_file":  "C:\\Users\\chqte\\Documents\\Codex\\receipt-uploader\\http_sessions\\accounts\\account_1\\companies\\星海公司.accountbook.cookies.json",
+                         "verified_at":  "2026-08-27T13:12:55.3991668+08:00"
+                     },
+                     {
+                         "login_account":  "account_1",
+                         "company_name":  "上海栈瓴信息科技有限公司",
+                         "company_name_expected":  "上海栈瓴信息科技有限公司",
+                         "company_matched":  false,
+                         "session_file":  "C:\\Users\\chqte\\Documents\\Codex\\receipt-uploader\\http_sessions\\accounts\\account_1\\companies\\上海栈瓴信息科技有限公司.accountbook.cookies.json",
+                         "verified_at":  "2026-08-27T13:12:56.0034755+08:00"
+                     },
+                     {
+                         "login_account":  "account_1",
+                         "company_name":  "上海星宿科技有限公司",
+                         "company_name_expected":  "上海星宿科技有限公司",
+                         "company_matched":  false,
+                         "session_file":  "C:\\Users\\chqte\\Documents\\Codex\\receipt-uploader\\http_sessions\\accounts\\account_1\\companies\\上海星宿科技有限公司.accountbook.cookies.json",
+                         "verified_at":  "2026-08-27T13:12:56.5944031+08:00"
+                     },
+                     {
+                         "login_account":  "account_1",
+                         "company_name":  "上海恒复信息科技有限公司",
+                         "company_name_expected":  "上海恒复信息科技有限公司",
+                         "company_matched":  false,
+                         "session_file":  "C:\\Users\\chqte\\Documents\\Codex\\receipt-uploader\\http_sessions\\accounts\\account_1\\companies\\上海恒复信息科技有限公司.accountbook.cookies.json",
+                         "verified_at":  "2026-08-27T13:12:57.1789216+08:00"
+                     },
+                     {
+                         "login_account":  "account_1",
+                         "company_name":  "上海致卿云童创科技合伙企业（有限合伙）",
+                         "company_name_expected":  "上海致卿云童创科技合伙企业（有限合伙）",
+                         "company_matched":  false,
+                         "session_file":  "C:\\Users\\chqte\\Documents\\Codex\\receipt-uploader\\http_sessions\\accounts\\account_1\\companies\\上海致卿云童创科技合伙企业（有限合伙）.accountbook.cookies.json",
+                         "verified_at":  "2026-08-27T13:12:57.7736630+08:00"
+                     },
+                     {
+                         "login_account":  "account_1",
+                         "company_name":  "上海路遥云丁企业咨询合伙企业（有限合伙）",
+                         "company_name_expected":  "上海路遥云丁企业咨询合伙企业（有限合伙）",
+                         "company_matched":  false,
+                         "session_file":  "C:\\Users\\chqte\\Documents\\Codex\\receipt-uploader\\http_sessions\\accounts\\account_1\\companies\\上海路遥云丁企业咨询合伙企业（有限合伙）.accountbook.cookies.json",
+                         "verified_at":  "2026-08-27T13:12:58.3755673+08:00"
+                     },
+                     {
+                         "login_account":  "account_1",
+                         "company_name":  "上海润泽远来企业管理有限公司",
+                         "company_name_expected":  "上海润泽远来企业管理有限公司",
+                         "company_matched":  false,
+                         "session_file":  "C:\\Users\\chqte\\Documents\\Codex\\receipt-uploader\\http_sessions\\accounts\\account_1\\companies\\上海润泽远来企业管理有限公司.accountbook.cookies.json",
+                         "verified_at":  "2026-08-27T13:12:58.9879557+08:00"
+                     },
+                     {
+                         "login_account":  "account_1",
+                         "company_name":  "上海艺嘉永盛同创企业管理合伙企业（有限合伙）",
+                         "company_name_expected":  "上海艺嘉永盛同创企业管理合伙企业（有限合伙）",
+                         "company_matched":  false,
+                         "session_file":  "C:\\Users\\chqte\\Documents\\Codex\\receipt-uploader\\http_sessions\\accounts\\account_1\\companies\\上海艺嘉永盛同创企业管理合伙企业（有限合伙）.accountbook.cookies.json",
+                         "verified_at":  "2026-08-27T13:12:59.5832568+08:00"
+                     },
+                     {
+                         "login_account":  "account_1",
+                         "company_name":  "智轻云(上海)科技有限公司",
+                         "company_name_expected":  "智轻云(上海)科技有限公司",
+                         "company_matched":  false,
+                         "session_file":  "C:\\Users\\chqte\\Documents\\Codex\\receipt-uploader\\http_sessions\\accounts\\account_1\\companies\\智轻云(上海)科技有限公司.accountbook.cookies.json",
+                         "verified_at":  "2026-08-27T13:13:00.2127204+08:00"
                      }
                  ]
 }

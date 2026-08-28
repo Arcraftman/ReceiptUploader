@@ -2,10 +2,131 @@
     "version":  1,
     "accountbooks":  [
                          {
+                             "key":  "company_17867515",
+                             "name":  "上海微誉信息技术有限公司",
+                             "login_account":  "account_1",
+                             "enabled":  true,
+                             "session_file":  "../http_sessions/accounts/account_1/companies/上海微誉信息技术有限公司.accountbook.cookies.json",
+                             "pipeline_overrides":  {
+
+                                                    }
+                         },
+                         {
+                             "key":  "company_18458361",
+                             "name":  "上海纤之苏科技中心（有限合伙）",
+                             "login_account":  "account_1",
+                             "enabled":  true,
+                             "session_file":  "../http_sessions/accounts/account_1/companies/上海纤之苏科技中心（有限合伙）.accountbook.cookies.json",
+                             "pipeline_overrides":  {
+
+                                                    }
+                         },
+                         {
+                             "key":  "company_18458569",
+                             "name":  "上海纤之循环保科技有限公司",
+                             "login_account":  "account_1",
+                             "enabled":  true,
+                             "session_file":  "../http_sessions/accounts/account_1/companies/上海纤之循环保科技有限公司.accountbook.cookies.json",
+                             "pipeline_overrides":  {
+
+                                                    }
+                         },
+                         {
+                             "key":  "company_20139879",
+                             "name":  "千云（上海）信息科技有限公司",
+                             "login_account":  "account_1",
+                             "enabled":  true,
+                             "session_file":  "../http_sessions/accounts/account_1/companies/千云（上海）信息科技有限公司.accountbook.cookies.json",
+                             "pipeline_overrides":  {
+
+                                                    }
+                         },
+                         {
                              "key":  "xinghai",
                              "name":  "星海公司",
+                             "login_account":  "account_1",
                              "enabled":  true,
-                             "session_file":  "../http_sessions/companies/星海公司.accountbook.cookies.json",
+                             "session_file":  "../http_sessions/accounts/account_1/companies/星海公司.accountbook.cookies.json",
+                             "pipeline_overrides":  {
+
+                                                    }
+                         },
+                         {
+                             "key":  "company_20151369",
+                             "name":  "上海栈瓴信息科技有限公司",
+                             "login_account":  "account_1",
+                             "enabled":  true,
+                             "session_file":  "../http_sessions/accounts/account_1/companies/上海栈瓴信息科技有限公司.accountbook.cookies.json",
+                             "pipeline_overrides":  {
+
+                                                    }
+                         },
+                         {
+                             "key":  "company_20161773",
+                             "name":  "上海星宿科技有限公司",
+                             "login_account":  "account_1",
+                             "enabled":  true,
+                             "session_file":  "../http_sessions/accounts/account_1/companies/上海星宿科技有限公司.accountbook.cookies.json",
+                             "pipeline_overrides":  {
+
+                                                    }
+                         },
+                         {
+                             "key":  "company_20161909",
+                             "name":  "上海恒复信息科技有限公司",
+                             "login_account":  "account_1",
+                             "enabled":  true,
+                             "session_file":  "../http_sessions/accounts/account_1/companies/上海恒复信息科技有限公司.accountbook.cookies.json",
+                             "pipeline_overrides":  {
+
+                                                    }
+                         },
+                         {
+                             "key":  "company_21627847",
+                             "name":  "上海致卿云童创科技合伙企业（有限合伙）",
+                             "login_account":  "account_1",
+                             "enabled":  true,
+                             "session_file":  "../http_sessions/accounts/account_1/companies/上海致卿云童创科技合伙企业（有限合伙）.accountbook.cookies.json",
+                             "pipeline_overrides":  {
+
+                                                    }
+                         },
+                         {
+                             "key":  "company_21629225",
+                             "name":  "上海路遥云丁企业咨询合伙企业（有限合伙）",
+                             "login_account":  "account_1",
+                             "enabled":  true,
+                             "session_file":  "../http_sessions/accounts/account_1/companies/上海路遥云丁企业咨询合伙企业（有限合伙）.accountbook.cookies.json",
+                             "pipeline_overrides":  {
+
+                                                    }
+                         },
+                         {
+                             "key":  "company_21629776",
+                             "name":  "上海润泽远来企业管理有限公司",
+                             "login_account":  "account_1",
+                             "enabled":  true,
+                             "session_file":  "../http_sessions/accounts/account_1/companies/上海润泽远来企业管理有限公司.accountbook.cookies.json",
+                             "pipeline_overrides":  {
+
+                                                    }
+                         },
+                         {
+                             "key":  "company_21630649",
+                             "name":  "上海艺嘉永盛同创企业管理合伙企业（有限合伙）",
+                             "login_account":  "account_1",
+                             "enabled":  true,
+                             "session_file":  "../http_sessions/accounts/account_1/companies/上海艺嘉永盛同创企业管理合伙企业（有限合伙）.accountbook.cookies.json",
+                             "pipeline_overrides":  {
+
+                                                    }
+                         },
+                         {
+                             "key":  "company_21726397",
+                             "name":  "智轻云(上海)科技有限公司",
+                             "login_account":  "account_1",
+                             "enabled":  true,
+                             "session_file":  "../http_sessions/accounts/account_1/companies/智轻云(上海)科技有限公司.accountbook.cookies.json",
                              "pipeline_overrides":  {
 
                                                     }

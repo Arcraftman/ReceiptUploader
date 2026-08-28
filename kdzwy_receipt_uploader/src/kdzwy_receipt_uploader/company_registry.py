@@ -17,6 +17,8 @@ class AccountbookProfile:
     key: str
     name: str
     session_file: str
+    login_account: str = "default"
+    company_id: str = ""
     enabled: bool = True
     pipeline_overrides: dict[str, Any] = field(default_factory=dict)
 
@@ -79,22 +81,26 @@ def _overrides(row: dict[str, Any], label: str) -> dict[str, Any]:
 def load_accountbooks(path: Path) -> dict[str, AccountbookProfile]:
     payload = _read_object(path)
     result: dict[str, AccountbookProfile] = {}
-    names: set[str] = set()
+    identities: set[tuple[str, str]] = set()
     for index, row in enumerate(payload.get("accountbooks", []), start=1):
         if not isinstance(row, dict):
             raise CompanyRegistryError(f"accountbooks[{index}] 必须是对象")
         key = _required_text(row.get("key"), f"accountbooks[{index}].key")
         name = _required_text(row.get("name"), f"accountbooks[{index}].name")
-        if key in result or name in names:
-            raise CompanyRegistryError(f"账套 key 或名称重复：{key}/{name}")
+        login_account = str(row.get("login_account") or "default").strip()
+        identity = (login_account, name)
+        if key in result or identity in identities:
+            raise CompanyRegistryError(f"账套 key 或账号内公司名称重复：{key}/{login_account}/{name}")
         result[key] = AccountbookProfile(
             key=key,
             name=name,
             session_file=_required_text(row.get("session_file"), f"{key}.session_file"),
+            login_account=login_account,
+            company_id=str(row.get("company_id") or "").strip(),
             enabled=bool(row.get("enabled", True)),
             pipeline_overrides=_overrides(row, key),
         )
-        names.add(name)
+        identities.add(identity)
     if not result:
         raise CompanyRegistryError("账套注册表为空")
     return result
@@ -252,16 +258,28 @@ def build_job_settings(defaults: dict[str, Any], accountbook: AccountbookProfile
     paths = settings.setdefault("paths", {})
     if not isinstance(paths, dict):
         raise CompanyRegistryError("pipeline defaults 的 paths 必须是对象")
+    login_account = accountbook.login_account or "default"
+    workspace_parts = (login_account, accountbook.key, dataset.key, job.month)
+    if any(Path(part).name != part or part in {".", ".."} for part in workspace_parts):
+        raise CompanyRegistryError(f"工作区标识不能包含路径字符：{workspace_parts}")
+    workspace_root = Path("workspaces").joinpath(*workspace_parts).as_posix()
     for key, value in list(paths.items()):
         if isinstance(value, str):
+            value = value.replace("{login_account}", login_account).replace("{accountbook}", accountbook.key)
+            normalized_value = value.replace("\\", "/")
+            if "/generated/" in normalized_value and normalized_value.startswith("data/inbox/"):
+                raise CompanyRegistryError(f"生成目录不再支持 data/inbox 旧路径：{key}={value}")
             paths[key] = value.replace("data/inbox/{company}", dataset.data_root)
     paths["month_dir"] = f"{dataset.data_root}/{{month}}"
+    paths["input_dir"] = f"{dataset.data_root}/{{month}}/input"
     settings.update({
         "company": dataset.key,
         "company_name": dataset.entity_name,
         "document_entity_name": dataset.entity_name,
         "accountbook_key": accountbook.key,
         "accountbook_name": accountbook.name,
+        "login_account": login_account,
+        "workspace_root": workspace_root,
         "dataset_key": dataset.key,
         "month": job.month,
         "mode": job.mode,

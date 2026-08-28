@@ -106,6 +106,7 @@ def run_confirm_sequential(
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="账无忧凭证与 PDF 附件批处理")
     parser.add_argument("--project-root", type=Path, default=Path(__file__).resolve().parents[2])
+    parser.add_argument("--runtime-root", type=Path, default=None, help="本次账套工作区；日志、失败归档和审计均写入该目录")
     parser.add_argument("--input-dir", type=Path, default=None, help="receipt 输入目录，默认 data/inbox")
     parser.add_argument("--config", type=Path, default=None, help="配置 JSON，默认 config/app.json")
     parser.add_argument("--expected-company", type=str, default="", help="强制会话公司名与目标公司完全一致")
@@ -124,9 +125,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--pdf-map", type=Path, default=None, help="PDF映射文件；sales/purchase测试默认优先使用 upload_pdf_map.json")
     args = parser.parse_args(argv)
     root = args.project_root.resolve()
-    logger = configure_pipeline_logger(root / "runtime" / "logs", "batch_receipts")
-    paths = ProjectPaths.from_root(root)
+    runtime_root = args.runtime_root or (root / "workspaces" / "_manual")
+    if runtime_root is not None and not runtime_root.is_absolute():
+        runtime_root = root / runtime_root
+    paths = ProjectPaths.from_root(root, runtime_root)
     paths.ensure()
+    logger = configure_pipeline_logger(paths.logs, "batch_receipts")
     input_dir = args.input_dir or paths.inbox
     if not input_dir.is_absolute():
         input_dir = root / input_dir

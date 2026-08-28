@@ -1,81 +1,66 @@
-# 本机密钥和会话配置
-config/app.json
-.env
-.env.*
-!*.example
+# =============================================================================
+# kdzwy_receipt_uploader project-specific ignore rules
+# Generic Python, editor and secret patterns are defined in ../.gitignore.
+# =============================================================================
 
-# 自动生成的任务快照和运行数据
-runtime/
-data/inbox/*/*/maps/
-data/inbox/*/*/receipts*/
+# -----------------------------------------------------------------------------
+# Local credentials and dynamically discovered account data
+# -----------------------------------------------------------------------------
+/config/app.json
+/config/kdzwy.json
+/config/accounts.json
+/config/credentials.json
+/config/accountbooks.json
 
-# Python 本地产物
-__pycache__/
-*.py[cod]
-.pytest_cache/
-.coverage
-htmlcov/
-.venv/
-venv/
+# Discovery creates placeholder files such as company_17867515.json.
+# Hand-maintained named company configs such as xinghai.json remain trackable.
+/config/companies/company_*.json
+/config/*.local.json
+/config/companies/*.local.json
 
-# 编辑器和系统文件
-.idea/
-.vscode/
-.DS_Store
-Thumbs.db
+# Keep distributable examples and hand-authored shared configuration tracked:
+#   config/*.example.json
+#   config/datasets.json
+#   config/pipeline.defaults.json
+#   config/template_companies.json
+#   config/companies/<company-key>.json
 
-# Python virtual environments
-.auto/
-.venv/
-venv/
+# -----------------------------------------------------------------------------
+# Runtime state and isolated per-account/per-company workspaces
+# -----------------------------------------------------------------------------
+/runtime/
+/workspaces/
+/logs/
+/outputs/
+/tmp/
+/temp/
 
-# Login sessions and cookies
-http_sessions/**
+# -----------------------------------------------------------------------------
+# Real accounting inputs and every generated derivative
+# -----------------------------------------------------------------------------
+# This includes source PDF/XLSX files, OCR text, DeepSeek analysis, maps,
+# receipt.json files, upload state, bank splits, reports and archived files.
+/data/inbox/
+/data/archive/
+/data/processed/
+/data/failed/
 
+# Legacy layouts that may still be produced by old scripts.
+/data/input/
+/generated/
+/receipts/
+/ocr/
+/maps/
 
-# Secrets and local credentials
-.env
-.env.*
-!.env.example
-**/config/app.json
-**/config/kdzwy.json
-**/config/credentials.json
+# -----------------------------------------------------------------------------
+# Run checkpoints, upload records and preload state outside runtime/workspaces
+# -----------------------------------------------------------------------------
+*.checkpoint.json
+*.upload-state.json
+*.preload-state.json
+*.run-state.json
+run.jsonl
+run.before-upload-reset.*.jsonl
 
-# Runtime jobs, logs, checkpoints and upload records
-**/runtime/
-**/logs/
-**/*.log
-**/run.jsonl
-**/run.before-upload-reset.*.jsonl
-
-# Real accounting data
-**/data/inbox/
-**/data/input/
-**/generated/
-**/receipts/
-**/ocr/
-**/maps/
-
-# Temporary files
-*.tmp
-*.temp
-*.bak
-*.lock
-~$*
-*.part
-
-# Python caches
-**/__pycache__/
-*.py[cod]
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-
-# IDE and operating system
-.idea/
-.vscode/
-.DS_Store
-Thumbs.db
-desktop.ini
+# Templates, source code, batch files, scripts and example configs are
+# intentionally NOT ignored.
