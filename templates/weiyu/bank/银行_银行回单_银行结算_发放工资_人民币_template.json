@@ -1,0 +1,73 @@
+{
+  "id": "bank-12",
+  "name": "银行_银行回单_银行结算_发放工资_人民币",
+  "version": "1.0",
+  "documentBlock": "银行",
+  "documentType": "银行回单",
+  "settlementMethod": "银行结算",
+  "businessType": "发放工资",
+  "currency": "人民币",
+  "keywords": [
+    "发放工资",
+    "银行回单",
+    "银行"
+  ],
+  "when": {},
+  "matchRules": {
+    "sourceFolders": [
+      "bank"
+    ],
+    "allowedDocumentBlocks": [
+      "银行"
+    ],
+    "requiredKeywords": [],
+    "anyKeywords": [
+      "发放工资",
+      "代发工资",
+      "工资发放",
+      "工资"
+    ],
+    "excludeKeywords": [
+      "年终奖",
+      "奖金"
+    ],
+    "expectedAccounts": [
+      "221101",
+      "100201"
+    ],
+    "priority": 280
+  },
+  "summary": {
+    "header": "",
+    "body": "发放工资",
+    "separator": " "
+  },
+  "amountSource": "source",
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "221101",
+        "name": "应付职工薪酬_应付劳务费"
+      },
+      "amountFrom": "source.amount",
+      "amountForFrom": "source.amount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "100201",
+        "name": "银行存款_上海银行"
+      },
+      "amountFrom": "source.amount",
+      "amountForFrom": "source.amount"
+    }
+  ],
+  "enabled": true,
+  "historicalEvidence": {
+    "count": 10,
+    "accountPatterns": [
+      "221101/100201"
+    ]
+  }
+}

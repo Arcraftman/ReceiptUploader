@@ -1,0 +1,147 @@
+{
+  "id": "misc-payroll-accrual-cny",
+  "name": "杂项_内部单据_期间计提_工资社保公积金_人民币",
+  "version": "1.0",
+  "documentBlock": "杂项",
+  "documentType": "内部单据",
+  "settlementMethod": "期间计提",
+  "businessType": "工资社保公积金计提",
+  "currency": "人民币",
+  "keywords": [
+    "计提工资",
+    "计提个人所得税",
+    "个人社保",
+    "公司承担社保",
+    "公积金"
+  ],
+  "when": {},
+  "matchRules": {
+    "sourceFolders": [
+      "misc"
+    ],
+    "requiredKeywords": [],
+    "anyKeywords": [
+      "计提工资",
+      "工资费用",
+      "计提社保",
+      "计提公积金",
+      "个人社保和公积金"
+    ],
+    "excludeKeywords": [
+      "发放工资"
+    ],
+    "expectedAccounts": [
+      "560201",
+      "221101",
+      "221102",
+      "221103",
+      "222112",
+      "224108",
+      "224109"
+    ],
+    "priority": 270
+  },
+  "amountSource": "source",
+  "summary": {
+    "header": "",
+    "body": "计提工资社保公积金 {source.period}",
+    "separator": " "
+  },
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "560201",
+        "name": "管理费用_工资"
+      },
+      "amountFrom": "source.salaryExpense",
+      "amountForFrom": "source.salaryExpense"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "221101",
+        "name": "应付职工薪酬_职工工资"
+      },
+      "amountFrom": "source.salaryExpense",
+      "amountForFrom": "source.salaryExpense"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "221101",
+        "name": "应付职工薪酬_职工工资"
+      },
+      "amountFrom": "source.incomeTax",
+      "amountForFrom": "source.incomeTax"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "222112",
+        "name": "应交税费_应交个人所得税"
+      },
+      "amountFrom": "source.incomeTax",
+      "amountForFrom": "source.incomeTax"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "221101",
+        "name": "应付职工薪酬_职工工资"
+      },
+      "amountFrom": "source.employeeSocialSecurityAndHousingFund",
+      "amountForFrom": "source.employeeSocialSecurityAndHousingFund"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "224108",
+        "name": "其他应付款_社保（个人）"
+      },
+      "amountFrom": "source.employeeSocialSecurity",
+      "amountForFrom": "source.employeeSocialSecurity"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "224109",
+        "name": "其他应付款_公积金（个人）"
+      },
+      "amountFrom": "source.employeeHousingFund",
+      "amountForFrom": "source.employeeHousingFund"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "560201",
+        "name": "管理费用_工资"
+      },
+      "amountFrom": "source.companySocialSecurityAndHousingFund",
+      "amountForFrom": "source.companySocialSecurityAndHousingFund"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "221102",
+        "name": "应付职工薪酬_社保(公司)"
+      },
+      "amountFrom": "source.companySocialSecurity",
+      "amountForFrom": "source.companySocialSecurity"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "221103",
+        "name": "应付职工薪酬_公积金（公司）"
+      },
+      "amountFrom": "source.companyHousingFund",
+      "amountForFrom": "source.companyHousingFund"
+    }
+  ],
+  "enabled": true,
+  "historicalEvidence": {
+    "count": 1,
+    "reason": "必须由当月工资表提供全部独立金额字段"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "accounts": [
+    {
+      "key": "account_1",
+      "name": "账号1",
+      "enabled": true,
+      "username": "CHANGE_ME",
+      "password": "CHANGE_ME"
+    }
+  ]
+}

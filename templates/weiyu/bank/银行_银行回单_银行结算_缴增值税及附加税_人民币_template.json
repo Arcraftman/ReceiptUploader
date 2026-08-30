@@ -1,0 +1,110 @@
+{
+  "id": "bank-tax-vat-surcharges-cny",
+  "name": "银行_银行回单_银行结算_缴增值税及附加税_人民币",
+  "version": "1.0",
+  "documentBlock": "银行",
+  "documentType": "银行回单",
+  "settlementMethod": "银行结算",
+  "businessType": "缴增值税及附加税",
+  "currency": "人民币",
+  "keywords": [
+    "缴增值税",
+    "城建税",
+    "教育费附加",
+    "地方教育费附加"
+  ],
+  "when": {},
+  "matchRules": {
+    "sourceFolders": [
+      "bank"
+    ],
+    "requiredKeywords": [],
+    "keywordGroups": [
+      [
+        "缴增值税",
+        "增值税"
+      ],
+      [
+        "城建税",
+        "教育费附加",
+        "地方教育费附加",
+        "附加税"
+      ]
+    ],
+    "anyKeywords": [
+      "缴增值税及附加税",
+      "增值税及附加税"
+    ],
+    "excludeKeywords": [
+      "仅增值税"
+    ],
+    "expectedAccounts": [
+      "222102",
+      "222108",
+      "222113",
+      "222114",
+      "100201"
+    ],
+    "priority": 320
+  },
+  "amountSource": "source",
+  "summary": {
+    "header": "",
+    "body": "缴增值税及附加税 {source.period}",
+    "separator": " "
+  },
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "222102",
+        "name": "应交税费_未交增值税"
+      },
+      "amountFrom": "source.vatAmount",
+      "amountForFrom": "source.vatAmount"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "222108",
+        "name": "应交税费_应交城市维护建设税"
+      },
+      "amountFrom": "source.cityMaintenanceTax",
+      "amountForFrom": "source.cityMaintenanceTax"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "222113",
+        "name": "应交税费_教育费附加"
+      },
+      "amountFrom": "source.educationSurcharge",
+      "amountForFrom": "source.educationSurcharge"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "222114",
+        "name": "应交税费_地方教育费附加"
+      },
+      "amountFrom": "source.localEducationSurcharge",
+      "amountForFrom": "source.localEducationSurcharge"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "100201",
+        "name": "银行存款_0301招商银行"
+      },
+      "amountFrom": "source.totalAmount",
+      "amountForFrom": "source.totalAmount"
+    }
+  ],
+  "enabled": true,
+  "historicalEvidence": {
+    "count": 1,
+    "accountPatterns": [
+      "222102/222108/222113/222114/100201"
+    ]
+  }
+}

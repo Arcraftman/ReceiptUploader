@@ -1,0 +1,79 @@
+{
+  "id": "bank-10",
+  "name": "银行_银行回单_银行结算_缴公积金_人民币",
+  "version": "1.0",
+  "documentBlock": "银行",
+  "documentType": "银行回单",
+  "settlementMethod": "银行结算",
+  "businessType": "缴公积金",
+  "currency": "人民币",
+  "keywords": [
+    "缴公积金",
+    "银行回单",
+    "银行"
+  ],
+  "when": {},
+  "matchRules": {
+    "sourceFolders": [
+      "bank"
+    ],
+    "allowedDocumentBlocks": [
+      "银行"
+    ],
+    "requiredKeywords": [],
+    "anyKeywords": [
+      "缴公积金",
+      "住房公积金",
+      "公积金"
+    ],
+    "excludeKeywords": [],
+    "expectedAccounts": [
+      "221103",
+      "224109",
+      "100201"
+    ],
+    "priority": 280
+  },
+  "summary": {
+    "header": "",
+    "body": "缴公积金",
+    "separator": " "
+  },
+  "amountSource": "source",
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "221103",
+        "name": "应付职工薪酬_公积金（公司）"
+      },
+      "amountFrom": "source.companyHousingFund",
+      "amountForFrom": "source.companyHousingFund"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "224109",
+        "name": "其他应付款_公积金（个人）"
+      },
+      "amountFrom": "source.employeeHousingFund",
+      "amountForFrom": "source.employeeHousingFund"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "100201",
+        "name": "银行存款_上海银行"
+      },
+      "amountFrom": "source.totalAmount",
+      "amountForFrom": "source.totalAmount"
+    }
+  ],
+  "enabled": true,
+  "historicalEvidence": {
+    "count": 1,
+    "accountPatterns": [
+      "221103/224109/100201"
+    ]
+  }
+}

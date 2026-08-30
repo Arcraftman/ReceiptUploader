@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Company month project v5",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "company_key", "company_id", "company_name", "month", "target", "input", "defaults", "sources"],
+  "properties": {
+    "version": {"const": 5},
+    "company_key": {"type": "string", "pattern": "^company_[A-Za-z0-9_-]+$"},
+    "company_id": {"type": "string", "minLength": 1},
+    "company_name": {"type": "string", "minLength": 1},
+    "month": {"type": "string", "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"},
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["accountbook_key", "company_id", "company_name"],
+      "properties": {
+        "accountbook_key": {"type": "string", "minLength": 1},
+        "company_id": {"type": "string", "minLength": 1},
+        "company_name": {"type": "string", "minLength": 1}
+      }
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["income_cost_filename", "usage_filename", "usage_column"],
+      "properties": {
+        "income_cost_filename": {"type": "string", "minLength": 1},
+        "usage_filename": {"type": "string", "minLength": 1},
+        "usage_column": {"type": "string", "minLength": 1}
+      }
+    },
+    "defaults": {"$ref": "#/$defs/runSettings"},
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sales", "purchase", "bank", "misc"],
+      "properties": {
+        "sales": {"$ref": "#/$defs/sourceSettings"},
+        "purchase": {"$ref": "#/$defs/sourceSettings"},
+        "bank": {"$ref": "#/$defs/sourceSettings"},
+        "misc": {"$ref": "#/$defs/sourceSettings"}
+      }
+    }
+  },
+  "$defs": {
+    "runSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {"enum": ["analysis-only", "prepare", "dry-run", "confirm"]},
+        "analysis_stage": {"enum": ["ocr", "llm", "existing", "all"]},
+        "analysis_validation": {"enum": ["strict", "relaxed"]},
+        "ocr_workers": {"type": "integer", "minimum": 1},
+        "llm_workers": {"type": "integer", "minimum": 1},
+        "preload_items": {"enum": [false, "once", "auto"]},
+        "purpose": {"type": "string", "minLength": 1},
+        "allow_cross_entity": {"type": "boolean"},
+        "only_mapped_invoices": {"type": "boolean"}
+      }
+    },
+    "sourceSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "mode": {"enum": ["analysis-only", "prepare", "dry-run", "confirm"]},
+        "analysis_stage": {"enum": ["ocr", "llm", "existing", "all"]},
+        "analysis_validation": {"enum": ["strict", "relaxed"]},
+        "ocr_workers": {"type": "integer", "minimum": 1},
+        "llm_workers": {"type": "integer", "minimum": 1},
+        "preload_items": {"enum": [false, "once", "auto"]},
+        "purpose": {"type": "string", "minLength": 1},
+        "allow_cross_entity": {"type": "boolean"},
+        "only_mapped_invoices": {"type": "boolean"}
+      }
+    }
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "id": "misc-sales-cost-carryforward-cny",
+  "name": "杂项_内部单据_月末结转_销售成本_人民币",
+  "version": "1.0",
+  "documentBlock": "杂项",
+  "documentType": "内部单据",
+  "settlementMethod": "月末结转",
+  "businessType": "销售成本结转",
+  "currency": "人民币",
+  "keywords": [
+    "结转销售成本",
+    "主营业务成本",
+    "销售成本结转"
+  ],
+  "when": {},
+  "matchRules": {
+    "sourceFolders": [
+      "misc"
+    ],
+    "requiredKeywords": [],
+    "anyKeywords": [
+      "结转销售成本",
+      "销售成本结转",
+      "主营业务成本"
+    ],
+    "excludeKeywords": [
+      "销售收入"
+    ],
+    "expectedAccounts": [
+      "540101",
+      "1405"
+    ],
+    "priority": 280
+  },
+  "amountSource": "source",
+  "summary": {
+    "header": "",
+    "body": "结转{source.period}销售成本",
+    "separator": " "
+  },
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "540101",
+        "name": "主营业务成本_国内业务成本"
+      },
+      "amountFrom": "source.totalAmount",
+      "amountForFrom": "source.totalAmount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "1405",
+        "name": "库存商品"
+      },
+      "amountFrom": "source.totalAmount",
+      "amountForFrom": "source.totalAmount"
+    }
+  ],
+  "enabled": true,
+  "historicalEvidence": {
+    "count": 1,
+    "accountPatterns": [
+      "540101/1405"
+    ]
+  }
+}

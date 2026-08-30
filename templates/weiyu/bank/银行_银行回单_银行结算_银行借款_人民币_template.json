@@ -1,0 +1,74 @@
+{
+  "id": "bank-23",
+  "name": "银行_银行回单_银行结算_银行借款_人民币",
+  "version": "1.0",
+  "documentBlock": "银行",
+  "documentType": "银行回单",
+  "settlementMethod": "银行结算",
+  "businessType": "银行借款",
+  "currency": "人民币",
+  "keywords": [
+    "银行借款",
+    "银行回单",
+    "银行"
+  ],
+  "when": {},
+  "matchRules": {
+    "sourceFolders": [
+      "bank"
+    ],
+    "allowedDocumentBlocks": [
+      "银行"
+    ],
+    "requiredKeywords": [],
+    "anyKeywords": [
+      "银行借款",
+      "贷款发放",
+      "流动资金贷款",
+      "借款入账"
+    ],
+    "excludeKeywords": [
+      "股东借款",
+      "还款",
+      "还利息"
+    ],
+    "expectedAccounts": [
+      "100204",
+      "2001"
+    ],
+    "priority": 290
+  },
+  "summary": {
+    "header": "",
+    "body": "银行借款",
+    "separator": " "
+  },
+  "amountSource": "source",
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "100204",
+        "name": "银行存款_招行"
+      },
+      "amountFrom": "source.totalAmount",
+      "amountForFrom": "source.totalAmount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "2001",
+        "name": "短期借款"
+      },
+      "amountFrom": "source.totalAmount",
+      "amountForFrom": "source.totalAmount"
+    }
+  ],
+  "enabled": true,
+  "historicalEvidence": {
+    "count": 1,
+    "accountPatterns": [
+      "100204/2001"
+    ]
+  }
+}

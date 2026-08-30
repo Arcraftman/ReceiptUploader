@@ -1,0 +1,97 @@
+{
+  "id": "expense-12",
+  "name": "费用_增值税发票_往来结算_运杂费发票_人民币",
+  "version": "1.0",
+  "documentBlock": "费用",
+  "documentType": "增值税发票",
+  "settlementMethod": "往来结算",
+  "businessType": "运杂费发票",
+  "currency": "人民币",
+  "keywords": [
+    "运杂费发票",
+    "增值税发票",
+    "费用"
+  ],
+  "when": {},
+  "matchRules": {
+    "sourceFolders": [
+      "purchase"
+    ],
+    "allowedDocumentBlocks": [
+      "费用"
+    ],
+    "requiredKeywords": [],
+    "anyKeywords": [
+      "运杂费",
+      "运费",
+      "运输服务",
+      "物流服务",
+      "货物运输",
+      "快递服务",
+      "快运",
+      "配送费"
+    ],
+    "excludeKeywords": [
+      "旅客运输",
+      "客运服务",
+      "火车票",
+      "机票",
+      "出租车",
+      "网约车"
+    ],
+    "expectedAccounts": [
+      "560107",
+      "22210101",
+      "2202"
+    ],
+    "priority": 230
+  },
+  "summary": {
+    "header": "",
+    "body": "运杂费 {invoiceCode}",
+    "separator": " "
+  },
+  "amountSource": "purchase_map",
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "560107",
+        "name": "销售费用_运杂费"
+      },
+      "amountFrom": "purchase_map.amount",
+      "amountForFrom": "purchase_map.amount"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "22210101",
+        "name": "应交税费_应交增值税_进项税额"
+      },
+      "amountFrom": "purchase_map.taxAmount",
+      "amountForFrom": "purchase_map.taxAmount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "2202",
+        "name": "应付账款"
+      },
+      "amountFrom": "purchase_map.totalAmount",
+      "amountForFrom": "purchase_map.totalAmount",
+      "auxiliary": {
+        "field": "supplierId",
+        "itemClassId": 5,
+        "selector": "auxiliaryItem"
+      }
+    }
+  ],
+  "enabled": true,
+  "historicalEvidence": {
+    "count": 6,
+    "accountPatterns": [
+      "560107/22210101/220201",
+      "560107/220201"
+    ]
+  }
+}

@@ -1,0 +1,146 @@
+{
+  "id": "purchase-02",
+  "name": "采购_增值税发票_往来结算_采购商品_人民币",
+  "version": "1.0",
+  "documentBlock": "采购",
+  "documentType": "增值税发票",
+  "settlementMethod": "往来结算",
+  "businessType": "采购商品",
+  "currency": "人民币",
+  "keywords": [
+    "采购商品",
+    "库存商品",
+    "主营业务采购",
+    "货物",
+    "商品",
+    "软件",
+    "云服务",
+    "云资源"
+  ],
+  "when": {},
+  "matchRules": {
+    "sourceFolders": [
+      "purchase"
+    ],
+    "allowedDocumentBlocks": [
+      "采购"
+    ],
+    "requiredKeywords": [],
+    "anyKeywords": [
+      "货物",
+      "商品",
+      "电脑",
+      "笔记本",
+      "显示器",
+      "服务器",
+      "电子",
+      "数码",
+      "配件",
+      "设备",
+      "五金",
+      "电器",
+      "工具",
+      "耗材",
+      "软件",
+      "软件服务",
+      "云服务",
+      "云计算",
+      "云资源",
+      "云服务器",
+      "SaaS",
+      "软件订阅",
+      "软件许可",
+      "数据服务",
+      "信息技术服务",
+      "平台服务",
+      "服务器托管"
+    ],
+    "excludeKeywords": [
+      "原材料",
+      "固定资产",
+      "运输服务",
+      "物流服务",
+      "手续费",
+      "金融服务",
+      "通讯费",
+      "电信服务",
+      "物业费",
+      "水费",
+      "电费",
+      "维修",
+      "修理",
+      "住宿",
+      "客运",
+      "办公用品",
+      "文具",
+      "招投标",
+      "标书",
+      "公司自用",
+      "内部管理",
+      "内部办公"
+    ],
+    "expectedAccounts": [
+      "1405",
+      "22210101",
+      "2202"
+    ],
+    "priority": 260,
+    "documentKeywords": [
+      "增值税发票",
+      "电子发票",
+      "数电发票",
+      "发票号码",
+      "开票日期"
+    ],
+    "defaultForSource": true
+  },
+  "summary": {
+    "header": "",
+    "body": "采购商品{invoiceCode}",
+    "separator": " "
+  },
+  "amountSource": "purchase_map",
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "1405",
+        "name": "库存商品"
+      },
+      "amountFrom": "purchase_map.amount",
+      "amountForFrom": "purchase_map.amount"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "22210101",
+        "name": "应交税费_应交增值税_进项税额"
+      },
+      "amountFrom": "purchase_map.taxAmount",
+      "amountForFrom": "purchase_map.taxAmount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "2202",
+        "name": "应付账款"
+      },
+      "amountFrom": "purchase_map.totalAmount",
+      "amountForFrom": "purchase_map.totalAmount",
+      "auxiliary": {
+        "field": "supplierId",
+        "itemClassId": 5,
+        "selector": "auxiliaryItem"
+      }
+    }
+  ],
+  "enabled": true,
+  "historicalEvidence": {
+    "count": 207,
+    "accountPatterns": [
+      "1405/22210101/220201",
+      "1405/220201",
+      "1405/220202"
+    ]
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "id": "misc-vat-carryforward-cny",
+  "name": "杂项_内部单据_月末结转_未交增值税_人民币",
+  "version": "1.0",
+  "documentBlock": "杂项",
+  "documentType": "内部单据",
+  "settlementMethod": "月末结转",
+  "businessType": "未交增值税结转",
+  "currency": "人民币",
+  "keywords": [
+    "结转未交增值税",
+    "转出未交增值税"
+  ],
+  "when": {},
+  "matchRules": {
+    "sourceFolders": [
+      "misc"
+    ],
+    "requiredKeywords": [],
+    "anyKeywords": [
+      "结转未交增值税",
+      "转出未交增值税",
+      "未交增值税"
+    ],
+    "excludeKeywords": [
+      "缴增值税"
+    ],
+    "expectedAccounts": [
+      "22210105",
+      "222102"
+    ],
+    "priority": 290
+  },
+  "amountSource": "source",
+  "summary": {
+    "header": "",
+    "body": "结转{source.period}未交增值税",
+    "separator": " "
+  },
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "22210105",
+        "name": "应交税费_应交增值税_转出未交增值税"
+      },
+      "amountFrom": "source.totalAmount",
+      "amountForFrom": "source.totalAmount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "222102",
+        "name": "应交税费_未交增值税"
+      },
+      "amountFrom": "source.totalAmount",
+      "amountForFrom": "source.totalAmount"
+    }
+  ],
+  "enabled": true,
+  "historicalEvidence": {
+    "count": 1,
+    "accountPatterns": [
+      "22210105/222102"
+    ]
+  }
+}

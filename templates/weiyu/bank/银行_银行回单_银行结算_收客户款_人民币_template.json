@@ -1,0 +1,81 @@
+{
+  "id": "bank-01",
+  "name": "银行_银行回单_银行结算_收客户款_人民币",
+  "version": "1.0",
+  "documentBlock": "银行",
+  "documentType": "银行回单",
+  "settlementMethod": "银行结算",
+  "businessType": "收客户款",
+  "currency": "人民币",
+  "keywords": [
+    "收客户款",
+    "银行回单",
+    "银行"
+  ],
+  "when": {},
+  "matchRules": {
+    "sourceFolders": [
+      "bank"
+    ],
+    "allowedDocumentBlocks": [
+      "银行"
+    ],
+    "requiredKeywords": [],
+    "anyKeywords": [
+      "收客户款",
+      "客户回款",
+      "销售回款",
+      "收到货款",
+      "收货款",
+      "货款收入"
+    ],
+    "excludeKeywords": [
+      "退款",
+      "退客户款",
+      "退货款"
+    ],
+    "expectedAccounts": [
+      "100201",
+      "1122"
+    ],
+    "priority": 290
+  },
+  "summary": {
+    "header": "",
+    "body": "收客户款 【备注】",
+    "separator": " "
+  },
+  "amountSource": "source",
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "100201",
+        "name": "银行存款_上海银行"
+      },
+      "amountFrom": "source.amount",
+      "amountForFrom": "source.amount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "1122",
+        "name": "应收账款"
+      },
+      "amountFrom": "source.amount",
+      "amountForFrom": "source.amount",
+      "auxiliary": {
+        "field": "customerId",
+        "itemClassId": 1,
+        "selector": "auxiliaryItem"
+      }
+    }
+  ],
+  "enabled": true,
+  "historicalEvidence": {
+    "count": 64,
+    "accountPatterns": [
+      "100201/112201"
+    ]
+  }
+}

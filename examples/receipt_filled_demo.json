@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "1.0",
+  "receiptId": "company_17867515-2026-08-26112000002695439356",
+  "source": "purchase",
+  "voucher": {
+    "date": "2026-08-31",
+    "groupId": "请替换为真实凭证字ID",
+    "groupName": "记",
+    "summary": "示范：办公用品",
+    "attachments": 1,
+    "invoiceCodes": [
+      "26112000002695439356"
+    ],
+    "userName": "请替换为真实制单人",
+    "ownerId": 1,
+    "checkerId": 0,
+    "entries": [
+      {
+        "lineNo": 1,
+        "explanation": "示范：办公用品",
+        "accountId": "请替换为真实借方科目ID",
+        "accountNumber": "请替换为真实借方科目编码",
+        "accountName": "请替换为真实借方科目名称",
+        "dc": 1,
+        "amount": "100.00",
+        "cur": "RMB",
+        "rate": "1",
+        "amountFor": "100.00"
+      },
+      {
+        "lineNo": 2,
+        "explanation": "示范：办公用品",
+        "accountId": "请替换为真实贷方科目ID",
+        "accountNumber": "请替换为真实贷方科目编码",
+        "accountName": "请替换为真实贷方科目名称",
+        "dc": -1,
+        "amount": "100.00",
+        "cur": "RMB",
+        "rate": "1",
+        "amountFor": "100.00"
+      }
+    ]
+  }
+}

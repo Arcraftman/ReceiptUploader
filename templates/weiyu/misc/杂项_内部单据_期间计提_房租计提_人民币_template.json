@@ -1,0 +1,70 @@
+{
+  "id": "misc-rent-accrual-cny",
+  "name": "杂项_内部单据_期间计提_房租计提_人民币",
+  "version": "1.0",
+  "documentBlock": "杂项",
+  "documentType": "内部单据",
+  "settlementMethod": "期间计提",
+  "businessType": "房租计提",
+  "currency": "人民币",
+  "keywords": [
+    "计提房租",
+    "房租计提",
+    "租金计提"
+  ],
+  "when": {},
+  "matchRules": {
+    "sourceFolders": [
+      "misc"
+    ],
+    "requiredKeywords": [],
+    "anyKeywords": [
+      "计提房租",
+      "房租计提",
+      "租金计提",
+      "房租"
+    ],
+    "excludeKeywords": [
+      "支付房租",
+      "付房租"
+    ],
+    "expectedAccounts": [
+      "560210",
+      "224105"
+    ],
+    "priority": 260
+  },
+  "amountSource": "source",
+  "summary": {
+    "header": "",
+    "body": "计提房租 {source.period}",
+    "separator": " "
+  },
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "560210",
+        "name": "管理费用_房租"
+      },
+      "amountFrom": "source.totalAmount",
+      "amountForFrom": "source.totalAmount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "224105",
+        "name": "其他应付款_徐芳"
+      },
+      "amountFrom": "source.totalAmount",
+      "amountForFrom": "source.totalAmount"
+    }
+  ],
+  "enabled": true,
+  "historicalEvidence": {
+    "count": 1,
+    "accountPatterns": [
+      "560210/224105"
+    ]
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "version": 2,
+  "accounting_origin": "https://vip4-kj.kdzwy.com",
+  "timeout_seconds": 30,
+  "upload_timeout_seconds": 60,
+  "user_agent": "KdzwyReceiptUploader/0.1"
+}

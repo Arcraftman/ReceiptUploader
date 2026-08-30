@@ -1,0 +1,86 @@
+{
+  "id": "bank-04",
+  "name": "银行_银行回单_银行结算_付供应商款_人民币",
+  "version": "1.0",
+  "documentBlock": "银行",
+  "documentType": "银行回单",
+  "settlementMethod": "银行结算",
+  "businessType": "付供应商款",
+  "currency": "人民币",
+  "keywords": [
+    "付供应商款",
+    "银行回单",
+    "银行"
+  ],
+  "when": {},
+  "matchRules": {
+    "sourceFolders": [
+      "bank"
+    ],
+    "allowedDocumentBlocks": [
+      "银行"
+    ],
+    "requiredKeywords": [],
+    "anyKeywords": [
+      "付供应商款",
+      "供应商款",
+      "支付货款",
+      "付货款",
+      "采购款",
+      "货款"
+    ],
+    "excludeKeywords": [
+      "客户退款",
+      "退客户款",
+      "报销",
+      "工资",
+      "税",
+      "社保",
+      "公积金"
+    ],
+    "expectedAccounts": [
+      "2202",
+      "100201"
+    ],
+    "priority": 290
+  },
+  "summary": {
+    "header": "",
+    "body": "付供应商款【备注】",
+    "separator": " "
+  },
+  "amountSource": "source",
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "2202",
+        "name": "应付账款"
+      },
+      "amountFrom": "source.amount",
+      "amountForFrom": "source.amount",
+      "auxiliary": {
+        "field": "supplierId",
+        "itemClassId": 5,
+        "selector": "auxiliaryItem"
+      }
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "100201",
+        "name": "银行存款_上海银行"
+      },
+      "amountFrom": "source.amount",
+      "amountForFrom": "source.amount"
+    }
+  ],
+  "enabled": true,
+  "historicalEvidence": {
+    "count": 133,
+    "accountPatterns": [
+      "220201/100201",
+      "220201/100204"
+    ]
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "id": "misc-depreciation-accrual-cny",
+  "name": "杂项_内部单据_期间计提_固定资产折旧_人民币",
+  "version": "1.0",
+  "documentBlock": "杂项",
+  "documentType": "内部单据",
+  "settlementMethod": "期间计提",
+  "businessType": "固定资产折旧",
+  "currency": "人民币",
+  "keywords": [
+    "固定资产折旧",
+    "计提折旧",
+    "折旧计提"
+  ],
+  "when": {},
+  "matchRules": {
+    "sourceFolders": [
+      "misc"
+    ],
+    "requiredKeywords": [],
+    "anyKeywords": [
+      "固定资产折旧",
+      "计提折旧",
+      "折旧计提"
+    ],
+    "excludeKeywords": [
+      "采购固定资产"
+    ],
+    "expectedAccounts": [
+      "560212",
+      "1602"
+    ],
+    "priority": 280
+  },
+  "amountSource": "source",
+  "summary": {
+    "header": "",
+    "body": "固定资产折旧 {source.period}",
+    "separator": " "
+  },
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "560212",
+        "name": "管理费用_折旧费"
+      },
+      "amountFrom": "source.totalAmount",
+      "amountForFrom": "source.totalAmount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "1602",
+        "name": "累计折旧"
+      },
+      "amountFrom": "source.totalAmount",
+      "amountForFrom": "source.totalAmount"
+    }
+  ],
+  "enabled": true,
+  "historicalEvidence": {
+    "count": 1,
+    "accountPatterns": [
+      "560212/1602"
+    ]
+  }
+}

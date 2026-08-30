@@ -1,0 +1,88 @@
+{
+  "id": "bank-13",
+  "name": "银行_银行回单_银行结算_银行手续费_人民币",
+  "version": "1.0",
+  "documentBlock": "银行",
+  "documentType": "银行回单",
+  "settlementMethod": "银行结算",
+  "businessType": "银行手续费",
+  "currency": "人民币",
+  "keywords": [
+    "银行手续费",
+    "银行回单",
+    "银行"
+  ],
+  "when": {},
+  "matchRules": {
+    "sourceFolders": [
+      "bank"
+    ],
+    "allowedDocumentBlocks": [
+      "银行"
+    ],
+    "requiredKeywords": [],
+    "anyKeywords": [],
+    "excludeKeywords": [
+      "账户管理费",
+      "年费",
+      "直接扣费"
+    ],
+    "expectedAccounts": [
+      "2202",
+      "100201"
+    ],
+    "priority": 260,
+    "keywordGroups": [
+      [
+        "银行手续费",
+        "汇款手续费",
+        "转账手续费",
+        "手续费"
+      ],
+      [
+        "付供应商款",
+        "应付账款",
+        "发票款"
+      ]
+    ]
+  },
+  "summary": {
+    "header": "",
+    "body": "银行手续费",
+    "separator": " "
+  },
+  "amountSource": "source",
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "2202",
+        "name": "应付账款"
+      },
+      "amountFrom": "source.amount",
+      "amountForFrom": "source.amount",
+      "auxiliary": {
+        "field": "supplierId",
+        "itemClassId": 5,
+        "selector": "auxiliaryItem"
+      }
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "100201",
+        "name": "银行存款_上海银行"
+      },
+      "amountFrom": "source.amount",
+      "amountForFrom": "source.amount"
+    }
+  ],
+  "enabled": true,
+  "historicalEvidence": {
+    "count": 1,
+    "accountPatterns": [
+      "220201/100201"
+    ],
+    "reason": "仅用于已确认先挂应付账款的手续费发票付款"
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "id": "sales-vat-settlement-income-cny",
+  "name": "销售_增值税发票_往来结算_销售商品收入_人民币",
+  "version": "1.0",
+  "documentBlock": "销售",
+  "documentType": "增值税发票",
+  "settlementMethod": "往来结算",
+  "businessType": "销售商品收入",
+  "currency": "人民币",
+  "keywords": [
+    "增值税发票",
+    "销售",
+    "商品"
+  ],
+  "when": {
+    "businessType": "销售商品收入",
+    "settlementMethod": "往来结算"
+  },
+  "matchRules": {
+    "sourceFolders": [
+      "sales"
+    ],
+    "allowedDocumentBlocks": [
+      "销售"
+    ],
+    "requiredKeywords": [],
+    "anyKeywords": [
+      "货物",
+      "商品",
+      "规格型号",
+      "单位",
+      "数量",
+      "金额",
+      "税额"
+    ],
+    "excludeKeywords": [],
+    "expectedAccounts": [
+      "1122",
+      "5001",
+      "22210106"
+    ],
+    "priority": 300,
+    "documentKeywords": [
+      "增值税发票",
+      "电子发票",
+      "数电发票",
+      "发票号码",
+      "开票日期"
+    ],
+    "defaultForSource": true
+  },
+  "amountSource": "sales_map",
+  "summary": {
+    "header": "销售商品收入",
+    "body": "{invoiceCode}",
+    "separator": " "
+  },
+  "explanation_header": "销售商品收入",
+  "explanation_body": "{invoiceCode}",
+  "explanation_separator": " ",
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "1122",
+        "name": "应收账款"
+      },
+      "amountFrom": "sales_map.totalAmount",
+      "amountForFrom": "sales_map.totalAmount",
+      "auxiliary": {
+        "field": "customerId",
+        "itemClassId": 1,
+        "selector": "auxiliaryItem"
+      }
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "5001",
+        "name": "主营业务收入"
+      },
+      "amountFrom": "sales_map.amount",
+      "amountForFrom": "sales_map.amount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "22210106",
+        "name": "应交税费_应交增值税_销项税额"
+      },
+      "amountFrom": "sales_map.taxAmount",
+      "amountForFrom": "sales_map.taxAmount"
+    }
+  ],
+  "enabled": true,
+  "historicalEvidence": {
+    "count": 125,
+    "accountPatterns": [
+      "112201/500101/22210106"
+    ]
+  }
+}

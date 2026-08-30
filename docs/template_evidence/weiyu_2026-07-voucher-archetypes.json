@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "1.0",
+  "company": "上海微誉信息技术有限公司",
+  "period": "2026-07",
+  "sourceWorkbook": "20260829150325_凭证列表_【上海微誉信息技术有限公司】_2026年第7期.xlsx",
+  "sourceSheet": "凭证列表#2026年第7期!A1:J1595",
+  "purpose": "只用于提炼和回归验证公司共享模板，不在运行时把历史客户、供应商或金额交给模型作为判断依据。",
+  "sampleCoverageBoundary": "584张已入账凭证均已归入业务原型；这是对凭证摘要和借贷结构的100%归类，不代表对未来未知版式OCR的100%识别保证。",
+  "statistics": {
+    "entryRows": 1592,
+    "vouchers": 584,
+    "exactAccountSignatures": 343,
+    "normalizedSummaryPatterns": 56
+  },
+  "routingFamilies": [
+    {"family": "purchase.inventory_goods", "count": 207, "evidence": ["采购商品/库存商品", "借1405", "贷2202", "其中181张含进项税、25张无进项税、1张美元应付"]},
+    {"family": "sales.goods_revenue", "count": 125, "evidence": ["销售收入", "借1122", "贷500101和22210106"]},
+    {"family": "bank.supplier_payment", "count": 133, "evidence": ["付供应商款/付供应商款货款", "借2202", "贷100201或100204"]},
+    {"family": "bank.customer_receipt", "count": 64, "evidence": ["收客户款", "借100201", "贷1122"]},
+    {"family": "purchase.freight", "count": 6, "evidence": ["运杂费/运费", "借560107", "可含22210101", "贷2202"]},
+    {"family": "purchase.financial_fee", "count": 4, "evidence": ["直接收费金融服务/汇款手续费/通讯手续费", "借560303", "可含22210101", "贷2202"]},
+    {"family": "purchase.communication", "count": 1, "evidence": ["通讯费", "借560208"]},
+    {"family": "purchase.property_utility", "count": 1, "evidence": ["物业水电费", "借560211"]},
+    {"family": "bank.payroll_payment", "count": 10, "evidence": ["发放工资", "借221101", "贷100201"]},
+    {"family": "bank.shareholder_loan", "count": 3, "evidence": ["股东借款", "借100201", "贷224105"]},
+    {"family": "bank.employee_reimbursement", "count": 10, "evidence": ["报销采购、运费、差旅、通讯及福利", "含职员往来过渡分录"]},
+    {"family": "bank.tax_payment", "count": 8, "evidence": ["印花税、个税、企业所得税、社保、公积金、增值税及附加"]},
+    {"family": "misc.month_end", "count": 7, "evidence": ["房租计提、折旧、工资社保计提、税金计提、销售成本结转、未交增值税结转、汇兑损益"]},
+    {"family": "bank_or_misc.other", "count": 5, "evidence": ["还利息、凭证调整、服务费收款、银行借款、银行手续费"]}
+  ],
+  "manualOnlyPatterns": [
+    {"business": "汇兑损益", "reason": "往来对象、币种、正负方向和分录数量每月可能变化，不能用固定两行模板猜测。"},
+    {"business": "多笔职员报销冲销", "reason": "一张付款可能冲销多个供应商与职员往来，必须由当月明细映射决定分录数量。"},
+    {"business": "工资社保综合计提", "reason": "工资、个税、个人社保、公积金及公司承担部分需要当月独立金额字段。"}
+  ]
+}

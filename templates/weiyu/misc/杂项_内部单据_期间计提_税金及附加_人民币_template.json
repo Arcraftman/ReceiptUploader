@@ -1,0 +1,90 @@
+{
+  "id": "misc-tax-surcharge-accrual-cny",
+  "name": "杂项_内部单据_期间计提_税金及附加_人民币",
+  "version": "1.0",
+  "documentBlock": "杂项",
+  "documentType": "内部单据",
+  "settlementMethod": "期间计提",
+  "businessType": "税金及附加计提",
+  "currency": "人民币",
+  "keywords": [
+    "计提税金",
+    "城建税",
+    "教育费附加",
+    "地方教育费附加"
+  ],
+  "when": {},
+  "matchRules": {
+    "sourceFolders": [
+      "misc"
+    ],
+    "requiredKeywords": [],
+    "anyKeywords": [
+      "计提税金",
+      "税金及附加",
+      "计提附加税"
+    ],
+    "excludeKeywords": [
+      "缴税",
+      "税收完税证明"
+    ],
+    "expectedAccounts": [
+      "5403",
+      "222108",
+      "222113",
+      "222114"
+    ],
+    "priority": 270
+  },
+  "amountSource": "source",
+  "summary": {
+    "header": "",
+    "body": "计提税金 {source.period}",
+    "separator": " "
+  },
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "5403",
+        "name": "税金及附加"
+      },
+      "amountFrom": "source.totalTax",
+      "amountForFrom": "source.totalTax"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "222108",
+        "name": "应交税费_应交城市维护建设税"
+      },
+      "amountFrom": "source.cityMaintenanceTax",
+      "amountForFrom": "source.cityMaintenanceTax"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "222113",
+        "name": "应交税费_教育费附加"
+      },
+      "amountFrom": "source.educationSurcharge",
+      "amountForFrom": "source.educationSurcharge"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "222114",
+        "name": "应交税费_地方教育费附加"
+      },
+      "amountFrom": "source.localEducationSurcharge",
+      "amountForFrom": "source.localEducationSurcharge"
+    }
+  ],
+  "enabled": true,
+  "historicalEvidence": {
+    "count": 1,
+    "accountPatterns": [
+      "5403/222108/222113/222114"
+    ]
+  }
+}

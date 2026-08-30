@@ -93,6 +93,28 @@ tmp/
 temp/
 outputs/
 
+# -----------------------------------------------------------------------------
+# Receipt uploader local configuration and generated business data
+# -----------------------------------------------------------------------------
+/config/app.json
+/config/companies/company_*.json
+/config/*.local.json
+/config/companies/*.local.json
+
+/data/inbox/
+/data/archive/
+/data/processed/
+/data/failed/
+/runtime/
+/workspaces/
+
+*.checkpoint.json
+*.upload-state.json
+*.preload-state.json
+*.run-state.json
+run.jsonl
+run.before-upload-reset.*.jsonl
+
 # Microsoft Office temporary files.
 ~$*
 
@@ -104,6 +126,10 @@ outputs/
 .vs/
 .codex/
 .agents/
+!.agents/
+!.agents/skills/
+!.agents/skills/kdzwy-bank-receipts/
+!.agents/skills/kdzwy-bank-receipts/SKILL.md
 
 .DS_Store
 ._*

@@ -1,0 +1,77 @@
+{
+  "id": "bank-06",
+  "name": "银行_银行回单_银行结算_缴增值税_人民币",
+  "version": "1.0",
+  "documentBlock": "银行",
+  "documentType": "银行回单",
+  "settlementMethod": "银行结算",
+  "businessType": "缴增值税",
+  "currency": "人民币",
+  "keywords": [
+    "缴增值税",
+    "银行回单",
+    "银行"
+  ],
+  "when": {},
+  "matchRules": {
+    "sourceFolders": [
+      "bank"
+    ],
+    "allowedDocumentBlocks": [
+      "银行"
+    ],
+    "requiredKeywords": [],
+    "anyKeywords": [
+      "缴增值税",
+      "增值税",
+      "税库银"
+    ],
+    "excludeKeywords": [
+      "城建税",
+      "教育费附加",
+      "地方教育费附加",
+      "附加税",
+      "企业所得税",
+      "个人所得税",
+      "印花税"
+    ],
+    "expectedAccounts": [
+      "22210101",
+      "100201"
+    ],
+    "priority": 270
+  },
+  "summary": {
+    "header": "",
+    "body": "缴增值税",
+    "separator": " "
+  },
+  "amountSource": "source",
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "22210101",
+        "name": "应交税费_应交增值税_进项税额"
+      },
+      "amountFrom": "source.amount",
+      "amountForFrom": "source.amount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "100201",
+        "name": "银行存款_上海银行"
+      },
+      "amountFrom": "source.amount",
+      "amountForFrom": "source.amount"
+    }
+  ],
+  "enabled": true,
+  "historicalEvidence": {
+    "count": 1,
+    "accountPatterns": [
+      "22210101/100201"
+    ]
+  }
+}
