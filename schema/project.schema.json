@@ -1,15 +1,22 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Company month project v5",
+  "title": "Company month project v7",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version", "company_key", "company_id", "company_name", "month", "target", "input", "defaults", "sources"],
+  "required": ["version", "month", "dataset", "target", "input", "defaults", "sources"],
   "properties": {
-    "version": {"const": 5},
-    "company_key": {"type": "string", "pattern": "^company_[A-Za-z0-9_-]+$"},
-    "company_id": {"type": "string", "minLength": 1},
-    "company_name": {"type": "string", "minLength": 1},
+    "version": {"const": 7},
     "month": {"type": "string", "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"},
+    "dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["company_key", "company_id", "company_name"],
+      "properties": {
+        "company_key": {"type": "string", "pattern": "^company_[A-Za-z0-9_-]+$"},
+        "company_id": {"type": "string", "minLength": 1},
+        "company_name": {"type": "string", "minLength": 1}
+      }
+    },
     "target": {
       "type": "object",
       "additionalProperties": false,
@@ -30,7 +37,7 @@
         "usage_column": {"type": "string", "minLength": 1}
       }
     },
-    "defaults": {"$ref": "#/$defs/runSettings"},
+    "defaults": {"$ref": "#/$defs/sharedSettings"},
     "sources": {
       "type": "object",
       "additionalProperties": false,
@@ -38,22 +45,19 @@
       "properties": {
         "sales": {"$ref": "#/$defs/sourceSettings"},
         "purchase": {"$ref": "#/$defs/sourceSettings"},
-        "bank": {"$ref": "#/$defs/sourceSettings"},
+        "bank": {"$ref": "#/$defs/bankSourceSettings"},
         "misc": {"$ref": "#/$defs/sourceSettings"}
       }
     }
   },
   "$defs": {
-    "runSettings": {
+    "sharedSettings": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "mode": {"enum": ["analysis-only", "prepare", "dry-run", "confirm"]},
-        "analysis_stage": {"enum": ["ocr", "llm", "existing", "all"]},
         "analysis_validation": {"enum": ["strict", "relaxed"]},
         "ocr_workers": {"type": "integer", "minimum": 1},
         "llm_workers": {"type": "integer", "minimum": 1},
-        "preload_items": {"enum": [false, "once", "auto"]},
         "purpose": {"type": "string", "minLength": 1},
         "allow_cross_entity": {"type": "boolean"},
         "only_mapped_invoices": {"type": "boolean"}
@@ -62,18 +66,106 @@
     "sourceSettings": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["enabled"],
+      "required": ["enabled", "mode", "analysis_stage", "preload_items"],
       "properties": {
         "enabled": {"type": "boolean"},
         "mode": {"enum": ["analysis-only", "prepare", "dry-run", "confirm"]},
         "analysis_stage": {"enum": ["ocr", "llm", "existing", "all"]},
+        "preload_items": {"enum": [false, "once", "auto"]},
         "analysis_validation": {"enum": ["strict", "relaxed"]},
         "ocr_workers": {"type": "integer", "minimum": 1},
         "llm_workers": {"type": "integer", "minimum": 1},
-        "preload_items": {"enum": [false, "once", "auto"]},
         "purpose": {"type": "string", "minLength": 1},
         "allow_cross_entity": {"type": "boolean"},
         "only_mapped_invoices": {"type": "boolean"}
+      }
+    },
+    "bankSourceSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "mode", "analysis_stage", "preload_items", "banks", "exceptions"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "mode": {"enum": ["analysis-only", "prepare", "dry-run", "confirm"]},
+        "analysis_stage": {"enum": ["ocr", "llm", "existing", "all"]},
+        "preload_items": {"enum": [false, "once", "auto"]},
+        "banks": {"$ref": "#/$defs/banks"},
+        "exceptions": {"$ref": "#/$defs/bankExceptions"},
+        "analysis_validation": {"enum": ["strict", "relaxed"]},
+        "ocr_workers": {"type": "integer", "minimum": 1},
+        "llm_workers": {"type": "integer", "minimum": 1},
+        "purpose": {"type": "string", "minLength": 1},
+        "allow_cross_entity": {"type": "boolean"},
+        "only_mapped_invoices": {"type": "boolean"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"enabled": {"const": true}}},
+          "then": {
+            "properties": {
+              "banks": {
+                "minProperties": 1,
+                "patternProperties": {
+                  "^[a-z][a-z0-9_-]*$": {
+                    "properties": {
+                      "statement_columns": {
+                        "properties": {
+                          "index_column": {"type": "string", "minLength": 1},
+                          "bank_debit_column": {"type": "string", "minLength": 1},
+                          "bank_credit_column": {"type": "string", "minLength": 1},
+                          "counterparty_name_column": {"type": "string", "minLength": 1}
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "banks": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-z][a-z0-9_-]*$": {"$ref": "#/$defs/bankConfig"}
+      },
+      "additionalProperties": false
+    },
+    "bankExceptions": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "bankConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bank_account_number", "split", "statement_columns"],
+      "properties": {
+        "bank_account_number": {"type": "string", "pattern": "^[0-9]+$"},
+        "split": {"$ref": "#/$defs/bankSplit"},
+        "statement_columns": {"$ref": "#/$defs/bankStatementColumnSet"}
+      }
+    },
+    "bankSplit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["parts_per_page", "filename_index_length", "filename_index_prefix"],
+      "properties": {
+        "parts_per_page": {"type": "integer", "minimum": 1, "maximum": 10},
+        "filename_index_length": {"type": "integer", "minimum": 6, "maximum": 50},
+        "filename_index_prefix": {"type": "string", "pattern": "^[A-Za-z]+$"}
+      }
+    },
+    "bankStatementColumnSet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index_column", "bank_debit_column", "bank_credit_column", "counterparty_name_column"],
+      "properties": {
+        "index_column": {"type": ["string", "null"], "minLength": 1},
+        "bank_debit_column": {"type": ["string", "null"], "minLength": 1},
+        "bank_credit_column": {"type": ["string", "null"], "minLength": 1},
+        "counterparty_name_column": {"type": ["string", "null"], "minLength": 1}
       }
     }
   }

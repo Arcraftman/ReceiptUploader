@@ -1,0 +1,71 @@
+{
+  "id": "bank-jd-dynamic-ap-cny",
+  "name": "银行_银行回单_京东供应链结算_动态应付账款_人民币",
+  "version": "1.0",
+  "documentBlock": "银行",
+  "documentType": "银行回单",
+  "settlementMethod": "银行结算",
+  "businessType": "京东供应链动态应付结算",
+  "currency": "人民币",
+  "keywords": [
+    "重庆京东盛际小额贷款有限公司",
+    "采购货款",
+    "货款"
+  ],
+  "when": {},
+  "matchRules": {
+    "sourceFolders": [
+      "bank"
+    ],
+    "flowDirections": [
+      "outflow"
+    ],
+    "allowedDocumentBlocks": [
+      "银行"
+    ],
+    "counterpartyNames": [
+      "重庆京东盛际小额贷款有限公司"
+    ],
+    "requiresExceptionHandling": "dynamic_supplier_payables",
+    "anyKeywords": [
+      "重庆京东盛际小额贷款有限公司"
+    ],
+    "expectedAccounts": [
+      "2202",
+      "100201"
+    ],
+    "priority": 1000
+  },
+  "summary": {
+    "header": "",
+    "body": "付供应商款",
+    "separator": " "
+  },
+  "amountSource": "source",
+  "entries": [
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "100201",
+        "name": "银行存款_上海银行"
+      },
+      "amountFrom": "source.amount",
+      "amountForFrom": "source.amount"
+    }
+  ],
+  "exception": {
+    "type": "dynamic_supplier_payables",
+    "allocationAccountNumber": "2202",
+    "allocationItemClassId": 5,
+    "requiredTotalFrom": "source.amount",
+    "disallowedAccountNumbers": [
+      "1123"
+    ],
+    "reason": "京东供应链付款必须按当月实际供应商动态拆分全部应付账款；禁止使用预付账款或固定两行模板。"
+  },
+  "enabled": true,
+  "historicalEvidence": {
+    "count": 5,
+    "rule": "对手方固定为重庆京东盛际小额贷款有限公司；借方供应商及金额每笔动态变化，全部使用应付账款。"
+  }
+}

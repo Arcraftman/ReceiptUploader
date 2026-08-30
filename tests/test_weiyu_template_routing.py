@@ -36,6 +36,7 @@ def _records_for(source: str) -> list[dict[str, object]]:
                     "currency",
                     "matchRules",
                     "amountSource",
+                    "exception",
                 )
                 if key in template
             }
@@ -48,7 +49,11 @@ def _records_for(source: str) -> list[dict[str, object]]:
     return records
 
 
-def _route(source: str, text: str) -> list[dict[str, object]]:
+def _route(
+    source: str,
+    text: str,
+    business_values: dict[str, object] | None = None,
+) -> list[dict[str, object]]:
     with TemporaryDirectory() as directory:
         root = Path(directory)
         metadata = root / "ocr.json"
@@ -80,7 +85,9 @@ def _route(source: str, text: str) -> list[dict[str, object]]:
             engine="fixture",
             status="success",
         )
-        selected, _rejected = _rule_candidates(_records_for(source), artifact)
+        selected, _rejected = _rule_candidates(
+            _records_for(source), artifact, business_values
+        )
         return selected
 
 
@@ -133,7 +140,7 @@ def test_weiyu_kept_templates_use_their_own_source_and_verified_accounts() -> No
         if record["id"] in expected_accounts:
             accounts = {str(entry["accountSelector"]["number"]) for entry in template["entries"]}
             assert accounts == expected_accounts[str(record["id"])]
-    assert counts == {"sales": 1, "purchase": 5, "bank": 12, "misc": 6}
+    assert counts == {"sales": 1, "purchase": 5, "bank": 13, "misc": 6}
 
 
 def test_weiyu_ground_truth_manifest_covers_every_voucher() -> None:
@@ -182,3 +189,88 @@ def test_bank_routes_real_voucher_archetypes_and_blocks_generic_transfer() -> No
     _assert_one("bank", "缴增值税 城建税 教育费附加 地方教育费附加", "bank-tax-vat-surcharges-cny")
     assert _route("bank", "招商银行电子回单 转账") == []
     assert _route("bank", "上海银行电子回单 直接扣收转账手续费") == []
+
+
+def test_bank_routes_jd_counterparty_to_dynamic_payables_exception_only() -> None:
+    selected = _route(
+        "bank",
+        "上海银行业务回单 用途：采购货款",
+        {
+            "flowDirection": "outflow",
+            "counterpartyName": "重庆京东盛际小额贷款有限公司",
+            "invoiceNumbers": [],
+            "exceptionConfig": {
+                "handling": "dynamic_supplier_payables",
+                "template_id": "bank-jd-dynamic-ap-cny",
+                "allocations": [],
+            },
+        },
+    )
+    assert [item["id"] for item in selected] == ["bank-jd-dynamic-ap-cny"]
+    assert selected[0]["exception"]["allocationAccountNumber"] == "2202"
+    assert selected[0]["exception"]["disallowedAccountNumbers"] == ["1123"]
+
+    assert [
+        item["id"]
+        for item in _route(
+            "bank",
+            "上海银行业务回单 用途：采购货款",
+            {
+                "flowDirection": "outflow",
+                "counterpartyName": "其他供应商",
+                "invoiceNumbers": [],
+            },
+        )
+    ] == ["bank-04"]
+
+
+def test_bank_routing_uses_statement_direction_as_a_hard_boundary() -> None:
+    customer_values = {
+        "flowDirection": "inflow",
+        "invoiceNumbers": ["26312000004664982496"],
+    }
+    supplier_values = {"flowDirection": "outflow", "invoiceNumbers": []}
+    assert [
+        item["id"]
+        for item in _route("bank", "上海银行业务回单 用途：货款", customer_values)
+    ] == ["bank-01"]
+    assert [
+        item["id"]
+        for item in _route("bank", "上海银行业务回单 用途：电话费", supplier_values)
+    ] == ["bank-04"]
+    assert _route(
+        "bank",
+        "上海银行业务回单 入账 内部转账",
+        {
+            "flowDirection": "inflow",
+            "invoiceNumbers": [],
+            "configCompany": "上海微誉信息技术有限公司",
+            "counterpartyName": "上海微誉信息技术有限公司",
+        },
+    ) == []
+    assert [
+        item["id"]
+        for item in _route(
+            "bank",
+            "上海银行业务回单 入账 用途：货款",
+            {
+                "flowDirection": "inflow",
+                "invoiceNumbers": [],
+                "configCompany": "上海微誉信息技术有限公司",
+                "counterpartyName": "测试客户",
+            },
+        )
+    ] == ["bank-01"]
+    assert [
+        item["id"]
+        for item in _route(
+            "bank",
+            "上海银行业务回单 入账 用途：采购USB延长线费用",
+            {
+                "flowDirection": "inflow",
+                "invoiceNumbers": ["26312000004664982496"],
+                "configCompany": "上海微誉信息技术有限公司",
+                "counterpartyName": "测试客户",
+            },
+        )
+    ] == ["bank-01"]

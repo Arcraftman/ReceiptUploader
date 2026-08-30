@@ -19,6 +19,7 @@ from .workflow import find_receipts, preview, process_one
 from .responsibility_chain import run_selected_sources_safe
 from .source_profile import source_from_folder_name, normalize_source_key
 from .simple_logging import configure_pipeline_logger
+from .bank_receipt_verifier import verify_bank_receipts
 
 
 def audit(paths: ProjectPaths, result: dict[str, Any]) -> None:
@@ -146,6 +147,21 @@ def main(argv: list[str] | None = None) -> int:
         pdf_map_path = pdf_map_path if pdf_map_path.is_absolute() else root / pdf_map_path
         pdf_map = InvoicePdfMap.load(pdf_map_path.resolve())
         print(f"PDF映射：{pdf_map_path.resolve()}")
+    if args.confirm and source in {"bank", "all"}:
+        bank_verification = verify_bank_receipts(input_dir)
+        bank_summary = bank_verification["summary"]
+        print(
+            "银行提交前自动检查："
+            f"receipt={bank_summary['receiptCount']}，draft=true={bank_summary['draftCount']}，"
+            f"可提交={bank_summary['readyCount']}，无效={bank_summary['invalidCount']}"
+        )
+        if bank_verification["status"] != "ready":
+            print(
+                "真实上传已停止：银行 receipt 尚未全部变为 draft=false 并通过字段校验；"
+                "请先在 start.bat 中运行 verify。",
+                file=sys.stderr,
+            )
+            return 3
     try:
         valid, invalid = find_receipts(input_dir, {}, pdf_map)
     except ReceiptError as exc:

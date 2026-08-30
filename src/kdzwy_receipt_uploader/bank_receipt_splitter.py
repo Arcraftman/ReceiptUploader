@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 from typing import Any, Mapping
 
-import fitz
+import pymupdf as fitz
 
 
 class BankReceiptSplitError(RuntimeError):
@@ -14,9 +14,13 @@ class BankReceiptSplitError(RuntimeError):
 
 
 _FAST_OCR_ENGINE: Any | None = None
-_NUMBER_LABELS = (
-    "发票号码", "发票号", "银行回单号", "回单编号", "回单号", "交易流水号",
-    "流水号", "凭证号码", "凭证号", "业务编号", "业务流水号", "参考号", "交易序号",
+_FILENAME_INDEX_LABELS = (
+    ("交易流水号", "transaction_serial"),
+    ("交易流水", "transaction_serial"),
+    ("核心流水号", "transaction_serial"),
+    ("回单编号", "receipt_number"),
+    ("银行回单号", "receipt_number"),
+    ("回单号", "receipt_number"),
 )
 
 
@@ -28,22 +32,47 @@ def _get_fast_ocr_engine() -> Any:
     return _FAST_OCR_ENGINE
 
 
-def _extract_receipt_number(text: str) -> str:
+def _matches_filename_rule(value: str, configured_length: int, configured_prefix: str) -> bool:
+    candidate = str(value or "").strip()
+    return (
+        len(candidate) == configured_length
+        and candidate.startswith(configured_prefix)
+        and re.fullmatch(r"[A-Za-z0-9]+", candidate) is not None
+    )
+
+
+def _extract_filename_index(
+    text: str, configured_length: int, configured_prefix: str
+) -> tuple[str, str]:
     normalized = str(text or "").replace("\r", "\n")
-    for label in _NUMBER_LABELS:
+    for label, source in _FILENAME_INDEX_LABELS:
         pattern = rf"{re.escape(label)}\s*[:：]?\s*([A-Za-z0-9][A-Za-z0-9-]{{5,49}})"
-        match = re.search(pattern, normalized, flags=re.IGNORECASE)
-        if match:
-            return match.group(1).strip().lower()
-    invoice_number = re.search(r"(?<!\d)(\d{20})(?!\d)", normalized)
-    return invoice_number.group(1) if invoice_number else ""
+        for match in re.finditer(pattern, normalized, flags=re.IGNORECASE):
+            candidate = match.group(1).strip()
+            if _matches_filename_rule(candidate, configured_length, configured_prefix):
+                return candidate, source
+    escaped_prefix = re.escape(configured_prefix)
+    suffix_length = configured_length - len(configured_prefix)
+    configured = re.search(
+        rf"(?<![A-Za-z0-9])({escaped_prefix}[A-Za-z0-9]{{{suffix_length}}})(?![A-Za-z0-9])",
+        normalized,
+    )
+    if configured:
+        return configured.group(1), (
+            f"configured_{configured_prefix}_{configured_length}"
+        )
+    return "", "bank_exception"
 
 
-def _recognize_receipt_number(page: fitz.Page) -> tuple[str, str]:
+def _recognize_filename_index(
+    page: fitz.Page, configured_length: int, configured_prefix: str
+) -> tuple[str, str, str]:
     native_text = page.get_text("text") or ""
-    native_number = _extract_receipt_number(native_text)
-    if native_number:
-        return native_number, "pdf-text-fast"
+    native_index, native_source = _extract_filename_index(
+        native_text, configured_length, configured_prefix
+    )
+    if native_index:
+        return native_index, "pdf-text-fast", native_source
     pixmap = page.get_pixmap(matrix=fitz.Matrix(150 / 72, 150 / 72), alpha=False)
     result, _ = _get_fast_ocr_engine()(pixmap.tobytes("png"))
     lines: list[tuple[float, float, str]] = []
@@ -55,45 +84,85 @@ def _recognize_receipt_number(page: fitz.Page) -> tuple[str, str]:
         y = min(float(point[1]) for point in box)
         lines.append((y, x, str(text).strip()))
     ocr_text = "\n".join(item[2] for item in sorted(lines))
-    return _extract_receipt_number(ocr_text), "rapidocr-150dpi-fast"
+    filename_index, index_source = _extract_filename_index(
+        ocr_text, configured_length, configured_prefix
+    )
+    return filename_index, "rapidocr-150dpi-fast", index_source
 
 
-def _load_rules(config_path: Path) -> dict[str, int]:
-    try:
-        payload = json.loads(config_path.read_text(encoding="utf-8-sig"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise BankReceiptSplitError(f"无法读取银行裁剪配置：{config_path}：{exc}") from exc
-    raw_rules = payload
-    if not isinstance(raw_rules, Mapping) or not raw_rules:
-        raise BankReceiptSplitError(f"银行裁剪配置必须是非空的直接 key/value 对象：{config_path}")
-    rules: dict[str, int] = {}
-    for raw_key, raw_parts in raw_rules.items():
-        key = str(raw_key)
-        if not re.fullmatch(r"[a-z][a-z0-9_-]*", key):
-            raise BankReceiptSplitError(f"银行key只能使用英文小写、数字、下划线或连字符：{raw_key}")
-        if isinstance(raw_parts, bool) or not isinstance(raw_parts, int):
-            raise BankReceiptSplitError(f"每页回单数量必须是整数：{key}={raw_parts}")
-        parts = raw_parts
-        if parts < 1 or parts > 10:
-            raise BankReceiptSplitError(f"每页回单数量必须在1到10之间：{key}={parts}")
-        rules[key] = parts
-    return rules
-
-
-def _fingerprint(source_pdf: Path, parts_per_page: int) -> dict[str, Any]:
+def _fingerprint(
+    source_pdf: Path,
+    parts_per_page: int,
+    filename_index_length: int,
+    filename_index_prefix: str,
+) -> dict[str, Any]:
     stat = source_pdf.stat()
     return {
         "source": str(source_pdf.resolve()),
         "size": stat.st_size,
         "mtimeNs": stat.st_mtime_ns,
         "partsPerPage": parts_per_page,
-        "namingVersion": 2,
+        "filenameIndexLength": filename_index_length,
+        "filenameIndexPrefix": filename_index_prefix,
+        "namingVersion": 6,
     }
 
 
-def _split_one_bank(source_pdf: Path, output_dir: Path, bank_key: str, parts_per_page: int) -> dict[str, Any]:
+def _remove_orphan_pdfs(output_dir: Path, keep_names: list[str]) -> None:
+    keep = {Path(name).as_posix() for name in keep_names}
+    if not output_dir.is_dir():
+        return
+    for candidate in output_dir.rglob("*.pdf"):
+        relative_name = candidate.relative_to(output_dir).as_posix()
+        if relative_name not in keep:
+            candidate.unlink()
+    directories = sorted(
+        (path for path in output_dir.rglob("*") if path.is_dir()),
+        key=lambda path: len(path.parts),
+        reverse=True,
+    )
+    for directory in directories:
+        try:
+            directory.rmdir()
+        except OSError:
+            pass
+
+
+def _remove_case_variant(output_path: Path) -> None:
+    """Remove an existing Windows filename whose casing differs from the new name."""
+    parent = output_path.parent
+    if not parent.is_dir():
+        return
+    for candidate in parent.iterdir():
+        if (
+            candidate.is_file()
+            and candidate.name.casefold() == output_path.name.casefold()
+            and candidate.name != output_path.name
+        ):
+            candidate.unlink()
+
+
+def _is_file_with_exact_name(path: Path) -> bool:
+    if not path.parent.is_dir():
+        return False
+    return any(
+        candidate.is_file() and candidate.name == path.name
+        for candidate in path.parent.iterdir()
+    )
+
+
+def _split_one_bank(
+    source_pdf: Path,
+    output_dir: Path,
+    bank_key: str,
+    parts_per_page: int,
+    filename_index_length: int,
+    filename_index_prefix: str,
+) -> dict[str, Any]:
     manifest_path = output_dir / "split.manifest.json"
-    fingerprint = _fingerprint(source_pdf, parts_per_page)
+    fingerprint = _fingerprint(
+        source_pdf, parts_per_page, filename_index_length, filename_index_prefix
+    )
     previous_outputs: list[str] = []
     if manifest_path.is_file():
         try:
@@ -102,14 +171,34 @@ def _split_one_bank(source_pdf: Path, output_dir: Path, bank_key: str, parts_per
             manifest = {}
         outputs = manifest.get("outputs", []) if isinstance(manifest, Mapping) else []
         previous_outputs = [str(name) for name in outputs]
-        if manifest.get("fingerprint") == fingerprint and outputs and all((output_dir / str(name)).is_file() for name in outputs):
-            return {"bankKey": bank_key, "status": "reused", "partsPerPage": parts_per_page, "pageCount": manifest.get("pageCount", 0), "outputCount": len(outputs), "outputDirectory": str(output_dir.resolve())}
+        if (
+            manifest.get("fingerprint") == fingerprint
+            and outputs
+            and all(_is_file_with_exact_name(output_dir / str(name)) for name in outputs)
+        ):
+            bank_exceptions = manifest.get("bankExceptions", [])
+            bank_exception_count = (
+                len(bank_exceptions) if isinstance(bank_exceptions, list) else 0
+            )
+            _remove_orphan_pdfs(output_dir, previous_outputs)
+            return {
+                "bankKey": bank_key,
+                "status": "reused",
+                "partsPerPage": parts_per_page,
+                "filenameIndexLength": filename_index_length,
+                "filenameIndexPrefix": filename_index_prefix,
+                "pageCount": manifest.get("pageCount", 0),
+                "outputCount": len(outputs),
+                "recognizedCount": len(outputs) - bank_exception_count,
+                "bankExceptionCount": bank_exception_count,
+                "outputDirectory": str(output_dir.resolve()),
+            }
 
     output_dir.mkdir(parents=True, exist_ok=True)
     generated_names: list[str] = []
     generated_records: list[dict[str, Any]] = []
-    unresolved: list[str] = []
-    seen_numbers: set[str] = set()
+    bank_exceptions: list[str] = []
+    seen_filename_keys: set[str] = set()
     try:
         with fitz.open(source_pdf) as source:
             for page_index in range(source.page_count):
@@ -124,24 +213,29 @@ def _split_one_bank(source_pdf: Path, output_dir: Path, bank_key: str, parts_per
                     with fitz.open() as target:
                         target_page = target.new_page(width=width, height=bottom - top)
                         target_page.show_pdf_page(target_page.rect, source, page_index, clip=clip)
-                        receipt_number, ocr_engine = _recognize_receipt_number(target_page)
-                        if receipt_number and receipt_number not in seen_numbers:
-                            relative_name = f"{receipt_number}.pdf"
-                            seen_numbers.add(receipt_number)
+                        filename_index, ocr_engine, index_source = _recognize_filename_index(
+                            target_page, filename_index_length, filename_index_prefix
+                        )
+                        filename_key = filename_index.casefold()
+                        if filename_index and filename_key not in seen_filename_keys:
+                            relative_name = f"{filename_index}.pdf"
+                            seen_filename_keys.add(filename_key)
                         else:
-                            unresolved_dir = output_dir / "unrecognized"
-                            unresolved_dir.mkdir(parents=True, exist_ok=True)
-                            relative_name = f"unrecognized/{bank_key}_page_{page_index + 1:04d}_receipt_{part_index + 1:02d}.pdf"
-                            unresolved.append(relative_name)
+                            exception_dir = output_dir / "bank_exception"
+                            exception_dir.mkdir(parents=True, exist_ok=True)
+                            relative_name = f"bank_exception/{bank_key}_page_{page_index + 1:04d}_receipt_{part_index + 1:02d}.pdf"
+                            bank_exceptions.append(relative_name)
                         output_path = output_dir / relative_name
                         temporary = output_path.with_suffix(".tmp.pdf")
                         target.save(temporary)
+                    _remove_case_variant(output_path)
                     temporary.replace(output_path)
                     generated_names.append(relative_name)
                     generated_records.append({
                         "page": page_index + 1,
                         "part": part_index + 1,
-                        "receiptNumber": receipt_number,
+                        "filenameIndex": filename_index,
+                        "indexSource": index_source,
                         "ocrEngine": ocr_engine,
                         "file": relative_name,
                     })
@@ -149,11 +243,7 @@ def _split_one_bank(source_pdf: Path, output_dir: Path, bank_key: str, parts_per
     except Exception as exc:
         raise BankReceiptSplitError(f"银行PDF裁剪失败：{source_pdf}：{exc}") from exc
 
-    generated_set = set(generated_names)
-    for previous_name in previous_outputs:
-        stale = output_dir / previous_name
-        if previous_name not in generated_set and stale.is_file():
-            stale.unlink()
+    _remove_orphan_pdfs(output_dir, generated_names)
     manifest = {
         "version": 1,
         "bankKey": bank_key,
@@ -162,29 +252,61 @@ def _split_one_bank(source_pdf: Path, output_dir: Path, bank_key: str, parts_per
         "outputCount": len(generated_names),
         "outputs": generated_names,
         "records": generated_records,
-        "unresolved": unresolved,
+        "bankExceptions": bank_exceptions,
     }
     temporary_manifest = manifest_path.with_suffix(".json.tmp")
     temporary_manifest.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     temporary_manifest.replace(manifest_path)
-    if unresolved:
+    return {
+        "bankKey": bank_key,
+        "status": "generated",
+        "partsPerPage": parts_per_page,
+        "filenameIndexLength": filename_index_length,
+        "filenameIndexPrefix": filename_index_prefix,
+        "pageCount": page_count,
+        "outputCount": len(generated_names),
+        "recognizedCount": len(generated_names) - len(bank_exceptions),
+        "bankExceptionCount": len(bank_exceptions),
+        "outputDirectory": str(output_dir.resolve()),
+    }
+
+
+def split_configured_bank_pdfs(
+    bank_configs: Mapping[str, Mapping[str, Any]],
+    input_dir: Path,
+    output_root: Path,
+    report_path: Path,
+) -> dict[str, Any]:
+    if not isinstance(bank_configs, Mapping) or not bank_configs:
         raise BankReceiptSplitError(
-            f"{bank_key} 有 {len(unresolved)} 张回单未唯一识别号码，已放入 {output_dir / 'unrecognized'}"
+            "project.json sources.bank.banks 必须至少配置一家银行"
         )
-    return {"bankKey": bank_key, "status": "generated", "partsPerPage": parts_per_page, "pageCount": page_count, "outputCount": len(generated_names), "outputDirectory": str(output_dir.resolve())}
-
-
-def split_configured_bank_pdfs(config_path: Path, input_dir: Path, output_root: Path, report_path: Path) -> dict[str, Any]:
-    rules = _load_rules(config_path)
     results: list[dict[str, Any]] = []
-    for bank_key, parts_per_page in sorted(rules.items()):
+    for bank_key, bank_config in sorted(bank_configs.items()):
+        if not isinstance(bank_config, Mapping) or not isinstance(bank_config.get("split"), Mapping):
+            raise BankReceiptSplitError(
+                f"project.json sources.bank.banks.{bank_key}.split 必须是对象"
+            )
+        rule = bank_config["split"]
+        parts_per_page = int(rule["parts_per_page"])
+        filename_index_length = int(rule["filename_index_length"])
+        filename_index_prefix = str(rule["filename_index_prefix"])
         source_pdf = input_dir / f"{bank_key}.pdf"
         if not source_pdf.is_file():
             raise BankReceiptSplitError(f"配置中的银行PDF不存在：{source_pdf}")
-        results.append(_split_one_bank(source_pdf, output_root / bank_key, bank_key, parts_per_page))
+        results.append(
+            _split_one_bank(
+                source_pdf,
+                output_root / bank_key,
+                bank_key,
+                parts_per_page,
+                filename_index_length,
+                filename_index_prefix,
+            )
+        )
     report = {
         "version": 1,
-        "config": str(config_path.resolve()),
+        "configSource": "project.json.sources.bank.banks",
         "inputDirectory": str(input_dir.resolve()),
         "outputRoot": str(output_root.resolve()),
         "banks": results,
@@ -193,6 +315,10 @@ def split_configured_bank_pdfs(config_path: Path, input_dir: Path, output_root: 
             "generatedBankCount": sum(1 for item in results if item["status"] == "generated"),
             "reusedBankCount": sum(1 for item in results if item["status"] == "reused"),
             "receiptCount": sum(int(item["outputCount"]) for item in results),
+            "recognizedReceiptCount": sum(int(item["recognizedCount"]) for item in results),
+            "bankExceptionReceiptCount": sum(
+                int(item["bankExceptionCount"]) for item in results
+            ),
         },
     }
     report_path.parent.mkdir(parents=True, exist_ok=True)

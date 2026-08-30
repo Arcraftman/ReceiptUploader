@@ -19,13 +19,10 @@ if not exist "%COMPANY_CONFIG%" (
 set "PYTHON_EXE=%PROJECT_ROOT%\.auto\Scripts\python.exe"
 if not exist "%PYTHON_EXE%" set "PYTHON_EXE=python"
 
-"%PYTHON_EXE%" "%PROJECT_ROOT%\scripts\commands\prepare_company_workspace.py" --config "%COMPANY_CONFIG%" --month "%RUN_MONTH%"
-if errorlevel 1 exit /b %ERRORLEVEL%
-
-"%PYTHON_EXE%" "%PROJECT_ROOT%\scripts\commands\run_companies.py" --jobs-config "%COMPANY_CONFIG%" --month "%RUN_MONTH%"
+"%PYTHON_EXE%" "%PROJECT_ROOT%\scripts\commands\list_unmatched_bank_records.py" --config "%COMPANY_CONFIG%" --month "%RUN_MONTH%"
 exit /b %ERRORLEVEL%
 
 :usage
-echo Usage: commands\run_company.bat COMPANY_CONFIG_NAME YYYY-MM
-echo Example: commands\run_company.bat company_17867515_上海微誉信息技术有限公司 2026-08
+echo Usage: commands\list_unmatched_bank.bat COMPANY_CONFIG_NAME YYYY-MM
+echo Example: commands\list_unmatched_bank.bat company_17867515_上海微誉信息技术有限公司 2026-07
 exit /b 2

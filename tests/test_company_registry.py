@@ -261,24 +261,52 @@ if __name__ == "__main__":
     unittest.main()
 
 
-class RegistryV5Tests(unittest.TestCase):
+class RegistryV7Tests(unittest.TestCase):
     def _company(self) -> CompanyProfile:
         return CompanyProfile("company_1", "1", "测试公司", "weiyu", "data/inbox/company_1_测试公司")
 
     def _project(self) -> dict[str, object]:
-        return {
-            "version": 5,
-            "company_key": "company_1",
-            "company_id": "1",
-            "company_name": "测试公司",
+        project = {
+            "version": 7,
             "month": "2026-08",
+            "dataset": {
+                "company_key": "company_1",
+                "company_id": "1",
+                "company_name": "测试公司",
+            },
             "target": {"accountbook_key": "company_1", "company_id": "1", "company_name": "测试公司"},
             "input": {"income_cost_filename": "收入成本表.xlsx", "usage_filename": "用途确认信息.xlsx", "usage_column": "E"},
-            "defaults": {"mode": "analysis-only", "analysis_stage": "ocr", "analysis_validation": "strict"},
-            "sources": {source: {"enabled": source == "sales"} for source in ("sales", "purchase", "bank", "misc")},
+            "defaults": {"analysis_validation": "strict"},
+            "sources": {
+                source: {
+                    "enabled": source == "sales",
+                    "mode": "analysis-only",
+                    "analysis_stage": "ocr",
+                    "preload_items": False,
+                }
+                for source in ("sales", "purchase", "bank", "misc")
+            },
         }
+        project["sources"]["bank"]["banks"] = {
+            "testbank": {
+                "bank_account_number": "100201",
+                "split": {
+                    "parts_per_page": 2,
+                    "filename_index_length": 8,
+                    "filename_index_prefix": "T",
+                },
+                "statement_columns": {
+                    "index_column": None,
+                    "bank_debit_column": None,
+                    "bank_credit_column": None,
+                    "counterparty_name_column": None,
+                },
+            },
+        }
+        project["sources"]["bank"]["exceptions"] = []
+        return project
 
-    def test_v5_project_loads_without_dataset_registry(self) -> None:
+    def test_v7_project_requires_explicit_dataset_target_and_source_settings(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "project.json"
             path.write_text(json.dumps(self._project(), ensure_ascii=False), encoding="utf-8")
@@ -286,14 +314,132 @@ class RegistryV5Tests(unittest.TestCase):
             self.assertEqual(len(jobs), 4)
             self.assertEqual([job.source for job in jobs if job.enabled], ["sales"])
             self.assertEqual(jobs[0].input_config["usage_column"], "E")
+            self.assertTrue(all(job.mode == "analysis-only" for job in jobs))
+            bank_job = next(job for job in jobs if job.source == "bank")
+            self.assertEqual(
+                bank_job.overrides["banks"]["testbank"]["statement_columns"],
+                {
+                    "index_column": None,
+                    "bank_debit_column": None,
+                    "bank_credit_column": None,
+                    "counterparty_name_column": None,
+                },
+            )
 
-    def test_unknown_legacy_field_is_rejected(self) -> None:
+    def test_each_source_requires_all_four_core_run_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "project.json"
+            for field in ("enabled", "mode", "analysis_stage", "preload_items"):
+                payload = self._project()
+                payload["sources"]["purchase"].pop(field)
+                path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+                with self.assertRaisesRegex(
+                    CompanyRegistryError,
+                    rf"sources\.purchase 缺少精确运行字段：.*{field}",
+                ):
+                    load_company_jobs(path, self._company())
+
+    def test_disabled_source_still_requires_valid_mode_and_analysis_stage(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "project.json"
             payload = self._project()
-            payload["dataset"] = "company_1"
+            payload["sources"]["misc"]["mode"] = "guess"
             path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
-            with self.assertRaisesRegex(CompanyRegistryError, "不支持的字段"):
+            with self.assertRaisesRegex(CompanyRegistryError, "sources.misc.mode 只支持"):
+                load_company_jobs(path, self._company())
+
+            payload = self._project()
+            payload["sources"]["misc"]["analysis_stage"] = "guess"
+            path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            with self.assertRaisesRegex(
+                CompanyRegistryError, "sources.misc.analysis_stage 只支持"
+            ):
+                load_company_jobs(path, self._company())
+
+    def test_unified_bank_config_requires_split_and_exactly_four_columns(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "project.json"
+            payload = self._project()
+            payload["sources"]["bank"]["banks"]["testbank"]["statement_columns"].pop(
+                "bank_credit_column"
+            )
+            path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            with self.assertRaisesRegex(CompanyRegistryError, "必须精确包含四个列配置"):
+                load_company_jobs(path, self._company())
+
+            payload = self._project()
+            payload["sources"]["bank"]["banks"]["testbank"].pop("split")
+            path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            with self.assertRaisesRegex(CompanyRegistryError, "必须同时包含 bank_account_number、split 和 statement_columns"):
+                load_company_jobs(path, self._company())
+
+            payload = self._project()
+            payload["sources"]["bank"]["banks"]["testbank"].pop(
+                "bank_account_number"
+            )
+            path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            with self.assertRaisesRegex(CompanyRegistryError, "bank_account_number"):
+                load_company_jobs(path, self._company())
+
+            payload = self._project()
+            payload["sources"]["bank"].pop("banks")
+            path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            with self.assertRaisesRegex(CompanyRegistryError, "缺少统一多银行配置 banks"):
+                load_company_jobs(path, self._company())
+
+            payload = self._project()
+            payload["sources"]["bank"].pop("exceptions")
+            path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            with self.assertRaisesRegex(CompanyRegistryError, "缺少特殊对象名称配置 exceptions"):
+                load_company_jobs(path, self._company())
+
+    def test_bank_exceptions_are_unique_exact_names(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "project.json"
+            payload = self._project()
+            payload["sources"]["bank"]["exceptions"] = ["供应商甲", "张三"]
+            path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            jobs = load_company_jobs(path, self._company())
+            bank_job = next(job for job in jobs if job.source == "bank")
+            self.assertEqual(bank_job.overrides["exceptions"], ["供应商甲", "张三"])
+
+            payload["sources"]["bank"]["exceptions"] = ["供应商甲", "供应商甲"]
+            path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            with self.assertRaisesRegex(CompanyRegistryError, "包含重复名称"):
+                load_company_jobs(path, self._company())
+
+    def test_enabled_bank_requires_all_statement_columns_to_be_filled(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "project.json"
+            payload = self._project()
+            payload["sources"]["sales"]["enabled"] = False
+            payload["sources"]["bank"]["enabled"] = True
+            path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            with self.assertRaisesRegex(
+                CompanyRegistryError,
+                "sources.bank.enabled=true.*statement_columns 必须填写",
+            ):
+                load_company_jobs(path, self._company())
+
+    def test_missing_or_mismatched_dataset_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "project.json"
+            payload = self._project()
+            payload.pop("dataset")
+            path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            with self.assertRaisesRegex(CompanyRegistryError, "project.dataset"):
+                load_company_jobs(path, self._company())
+
+            payload = self._project()
+            payload["dataset"]["company_id"] = "2"
+            path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            with self.assertRaisesRegex(CompanyRegistryError, "dataset 与资料公司配置身份不一致"):
+                load_company_jobs(path, self._company())
+
+            payload = self._project()
+            payload.pop("target")
+            path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            with self.assertRaisesRegex(CompanyRegistryError, "project.target"):
                 load_company_jobs(path, self._company())
 
     def test_company_v3_has_only_identity_and_shared_template(self) -> None:

@@ -9,8 +9,8 @@ set "DISCOVERY_QUIET="
 
 :parse_args
 if "%~1"=="" goto args_ready
-if /i "%~1"=="--company" goto arg_company
-if /i "%~1"=="-Company" goto arg_company
+if /i "%~1"=="--dataset" goto arg_company
+if /i "%~1"=="-Dataset" goto arg_company
 if /i "%~1"=="--month" goto arg_month
 if /i "%~1"=="-Month" goto arg_month
 if /i "%~1"=="--target" goto arg_target
@@ -86,7 +86,7 @@ exit /b 2
 :usage
 echo Usage:
 echo   commands\discover_companies.bat
-echo   commands\discover_companies.bat --company SOURCE_SELECTOR --month YYYY-MM [--target TARGET_SELECTOR]
+echo   commands\discover_companies.bat --dataset DATASET_SELECTOR --month YYYY-MM --target TARGET_SELECTOR
 echo.
-echo SOURCE_SELECTOR and TARGET_SELECTOR accept company_key, company_id, exact company name, or standard company config filename.
+echo DATASET_SELECTOR and TARGET_SELECTOR accept company_key, company_id, exact company name, or standard company config filename.
 exit /b 0

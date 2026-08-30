@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import subprocess
 import sys
@@ -20,6 +21,8 @@ from kdzwy_receipt_uploader.company_registry import (  # noqa: E402
     load_company_profile,
     load_template_companies,
     normalize_month,
+    validate_bank_configs,
+    validate_bank_exceptions,
 )
 from kdzwy_receipt_uploader.source_profile import BUILT_IN_SOURCES  # noqa: E402
 
@@ -43,8 +46,47 @@ def write_json(path: Path, value: object) -> None:
     temporary.replace(path)
 
 
-def normalize_source_settings(value: object) -> dict[str, dict[str, Any]]:
-    """Declare every built-in source without changing its execution authorization."""
+def load_default_bank_exceptions(path: Path | None = None) -> list[str]:
+    defaults_path = path or (ROOT / "config" / "bank_exception.defaults.json")
+    payload = read_object(defaults_path)
+    if (
+        set(payload) != {"version", "exceptions", "pdf_keywords"}
+        or payload.get("version") != 2
+    ):
+        raise CompanyRegistryError(
+            "银行 exception 默认配置必须是 version 2 且只包含 "
+            f"version、exceptions、pdf_keywords：{defaults_path}"
+        )
+    exceptions = validate_bank_exceptions(
+        payload.get("exceptions"), "bank_exception.defaults.json.exceptions"
+    )
+    keyword_rules = payload.get("pdf_keywords")
+    if not isinstance(keyword_rules, dict):
+        raise CompanyRegistryError(
+            "bank_exception.defaults.json.pdf_keywords 必须是对象"
+        )
+    for raw_name, raw_keywords in keyword_rules.items():
+        if not isinstance(raw_name, str) or not raw_name.strip():
+            raise CompanyRegistryError("pdf_keywords 的名称不能为空")
+        if (
+            not isinstance(raw_keywords, list)
+            or not raw_keywords
+            or any(
+                not isinstance(keyword, str) or not keyword.strip()
+                for keyword in raw_keywords
+            )
+        ):
+            raise CompanyRegistryError(
+                f"pdf_keywords.{raw_name} 必须是非空文本数组"
+            )
+    return exceptions
+
+
+def normalize_source_settings(
+    value: object,
+    bank_exception_defaults: list[str] | None = None,
+) -> dict[str, dict[str, Any]]:
+    """Declare every built-in source with explicit core run settings."""
     if value is None:
         existing: dict[str, Any] = {}
     elif isinstance(value, dict):
@@ -56,7 +98,7 @@ def normalize_source_settings(value: object) -> dict[str, dict[str, Any]]:
         raise CompanyRegistryError(f"project.sources 包含非标准业务目录：{', '.join(unknown)}")
 
     result: dict[str, dict[str, Any]] = {}
-    allowed = {
+    common_allowed = {
         "enabled",
         "mode",
         "analysis_stage",
@@ -76,6 +118,10 @@ def normalize_source_settings(value: object) -> dict[str, dict[str, Any]]:
             settings = {}
         else:
             raise CompanyRegistryError(f"sources.{source} 必须是对象")
+        allowed = set(common_allowed)
+        if source == "bank":
+            allowed.add("banks")
+            allowed.add("exceptions")
         unsupported = sorted(set(settings) - allowed)
         if unsupported:
             raise CompanyRegistryError(
@@ -85,6 +131,24 @@ def normalize_source_settings(value: object) -> dict[str, dict[str, Any]]:
         if not isinstance(enabled, bool):
             raise CompanyRegistryError(f"sources.{source}.enabled 必须是 JSON 布尔值 true 或 false")
         settings["enabled"] = enabled
+        settings.setdefault("mode", "analysis-only")
+        settings.setdefault("analysis_stage", "ocr")
+        settings.setdefault("preload_items", False)
+        if source == "bank":
+            settings.setdefault("banks", {})
+            settings["banks"] = validate_bank_configs(
+                settings["banks"], "sources.bank.banks"
+            )
+            if "exceptions" not in settings:
+                defaults = (
+                    bank_exception_defaults
+                    if bank_exception_defaults is not None
+                    else load_default_bank_exceptions()
+                )
+                settings["exceptions"] = copy.deepcopy(defaults)
+            settings["exceptions"] = validate_bank_exceptions(
+                settings["exceptions"], "sources.bank.exceptions"
+            )
         result[source] = settings
     return result
 
@@ -97,12 +161,9 @@ def normalize_month_defaults(value: object) -> dict[str, Any]:
     else:
         raise CompanyRegistryError("project.defaults 必须是对象")
     allowed = {
-        "mode",
-        "analysis_stage",
         "analysis_validation",
         "ocr_workers",
         "llm_workers",
-        "preload_items",
         "purpose",
         "allow_cross_entity",
         "only_mapped_invoices",
@@ -112,10 +173,7 @@ def normalize_month_defaults(value: object) -> dict[str, Any]:
         raise CompanyRegistryError(
             "project.defaults 包含不支持的字段：" + ", ".join(unsupported)
         )
-    result.setdefault("mode", "analysis-only")
-    result.setdefault("analysis_stage", "ocr")
     result.setdefault("analysis_validation", "strict")
-    result.setdefault("preload_items", False)
     result.setdefault("purpose", "production")
     result.setdefault("allow_cross_entity", False)
     result.setdefault("only_mapped_invoices", False)
@@ -163,7 +221,7 @@ def choose_template(payload: dict[str, Any], templates_path: Path) -> str:
         available = ", ".join(sorted(key for key, item in templates.items() if item.enabled))
         raise CompanyRegistryError(
             "公司尚未准备可用模板；请通过 commands/start.bat 的 "
-            f"month SOURCE_COMPANY_ID YYYY-MM [TARGET_COMPANY_ID] 自动初始化。当前可用模板：{available or '无'}"
+            f"month DATASET_COMPANY_ID YYYY-MM TARGET_COMPANY_ID 自动初始化。当前可用模板：{available or '无'}"
         )
     if not (ROOT / "templates" / template.directory / "index.json").is_file():
         raise CompanyRegistryError(f"模板缺少 index.json：templates/{template.directory}")
@@ -194,9 +252,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("month", help="会计月份，严格使用 YYYY-MM")
     parser.add_argument(
         "target_accountbook",
-        nargs="?",
-        default="",
-        help="目标账套的 company_id、accountbook key 或精确公司名；省略时新项目默认与资料公司相同",
+        help="必须显式指定目标账套的 company_id、accountbook key 或精确公司名",
     )
     return parser.parse_args()
 
@@ -229,40 +285,21 @@ def main() -> int:
 
         project_config_path = month_root / "project.json"
         project_payload = read_object(project_config_path) if project_config_path.is_file() else {}
-        if project_payload and project_payload.get("version") != 5:
-            raise CompanyRegistryError(f"月份配置版本必须为 5：{project_config_path}")
-        existing_target: dict[str, Any] = {}
         if project_payload:
-            raw_existing_target = project_payload.get("target")
-            if not isinstance(raw_existing_target, dict):
-                if not args.target_accountbook:
-                    raise CompanyRegistryError(
-                        "已有 v5 月份配置缺少显式 project.target；请删除无效配置后重新创建，或明确指定目标账套"
-                    )
-            else:
-                existing_target = raw_existing_target
-            if not args.target_accountbook:
-                existing_key = str(existing_target.get("accountbook_key") or "").strip()
-                existing_id = str(existing_target.get("company_id") or "").strip()
-                existing_name = str(existing_target.get("company_name") or "").strip()
-                if not existing_key or not existing_id or not existing_name:
-                    raise CompanyRegistryError(
-                        "已有 v5 月份配置的 target 必须包含 accountbook_key/company_id/company_name"
-                    )
-        target_selector = str(
-            args.target_accountbook
-            or existing_target.get("accountbook_key")
-            or company_key
-        )
-        target_accountbook = resolve_target_accountbook_selector(accountbooks, target_selector)
-        if project_payload and not args.target_accountbook:
+            if project_payload.get("version") != 7:
+                raise CompanyRegistryError(f"月份配置版本必须为 7：{project_config_path}")
+            existing_dataset = project_payload.get("dataset")
+            if not isinstance(existing_dataset, dict):
+                raise CompanyRegistryError("已有 v7 月份配置缺少显式 project.dataset")
             if (
-                str(existing_target.get("company_id")) != target_accountbook.company_id
-                or str(existing_target.get("company_name")) != target_accountbook.name
+                str(existing_dataset.get("company_key") or "").strip() != company_key
+                or str(existing_dataset.get("company_id") or "").strip() != company_id
+                or str(existing_dataset.get("company_name") or "").strip() != company_name
             ):
                 raise CompanyRegistryError(
-                    "已有月份配置的 target 身份与 accountbooks.json 不一致；请明确指定目标账套后重新初始化"
+                    "已有月份配置的 dataset 身份与资料公司配置不一致；请修正或删除该月份配置"
                 )
+        target_accountbook = resolve_target_accountbook_selector(accountbooks, args.target_accountbook)
         safe_defaults = normalize_month_defaults(project_payload.get("defaults"))
         input_settings = normalize_input_settings(project_payload.get("input"))
         source_settings = normalize_source_settings(project_payload.get("sources"))
@@ -270,11 +307,13 @@ def main() -> int:
             source for source in BUILT_IN_SOURCES if source_settings[source]["enabled"]
         ]
         normalized_project = {
-            "version": 5,
-            "company_key": company_key,
-            "company_id": company_id,
-            "company_name": company_name,
+            "version": 7,
             "month": month,
+            "dataset": {
+                "company_key": company_key,
+                "company_id": company_id,
+                "company_name": company_name,
+            },
             "target": {
                 "accountbook_key": target_accountbook.key,
                 "company_id": target_accountbook.company_id,
@@ -310,6 +349,11 @@ def main() -> int:
             "company_name": company_name,
             "company_key": company_key,
             "template_company": template_key,
+            "dataset": {
+                "company_key": company_key,
+                "company_id": company_id,
+                "company_name": company_name,
+            },
             "target": {
                 "accountbook_key": target_accountbook.key,
                 "company_id": target_accountbook.company_id,
@@ -320,7 +364,7 @@ def main() -> int:
             "project_config": str(project_config_path),
             "sources": list(BUILT_IN_SOURCES),
             "execution_enabled_sources": execution_enabled_sources,
-            "next": "目标账套已显式写入 project.json；把资料放入 input，并设置 mode、analysis_stage 和 sources 后运行。",
+            "next": "dataset 与 target 已显式写入 project.json；把资料放入 input，并在对应 source 中设置 enabled、mode、analysis_stage、preload_items 后运行。",
         }, ensure_ascii=False, indent=2))
         return 0
     except (CompanyRegistryError, OSError, json.JSONDecodeError) as exc:

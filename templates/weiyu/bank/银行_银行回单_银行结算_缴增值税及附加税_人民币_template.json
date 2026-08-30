@@ -18,6 +18,9 @@
     "sourceFolders": [
       "bank"
     ],
+    "flowDirections": [
+      "outflow"
+    ],
     "requiredKeywords": [],
     "keywordGroups": [
       [

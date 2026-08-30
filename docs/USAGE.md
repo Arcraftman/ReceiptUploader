@@ -52,13 +52,13 @@ commands\start.bat
 查看公司后，输入：
 
 ```text
-month 资料公司ID YYYY-MM [目标公司ID]
+month dataset公司ID YYYY-MM target公司ID
 ```
 
 同一主体记账：
 
 ```text
-month 17867515 2026-09
+month 17867515 2026-09 17867515
 ```
 
 把微誉 2026-09 的资料写入星海账套：
@@ -67,7 +67,7 @@ month 17867515 2026-09
 month 17867515 2026-09 20151038
 ```
 
-省略目标公司时，系统仍会把资料公司自己的账套完整写入 `project.json.target`，不会在运行时猜测目标。
+`dataset` 和 `target` 都必须明确指定；即使同一家公司，也要把同一个公司 ID 分别作为 dataset 和 target 输入。
 
 若资料公司尚未配置，`month` 命令会基于 `config/template_companies.json` 中的默认基础模板，自动创建：
 
@@ -100,11 +100,13 @@ data/inbox/company_<id>_<公司名>/<YYYY-MM>/project.json
 
 ```json
 {
-  "version": 5,
-  "company_key": "company_17867515",
-  "company_id": "17867515",
-  "company_name": "上海微誉信息技术有限公司",
+  "version": 7,
   "month": "2026-09",
+  "dataset": {
+    "company_key": "company_17867515",
+    "company_id": "17867515",
+    "company_name": "上海微誉信息技术有限公司"
+  },
   "target": {
     "accountbook_key": "company_17867515",
     "company_id": "17867515",
@@ -116,31 +118,50 @@ data/inbox/company_<id>_<公司名>/<YYYY-MM>/project.json
     "usage_column": "E"
   },
   "defaults": {
-    "mode": "analysis-only",
-    "analysis_stage": "ocr",
     "analysis_validation": "strict",
-    "preload_items": false,
     "purpose": "production",
     "allow_cross_entity": false,
     "only_mapped_invoices": true
   },
   "sources": {
-    "sales": {"enabled": true},
-    "purchase": {"enabled": false},
-    "bank": {"enabled": false},
-    "misc": {"enabled": false}
+    "sales": {"enabled": true, "mode": "analysis-only", "analysis_stage": "ocr", "preload_items": false},
+    "purchase": {"enabled": false, "mode": "analysis-only", "analysis_stage": "ocr", "preload_items": false},
+    "bank": {
+      "enabled": false,
+      "mode": "analysis-only",
+      "analysis_stage": "ocr",
+      "preload_items": false,
+      "banks": {
+        "zhaoshangyinhang": {
+          "bank_account_number": "100204",
+          "split": {
+            "parts_per_page": 3,
+            "filename_index_length": 15,
+            "filename_index_prefix": "C"
+          },
+          "statement_columns": {
+            "index_column": null,
+            "bank_debit_column": null,
+            "bank_credit_column": null,
+            "counterparty_name_column": null
+          }
+        }
+      }
+    },
+    "misc": {"enabled": false, "mode": "analysis-only", "analysis_stage": "ocr", "preload_items": false}
   }
 }
 ```
 
 关键含义：
 
-- `company_*`：本月资料来自哪家公司。
+- `dataset`：本月资料来自哪家公司，三个身份字段必须与资料公司配置完全一致。
 - `target`：本月最终写入哪家公司的账套，三个身份字段必须与运行期账套注册表完全一致。
 - `input`：该月 Excel 文件名和用途列。
-- `defaults`：该月所有业务的默认运行参数。
-- `sources.<业务>.enabled`：只有设为 `true` 的业务才会执行。
-- 某个 source 可直接覆盖 `mode`、`analysis_stage`、`analysis_validation`、并发数、`preload_items`、`purpose`、跨主体许可和 `only_mapped_invoices`；不再使用嵌套 `overrides`。
+- `defaults`：只保存四个业务可共享的高级参数，不再保存业务运行开关。
+- `sources.<业务>`：四个业务都必须精确写全 `enabled`、`mode`、`analysis_stage`、`preload_items`；只有 `enabled=true` 才会执行。
+- `sources.bank.banks`：当月银行唯一配置源；每个 bank key 同时保存 `bank_account_number`、`split` 和 `statement_columns`。
+- 某个 source 还可直接覆盖 `analysis_validation`、并发数、`purpose`、跨主体许可和 `only_mapped_invoices`；不再使用嵌套 `overrides`。
 
 四个资料目录始终自带：
 
@@ -215,24 +236,72 @@ commands\reset_upload_state.bat company_17867515_上海微誉信息技术有限�
 
 ## 银行回单拆分
 
-若一个银行 PDF 含多张回单，在该月创建：
-
-```text
-data/inbox/<公司>/<月份>/input/bank/bank_split.json
-```
-
-内容必须是小写银行键名到回单数量的直接映射：
+当月所有银行配置只写在 `project.json.sources.bank.banks`。不再生成、读取或同步 `bank_split.json`。每个 bank key 同时决定配置分组和输入文件名：
 
 ```json
-{
-  "shanghaiyinhang": 2,
-  "shanghainongshangyinhang": 3
+"banks": {
+  "zhaoshangyinhang": {
+    "bank_account_number": "100204",
+    "split": {
+      "parts_per_page": 3,
+      "filename_index_length": 15,
+      "filename_index_prefix": "C"
+    },
+    "statement_columns": {
+      "index_column": "J",
+      "bank_debit_column": "F",
+      "bank_credit_column": "G",
+      "counterparty_name_column": "K"
+    }
+  }
 }
 ```
 
-参考 `examples/bank_split.json`。原始 PDF 保留不动，拆分结果写入隔离工作区的 `generated/bank_receipts/`。
+银行数量没有写死；每增加一家银行，用户在 `banks` 中增加一个完整对象。`<bank_key>.pdf` 用于裁剪，`<bank_key>.xlsx` 留给流水匹配。`split` 中的三项均必填，前缀大小写敏感。`statement_columns` 必须恰好包含四项：
+
+| 配置项 | 含义 |
+|---|---|
+| `bank_account_number` | 当前银行在目标账套中的固定银行存款科目号；模板选择和最终分录必须一致 |
+| `index_column` | Excel 中与已切割 PDF 文件名索引相等的列 |
+| `bank_debit_column` | 银行借方列；有金额时是我方贷方，即现金流出 |
+| `bank_credit_column` | 银行贷方列；有金额时是我方借方，即现金流入 |
+| `counterparty_name_column` | 对手方名称列；现金流出固定作为供应商，现金流入固定作为客户 |
+
+银行借贷两列中只有一方是有效金额，另一方可以是 0、空值或文字。`bank` 启用时四列不允许为 `null`；未填写会在任务预检阶段停止。`configCompany` 固定等于本月 `dataset.company_name`；对手方名称和供应商/客户角色由流水表及上述方向规则决定，OCR 和模型不得覆盖。
+
+现金流入时，如果 `bank_credit_column` 是有效金额，并且同一行的 `bank_debit_column` 完全由一串或多串数字组成（数字之间只能有空格、换行或常用分隔符，不能含普通文字），系统会按原顺序保存这些数字，并让它们直接成为 `explanation_body`。这条规则是替换，不会与模板原有 body 拼接；只要单元格中含有普通文字就不触发。
+
+每个 bank 对象必须填写一个纯数字文本 `bank_account_number`。该值会进入 bank map、模型的模板选择上下文和固定业务规则；模板渲染时，名称包含“银行存款”的唯一分录会强制使用该科目。已有 `template_analysis.json` 的科目号不一致时，`prepare+existing` 也会阻断，不能沿用旧分析。
+
+模板分录以科目编号为准；目标账套中同一编号显示的科目名称或明细名称不同，不作为阻断条件。银行存款分录仍以这个显式配置号码为准。
+
+每张已匹配回单还会从 OCR 原文确定交易/记账日期。只有名称包含“银行存款”的那条分录在基础摘要末尾追加一个空格和 `YYYY-MM-DD`；另一条对方科目分录不追加日期。已有分析缺少该日期、摘要未按规则生成或数字 body 不一致时，`prepare+existing` 会停止并要求重新执行 LLM 分析。
+
+每个银行模板还必须配置 `matchRules.flowDirections`。候选模板先按 Excel 流水确定的 `inflow/outflow` 硬筛选，再判断业务词；收款模板绝不允许处理付款，付款模板也不能处理收款。规则只剩一个候选时直接确定模板，不再调用 Qwen。外币只按完整的 `USD/US$/HKD/EUR` 或中文币种名称识别，`USB` 等普通单词不会再被误判。
+
+bank 的 `preload_items` 现在同样支持 `false`、`"once"`、`"auto"`。设为 `"once"` 或 `"auto"` 时，系统根据 bank map 中固定的方向和对手方名称，在目标账套创建缺少的客户/供应商，再进行模板分析；这是远端写操作。`false` 时只读取现有辅助核算目录，缺少对象的分析会保持 blocked。
+
+`sources.bank.exceptions` 是一个名称数组。每个名称都与 Excel 对手方列完整文本精确匹配；命中后统一与普通业务隔离。裁剪原件始终保留在 `generated/bank_receipts`，特殊 PDF 另复制到 `generated/bank_exceptions/<counterparty>/`；权威清单写入 `generated/maps/bank/bank_exceptions.json`。使用 `exceptions dataset公司ID YYYY-MM` 查看特殊对象、原件和副本；`unmatched` 只列出没有被 exception 接管的普通未匹配记录。
+
+新公司、新月份首次创建时，`config/bank_exception.defaults.json` 中的名称会复制到该月 `sources.bank.exceptions`；现有月份绝不自动合并或覆盖。通用默认只预置 TIPS。配置只写 Excel 对手方列的完整名称：
+
+```json
+"exceptions": [
+  "TIPS电子缴税款业务待报解预算收入",
+  "重庆京东盛际小额贷款有限公司",
+  "张三"
+]
+```
+
+月度配置没有其他字段。TIPS 这类无文件名索引 PDF 的稳定关键词统一维护在 `config/bank_exception.defaults.json`，普通用户不用填写。
+
+bank 入口只读取和校验当月 `project.json`，不会自动增加银行或改写运行字段。OCR 阶段严格按“全部银行裁剪完成 → `pdf_keywords` 分离特殊 PDF → exception 名称与流水索引补充分离 → OCR 其余单张回单 → 匹配其余流水”执行，只写特殊副本、`generated/ocr/bank` 和 `generated/maps/bank`，不生成 receipt。特殊 PDF 与对应流水不会进入普通 OCR、匹配、LLM 或凭证流程。
+
+然后按 sales/purchase 相同生命周期运行：`analysis-only+llm` 写 `template_analysis.json`；人工复核后以 `prepare+existing` 生成最终 receipt，全部初始为 `draft=true`。补齐后手动改为 `false`，再运行 `verify dataset公司ID YYYY-MM`。verify 只能检查最终 receipts，并在 dry-run/未来真实提交前自动重跑；任何草稿或无效文件都会阻断整批。银行真实上传目前仍保持阻断。
 
 ## 配置边界
+
+`generated/maps` 按实际运行按需创建：`sales/` 只保存销售 map，`purchase/` 只保存采购匹配和采购 map，`bank/` 只保存一套按 bank key 分组的 `bank_map` 和报告。初始化月份不会预建四个空 map 目录。
 
 | 路径 | 作用 | 谁维护 |
 |---|---|---|
@@ -242,9 +311,9 @@ data/inbox/<公司>/<月份>/input/bank/bank_split.json
 | `config/template_companies.json` | 可用模板公司及默认基础模板 | 模板维护者 |
 | `config/companies/company_<id>_<公司名>.json` | 资料公司身份和共享模板 | 初始化命令 |
 | `runtime/registry/accountbooks.json` | 本次发现的可访问账套与会话路径 | 系统自动生成 |
-| `data/inbox/<公司>/<月>/project.json` | 该月目标、输入、模式和业务开关 | 用户每月维护 |
+| `data/inbox/<公司>/<月>/project.json` | 该月目标、输入、业务开关和全部银行规则 | 用户每月维护 |
 
-配置优先级只有：技术默认值 → 当月 `defaults` → 当月 source 直接覆盖 → 命令行维护性临时覆盖。
+配置优先级只有：技术默认值 → 当月共享 `defaults` → 当月 source 精确运行字段及直接覆盖 → 命令行维护性临时覆盖。
 
 ## 目录结构
 

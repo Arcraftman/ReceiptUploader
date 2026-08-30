@@ -17,6 +17,9 @@
     "sourceFolders": [
       "bank"
     ],
+    "flowDirections": [
+      "outflow"
+    ],
     "allowedDocumentBlocks": [
       "银行"
     ],
@@ -34,15 +37,29 @@
       "退客户款",
       "报销",
       "工资",
-      "税",
+      "TIPS电子缴税",
+      "海关电子税",
+      "个人所得税",
+      "企业所得税",
+      "增值税",
+      "印花税",
+      "城建税",
       "社保",
-      "公积金"
+      "公积金",
+      "账户管理费",
+      "年费",
+      "直接扣费",
+      "手续费",
+      "内部转账"
     ],
     "expectedAccounts": [
       "2202",
       "100201"
     ],
-    "priority": 290
+    "priority": 290,
+    "defaultForSource": true,
+    "defaultRequiresBusinessValues": true,
+    "excludeCounterpartyEqualsConfigCompany": true
   },
   "summary": {
     "header": "",

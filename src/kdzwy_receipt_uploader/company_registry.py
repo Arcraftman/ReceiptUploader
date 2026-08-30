@@ -14,6 +14,142 @@ class CompanyRegistryError(ValueError):
 
 
 MONTH_PATTERN = re.compile(r"\d{4}-(0[1-9]|1[0-2])")
+BANK_KEY_PATTERN = re.compile(r"[a-z][a-z0-9_-]*")
+
+
+def validate_bank_exceptions(value: object, label: str) -> list[str]:
+    """Validate the exact counterparty names excluded for one company month."""
+    if not isinstance(value, list):
+        raise CompanyRegistryError(f"{label} 必须是名称数组")
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for index, raw_name in enumerate(value, 1):
+        if not isinstance(raw_name, str) or not raw_name.strip():
+            raise CompanyRegistryError(f"{label}[{index}] 必须是非空名称")
+        name = raw_name.strip()
+        if name in seen:
+            raise CompanyRegistryError(f"{label} 包含重复名称：{name}")
+        seen.add(name)
+        normalized.append(name)
+    return normalized
+
+
+def _validate_bank_statement_column_set(value: object, label: str) -> dict[str, str | None]:
+    if not isinstance(value, dict):
+        raise CompanyRegistryError(f"{label} 必须是对象")
+    required_columns = {
+        "index_column",
+        "bank_debit_column",
+        "bank_credit_column",
+        "counterparty_name_column",
+    }
+    actual_columns = set(value)
+    if actual_columns != required_columns:
+        missing = sorted(required_columns - actual_columns)
+        extra = sorted(actual_columns - required_columns)
+        details: list[str] = []
+        if missing:
+            details.append("缺少 " + ", ".join(missing))
+        if extra:
+            details.append("多出 " + ", ".join(extra))
+        raise CompanyRegistryError(
+            f"{label} 必须精确包含四个列配置：{'；'.join(details)}"
+        )
+    normalized: dict[str, str | None] = {}
+    for column_key in (
+        "index_column",
+        "bank_debit_column",
+        "bank_credit_column",
+        "counterparty_name_column",
+    ):
+        column_value = value[column_key]
+        if column_value is None:
+            normalized[column_key] = None
+        elif isinstance(column_value, str) and column_value.strip():
+            normalized[column_key] = column_value.strip()
+        else:
+            raise CompanyRegistryError(
+                f"{label}.{column_key} 必须是非空文本或 null"
+            )
+    return normalized
+
+
+def validate_bank_configs(value: object, label: str) -> dict[str, dict[str, Any]]:
+    if not isinstance(value, dict):
+        raise CompanyRegistryError(f"{label} 必须是对象")
+    normalized: dict[str, dict[str, Any]] = {}
+    for raw_bank_key, raw_bank_config in value.items():
+        bank_key = str(raw_bank_key)
+        if not BANK_KEY_PATTERN.fullmatch(bank_key):
+            raise CompanyRegistryError(
+                f"{label} 的银行 key 只能使用英文小写、数字、下划线或连字符：{bank_key}"
+            )
+        if not isinstance(raw_bank_config, dict):
+            raise CompanyRegistryError(f"{label}.{bank_key} 必须是对象")
+        _reject_unknown_fields(
+            raw_bank_config,
+            {"bank_account_number", "split", "statement_columns"},
+            f"{label}.{bank_key}",
+        )
+        if set(raw_bank_config) != {
+            "bank_account_number",
+            "split",
+            "statement_columns",
+        }:
+            raise CompanyRegistryError(
+                f"{label}.{bank_key} 必须同时包含 bank_account_number、split 和 statement_columns"
+            )
+        bank_account_number = raw_bank_config["bank_account_number"]
+        if not isinstance(bank_account_number, str) or not re.fullmatch(
+            r"[0-9]+", bank_account_number.strip()
+        ):
+            raise CompanyRegistryError(
+                f"{label}.{bank_key}.bank_account_number 必须是非空数字文本"
+            )
+        split = raw_bank_config["split"]
+        if not isinstance(split, dict):
+            raise CompanyRegistryError(f"{label}.{bank_key}.split 必须是对象")
+        split_fields = {
+            "parts_per_page",
+            "filename_index_length",
+            "filename_index_prefix",
+        }
+        if set(split) != split_fields:
+            raise CompanyRegistryError(
+                f"{label}.{bank_key}.split 必须精确包含 parts_per_page、filename_index_length、filename_index_prefix"
+            )
+        parts_per_page = split["parts_per_page"]
+        if isinstance(parts_per_page, bool) or not isinstance(parts_per_page, int) or not 1 <= parts_per_page <= 10:
+            raise CompanyRegistryError(
+                f"{label}.{bank_key}.split.parts_per_page 必须是 1 到 10 的整数"
+            )
+        index_length = split["filename_index_length"]
+        if isinstance(index_length, bool) or not isinstance(index_length, int) or not 6 <= index_length <= 50:
+            raise CompanyRegistryError(
+                f"{label}.{bank_key}.split.filename_index_length 必须是 6 到 50 的整数"
+            )
+        index_prefix = split["filename_index_prefix"]
+        if not isinstance(index_prefix, str) or not re.fullmatch(r"[A-Za-z]+", index_prefix):
+            raise CompanyRegistryError(
+                f"{label}.{bank_key}.split.filename_index_prefix 必须是大小写敏感的英文字母"
+            )
+        if len(index_prefix) > index_length:
+            raise CompanyRegistryError(
+                f"{label}.{bank_key}.split.filename_index_prefix 不能长于 filename_index_length"
+            )
+        normalized[bank_key] = {
+            "bank_account_number": bank_account_number.strip(),
+            "split": {
+                "parts_per_page": parts_per_page,
+                "filename_index_length": index_length,
+                "filename_index_prefix": index_prefix,
+            },
+            "statement_columns": _validate_bank_statement_column_set(
+                raw_bank_config["statement_columns"],
+                f"{label}.{bank_key}.statement_columns",
+            ),
+        }
+    return normalized
 
 
 def normalize_month(value: object) -> str:
@@ -246,24 +382,28 @@ def load_company_profile(path: Path) -> CompanyProfile:
 def load_company_jobs(path: Path, company: CompanyProfile) -> list[CompanyJob]:
     """Load one company's one-month project.json as the only run configuration."""
     payload = _read_object(path)
-    if payload.get("version") != 5:
-        raise CompanyRegistryError(f"月份配置版本必须为 5：{path}")
+    if payload.get("version") != 7:
+        raise CompanyRegistryError(f"月份配置版本必须为 7：{path}")
     _reject_unknown_fields(
         payload,
-        {"version", "company_key", "company_id", "company_name", "month", "target", "input", "defaults", "sources"},
+        {"version", "month", "dataset", "target", "input", "defaults", "sources"},
         "project.json",
     )
-    project_company_key = _required_text(payload.get("company_key"), "project.company_key")
-    project_company_id = _required_text(payload.get("company_id"), "project.company_id")
-    project_company_name = _required_text(payload.get("company_name"), "project.company_name")
+    dataset = payload.get("dataset")
+    if not isinstance(dataset, dict):
+        raise CompanyRegistryError("project.dataset 必须是显式资料公司对象")
+    _reject_unknown_fields(dataset, {"company_key", "company_id", "company_name"}, "project.dataset")
+    dataset_company_key = _required_text(dataset.get("company_key"), "project.dataset.company_key")
+    dataset_company_id = _required_text(dataset.get("company_id"), "project.dataset.company_id")
+    dataset_company_name = _required_text(dataset.get("company_name"), "project.dataset.company_name")
     month = normalize_month(_required_text(payload.get("month"), "project.month"))
     if (
-        project_company_key != company.key
-        or project_company_id != company.company_id
-        or project_company_name != company.name
+        dataset_company_key != company.key
+        or dataset_company_id != company.company_id
+        or dataset_company_name != company.name
     ):
         raise CompanyRegistryError(
-            f"月份配置与公司身份不一致：{path}"
+            f"project.dataset 与资料公司配置身份不一致：{path}"
         )
     target = payload.get("target")
     if not isinstance(target, dict):
@@ -288,43 +428,56 @@ def load_company_jobs(path: Path, company: CompanyProfile) -> list[CompanyJob]:
     defaults = payload.get("defaults")
     if not isinstance(defaults, dict):
         raise CompanyRegistryError("project.defaults 必须是对象")
-    configurable_fields = {
-        "mode",
-        "analysis_stage",
+    shared_configurable_fields = {
         "analysis_validation",
         "ocr_workers",
         "llm_workers",
-        "preload_items",
         "purpose",
         "allow_cross_entity",
         "only_mapped_invoices",
     }
-    _reject_unknown_fields(defaults, configurable_fields, "project.defaults")
-    default_mode = _required_text(defaults.get("mode"), "project.defaults.mode")
-    _required_text(defaults.get("analysis_stage"), "project.defaults.analysis_stage")
+    _reject_unknown_fields(defaults, shared_configurable_fields, "project.defaults")
     for label in ("allow_cross_entity", "only_mapped_invoices"):
         if label in defaults:
             _strict_bool(defaults[label], f"project.defaults.{label}", default=False)
 
-    def effective_source_settings(row: dict[str, Any], label: str) -> dict[str, Any]:
-        _reject_unknown_fields(row, {"enabled", *configurable_fields}, label)
+    def effective_source_settings(
+        row: dict[str, Any], label: str, source: str
+    ) -> dict[str, Any]:
+        source_fields = {
+            "enabled",
+            "mode",
+            "analysis_stage",
+            "preload_items",
+            *shared_configurable_fields,
+        }
+        if source == "bank":
+            source_fields.add("banks")
+            source_fields.add("exceptions")
+        _reject_unknown_fields(row, source_fields, label)
         for boolean_key in ("allow_cross_entity", "only_mapped_invoices"):
             if boolean_key in row:
                 _strict_bool(row[boolean_key], f"{label}.{boolean_key}", default=False)
         result: dict[str, Any] = {}
         for key in (
-            "analysis_stage",
             "analysis_validation",
             "ocr_workers",
             "llm_workers",
-            "preload_items",
             "only_mapped_invoices",
         ):
             if key in defaults:
                 result[key] = copy.deepcopy(defaults[key])
             if key in row:
                 result[key] = copy.deepcopy(row[key])
-        preload_value = result.get("preload_items", False)
+        analysis_stage = _required_text(
+            row.get("analysis_stage"), f"{label}.analysis_stage"
+        )
+        if analysis_stage not in {"ocr", "llm", "existing", "all"}:
+            raise CompanyRegistryError(
+                f'{label}.analysis_stage 只支持 "ocr"、"llm"、"existing" 或 "all"'
+            )
+        result["analysis_stage"] = analysis_stage
+        preload_value = row.get("preload_items")
         if preload_value is True:
             result["preload_items"] = "once"
         elif preload_value is False or preload_value is None:
@@ -333,6 +486,21 @@ def load_company_jobs(path: Path, company: CompanyProfile) -> list[CompanyJob]:
             result["preload_items"] = str(preload_value).strip().lower()
         else:
             raise CompanyRegistryError('preload_items 只支持 false、"once" 或 "auto"')
+        if source == "bank":
+            if "banks" not in row:
+                raise CompanyRegistryError(
+                    "sources.bank 缺少统一多银行配置 banks"
+                )
+            if "exceptions" not in row:
+                raise CompanyRegistryError(
+                    "sources.bank 缺少特殊对象名称配置 exceptions"
+                )
+            result["banks"] = validate_bank_configs(
+                row["banks"], "sources.bank.banks"
+            )
+            result["exceptions"] = validate_bank_exceptions(
+                row["exceptions"], "sources.bank.exceptions"
+            )
         return result
 
     sources = payload.get("sources")
@@ -345,16 +513,44 @@ def load_company_jobs(path: Path, company: CompanyProfile) -> list[CompanyJob]:
         row = sources[source]
         if not isinstance(row, dict):
             raise CompanyRegistryError(f"sources.{source} 必须是对象")
-        job_enabled = row.get("enabled", False)
+        missing_core = sorted(
+            {"enabled", "mode", "analysis_stage", "preload_items"} - set(row)
+        )
+        if missing_core:
+            raise CompanyRegistryError(
+                f"sources.{source} 缺少精确运行字段：{', '.join(missing_core)}"
+            )
+        job_enabled = row["enabled"]
         if not isinstance(job_enabled, bool):
             raise CompanyRegistryError(f"sources.{source}.enabled 必须是 JSON 布尔值 true 或 false")
-        overrides = effective_source_settings(row, f"sources.{source}")
+        if source == "bank" and job_enabled and not row.get("banks"):
+            raise CompanyRegistryError(
+                "sources.bank.enabled=true 时 banks 必须至少配置一家银行"
+            )
+        source_mode = _required_text(row.get("mode"), f"sources.{source}.mode")
+        if source_mode not in {"analysis-only", "prepare", "dry-run", "confirm"}:
+            raise CompanyRegistryError(
+                f"sources.{source}.mode 只支持 analysis-only、prepare、dry-run 或 confirm"
+            )
+        overrides = effective_source_settings(row, f"sources.{source}", source)
+        if source == "bank" and job_enabled:
+            for bank_key, bank_config in overrides["banks"].items():
+                missing_columns = [
+                    column_key
+                    for column_key, column_value in bank_config["statement_columns"].items()
+                    if column_value is None
+                ]
+                if missing_columns:
+                    raise CompanyRegistryError(
+                        "sources.bank.enabled=true 时 "
+                        f"banks.{bank_key}.statement_columns 必须填写：{', '.join(missing_columns)}"
+                    )
         result.append(CompanyJob(
             accountbook=target_accountbook,
-            dataset=company.key,
+            dataset=dataset_company_key,
             month=month,
             template_company=company.template_company,
-            mode=str(row.get("mode", default_mode)),
+            mode=source_mode,
             source=source,
             purpose=str(row.get("purpose", defaults.get("purpose", "production"))),
             allow_cross_entity=_strict_bool(
@@ -412,7 +608,6 @@ DEFAULT_PIPELINE_PATHS = {
     "sales_map_report_file": "{workspace_root}/generated/maps/{source}/sales_map.report.json",
     "purchase_map_file": "{workspace_root}/generated/maps/{source}/purchase_map.json",
     "purchase_map_report_file": "{workspace_root}/generated/maps/{source}/purchase_map.report.json",
-    "bank_split_config_file": "data/inbox/{company}/{month}/input/bank/bank_split.json",
     "bank_split_output_dir": "{workspace_root}/generated/bank_receipts",
     "bank_split_report_file": "{workspace_root}/generated/bank_receipts/split.report.json",
     "item_class_map_file": "{workspace_root}/generated/maps/{source}/item_class_maps.json",

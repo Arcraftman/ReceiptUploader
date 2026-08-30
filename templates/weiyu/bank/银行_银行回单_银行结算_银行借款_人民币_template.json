@@ -17,6 +17,9 @@
     "sourceFolders": [
       "bank"
     ],
+    "flowDirections": [
+      "inflow"
+    ],
     "allowedDocumentBlocks": [
       "银行"
     ],

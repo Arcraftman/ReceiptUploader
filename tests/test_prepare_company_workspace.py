@@ -19,7 +19,6 @@ def test_workspace_always_contains_all_builtin_sources(tmp_path: Path, monkeypat
     config_name = f"company_{company_id}_{company_name}.json"
     data_root = f"data/inbox/company_{company_id}_{company_name}"
     company_config = tmp_path / "config" / "companies" / config_name
-
     write_json(
         tmp_path / "runtime" / "registry" / "accountbooks.json",
         {
@@ -68,11 +67,13 @@ def test_workspace_always_contains_all_builtin_sources(tmp_path: Path, monkeypat
     write_json(
         september_project,
         {
-            "version": 5,
-            "company_key": company_key,
-            "company_id": company_id,
-            "company_name": company_name,
+            "version": 7,
             "month": "2026-09",
+            "dataset": {
+                "company_key": company_key,
+                "company_id": company_id,
+                "company_name": company_name,
+            },
             "target": {
                 "accountbook_key": company_key,
                 "company_id": company_id,
@@ -84,14 +85,20 @@ def test_workspace_always_contains_all_builtin_sources(tmp_path: Path, monkeypat
                 "usage_column": "E",
             },
             "defaults": {
-                "mode": "analysis-only",
-                "analysis_stage": "existing",
+                "analysis_validation": "strict",
             },
             "sources": {
-                "sales": {"enabled": True, "analysis_stage": "existing"},
-                "purchase": {"enabled": False},
-                "bank": {"enabled": False},
-                "misc": {"enabled": False},
+                "sales": {"enabled": True, "mode": "analysis-only", "analysis_stage": "existing", "preload_items": False},
+                "purchase": {"enabled": False, "mode": "analysis-only", "analysis_stage": "ocr", "preload_items": False},
+                "bank": {
+                    "enabled": False,
+                    "mode": "analysis-only",
+                    "analysis_stage": "ocr",
+                    "preload_items": False,
+                    "banks": {},
+                    "exceptions": [],
+                },
+                "misc": {"enabled": False, "mode": "analysis-only", "analysis_stage": "ocr", "preload_items": False},
             },
         },
     )
@@ -108,18 +115,25 @@ def test_workspace_always_contains_all_builtin_sources(tmp_path: Path, monkeypat
     workspace_root = tmp_path / "workspaces" / "account_1" / company_key / "2026-09"
     for source in prepare_company_workspace.BUILT_IN_SOURCES:
         assert (month_root / "input" / source).is_dir()
-        assert (workspace_root / "generated" / "maps" / source).is_dir()
+        assert not (workspace_root / "generated" / "maps" / source).exists()
         assert (workspace_root / "generated" / "receipts" / source).is_dir()
         assert (workspace_root / "generated" / "ocr" / source).is_dir()
         assert (workspace_root / "state" / source).is_dir()
         assert (workspace_root / "logs" / source).is_dir()
 
+    assert not (month_root / "input" / "bank" / "bank_split.json").exists()
+
     project = json.loads((month_root / "project.json").read_text(encoding="utf-8"))
-    assert project["version"] == 5
+    assert project["version"] == 7
+    assert project["dataset"] == {
+        "company_key": company_key,
+        "company_id": company_id,
+        "company_name": company_name,
+    }
     assert project["target"]["accountbook_key"] == company_key
     assert set(project["sources"]) == set(prepare_company_workspace.BUILT_IN_SOURCES)
     assert project["sources"]["sales"]["enabled"] is True
-    assert project["defaults"]["analysis_stage"] == "existing"
+    assert project["sources"]["sales"]["analysis_stage"] == "existing"
     assert "execution_enabled_sources" not in project
 
     marker = month_root / "input" / "sales" / "existing.pdf"
@@ -142,11 +156,13 @@ def test_workspace_always_contains_all_builtin_sources(tmp_path: Path, monkeypat
     write_json(
         october_project,
         {
-            "version": 5,
-            "company_key": company_key,
-            "company_id": company_id,
-            "company_name": company_name,
+            "version": 7,
             "month": "2026-10",
+            "dataset": {
+                "company_key": company_key,
+                "company_id": company_id,
+                "company_name": company_name,
+            },
             "target": {
                 "accountbook_key": "company_456",
                 "company_id": "456",
@@ -157,20 +173,30 @@ def test_workspace_always_contains_all_builtin_sources(tmp_path: Path, monkeypat
                 "usage_filename": "用途确认信息.xlsx",
                 "usage_column": "E",
             },
-            "defaults": {"mode": "dry-run", "analysis_stage": "existing"},
+            "defaults": {"analysis_validation": "strict"},
             "sources": {
-                "sales": {"enabled": False},
-                "purchase": {"enabled": True},
-                "bank": {"enabled": False},
-                "misc": {"enabled": False},
+                "sales": {"enabled": False, "mode": "analysis-only", "analysis_stage": "ocr", "preload_items": False},
+                "purchase": {"enabled": True, "mode": "dry-run", "analysis_stage": "existing", "preload_items": False},
+                "bank": {
+                    "enabled": False,
+                    "mode": "analysis-only",
+                    "analysis_stage": "ocr",
+                    "preload_items": False,
+                    "banks": {},
+                    "exceptions": [],
+                },
+                "misc": {"enabled": False, "mode": "analysis-only", "analysis_stage": "ocr", "preload_items": False},
             },
         },
     )
     assert prepare_company_workspace.main() == 0
     october = json.loads(october_project.read_text(encoding="utf-8"))
-    assert october["defaults"]["mode"] == "dry-run"
+    assert october["sources"]["purchase"]["mode"] == "dry-run"
     assert october["sources"]["purchase"]["enabled"] is True
     assert october["target"]["accountbook_key"] == "company_456"
+    assert not (
+        tmp_path / data_root / "2026-10" / "input" / "bank" / "bank_split.json"
+    ).exists()
     assert "workspace_directory" not in october
     assert (
         tmp_path / "workspaces" / "account_2" / "company_456" / f"from_{company_key}" / "2026-10"

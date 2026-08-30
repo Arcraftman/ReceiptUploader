@@ -89,7 +89,7 @@ function Resolve-MonthInitializationChoice {
     if ($matches.Count -eq 1) { return $matches[0] }
 
     $available = ($Choices | ForEach-Object { "$($_.CompanyKey)=$($_.CompanyName)" }) -join '；'
-    throw "无法唯一匹配 --company：$Selector，matches=$($matches.Count)。可用公司：$available"
+    throw "无法唯一匹配 --dataset/--target：$Selector，matches=$($matches.Count)。可用公司：$available"
 }
 
 function Invoke-SpecifiedMonthInitialization {
@@ -99,23 +99,18 @@ function Invoke-SpecifiedMonthInitialization {
     $requestedMonth = $Month.Trim()
     $requestedTarget = $TargetSelector.Trim()
     if (-not $selector -and -not $requestedMonth -and -not $requestedTarget) {
-        if (-not $Quiet) { Write-Host '未指定 --company 和 --month，仅完成公司发现、登记与登录。' }
+        if (-not $Quiet) { Write-Host '未指定 --dataset、--month 和 --target，仅完成公司发现、登记与登录。' }
         return
     }
-    if (-not $selector -or -not $requestedMonth) {
-        throw '--company 和 --month 必须同时提供。'
+    if (-not $selector -or -not $requestedMonth -or -not $requestedTarget) {
+        throw '--dataset、--month 和 --target 必须同时提供。'
     }
     if ($requestedMonth -notmatch '^\d{4}-(0[1-9]|1[0-2])$') {
         throw "--month 必须严格使用 YYYY-MM：$requestedMonth"
     }
 
     $choice = Resolve-MonthInitializationChoice -Choices $Choices -Selector $selector
-    $targetChoice = if ($requestedTarget) {
-        Resolve-MonthInitializationChoice -Choices $Choices -Selector $requestedTarget
-    }
-    else {
-        $choice
-    }
+    $targetChoice = Resolve-MonthInitializationChoice -Choices $Choices -Selector $requestedTarget
     $python = Get-PythonExecutable
     $initializer = Join-Path $ProjectRoot 'scripts\commands\initialize_company_month.py'
     $companyConfigPath = Join-Path $CompanyConfigDirectory $choice.ConfigName

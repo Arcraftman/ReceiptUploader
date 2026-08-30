@@ -78,7 +78,7 @@ def main() -> int:
     parser.add_argument("--app-config", type=Path, default=ROOT / "config" / "app.json")
     parser.add_argument("--accountbook", action="append", default=[], help="只运行指定账套 key，可重复")
     parser.add_argument("--month", action="append", required=True, help="明确指定月份 YYYY-MM，可重复")
-    parser.add_argument("--source", choices=["sales", "purchase", "bank", "misc", "all"], default=None, help="覆盖任务的业务板块")
+    parser.add_argument("--source", choices=["sales", "purchase", "bank", "misc", "all"], default=None, help="只运行指定的已启用业务；all 表示全部已启用业务")
     parser.add_argument("--mode", choices=["analysis-only", "prepare", "dry-run", "confirm"], default=None)
     parser.add_argument("--stage", choices=["ocr", "llm", "existing", "all"], default=None, help="临时覆盖本月 project.json 的分析阶段；不兼容的 mode/stage 组合会在预检时停止")
     parser.add_argument("--plan", action="store_true", help="只检查并显示计划，不执行流水线")
@@ -91,12 +91,17 @@ def main() -> int:
     parser.add_argument("--limit", type=int, default=0, help="透传给 run_pipeline 的 limit")
     parser.add_argument("--receipt-id", type=str, default="", help="透传给 run_pipeline 的 receipt-id")
     parser.add_argument("--test-upload", action="store_true", help="透传给 run_pipeline 的 test-upload")
+    parser.add_argument("--concise", action="store_true", help="控制台只显示标准任务摘要；详细时间戳日志仍写入文件")
     args = parser.parse_args()
     try:
         target_months = list(dict.fromkeys(normalize_month(value) for value in args.month))
     except CompanyRegistryError as exc:
         parser.error(str(exc))
-    logger = configure_pipeline_logger(ROOT / "runtime" / "logs", "run_companies")
+    logger = configure_pipeline_logger(
+        ROOT / "runtime" / "logs",
+        "run_companies",
+        to_console=not args.concise,
+    )
     logger.info("start run_companies: jobs=%s accountbooks=%s", args.jobs_config or "config/companies/*.json", args.accountbooks_config)
 
     try:
@@ -144,10 +149,10 @@ def main() -> int:
             continue
         if job.month not in target_months:
             continue
+        if args.source and args.source != "all" and job.source != args.source:
+            continue
         if args.mode:
             job = replace(job, mode=args.mode)
-        if args.source:
-            job = replace(job, source=args.source)
         selected.append((accountbook, dataset, job))
     if not selected:
         print("没有启用且匹配筛选条件的任务。", file=sys.stderr)
@@ -216,11 +221,12 @@ def main() -> int:
             plans.append((accountbook, dataset, job, settings, runtime_dir, session_path))
             relation = "跨主体测试" if cross_entity else "同主体"
             logger.info("计划任务: source_company=%s target_accountbook=%s month=%s mode=%s source=%s relation=%s", dataset.entity_name, accountbook.name, job.month, job.mode, job.source, relation)
-            print(
-                f"计划：资料公司={dataset.entity_name} / 目标账套={accountbook.name} / {job.month} / "
-                f"{job.mode} / stage={effective_stage} / {job.source} / {relation}；模板={template_company.name}({template_company.key})；"
-                f"资料={month_dir}；会话={session_path or '快照模式不需要'}"
-            )
+            if not args.concise:
+                print(
+                    f"计划：资料公司={dataset.entity_name} / 目标账套={accountbook.name} / {job.month} / "
+                    f"{job.mode} / stage={effective_stage} / {job.source} / {relation}；模板={template_company.name}({template_company.key})；"
+                    f"资料={month_dir}；会话={session_path or '快照模式不需要'}"
+                )
         except CompanyRegistryError as exc:
             print(f"任务预检失败：{job.dataset}->{job.accountbook}/{job.month}：{exc}", file=sys.stderr)
             logger.error("任务预检失败：%s->%s/%s：%s", job.dataset, job.accountbook, job.month, exc)
@@ -239,10 +245,27 @@ def main() -> int:
             app_payload["expected_company"] = accountbook.name
         write_json(run_path, settings)
         write_json(app_path, app_payload)
-        print(f"开始第 {index}/{len(plans)} 个任务：{dataset.entity_name} -> {accountbook.name}/{job.month}")
         state_path = runtime_dir / "state.json"
         state = PipelineStateStore(state_path)
         effective_stage = args.stage or str(settings.get("analysis_stage", "ocr"))
+        if args.concise:
+            print("[任务] 银行" if job.source == "bank" else f"[任务] {job.source}")
+            print(f"  资料公司：{dataset.entity_name}")
+            print(f"  目标账套：{accountbook.name}")
+            print(f"  会计月份：{job.month}")
+            if job.source == "bank":
+                print(f"  安全模式：{job.mode}")
+                if effective_stage == "ocr":
+                    bank_stage_text = "裁剪 → 特殊对象分流 → 剩余 OCR → 剩余流水匹配"
+                elif effective_stage in {"llm", "all"}:
+                    bank_stage_text = "复用特殊对象分流和普通匹配结果 → LLM 分析"
+                else:
+                    bank_stage_text = "复用 LLM 分析 → 生成或检查最终 receipt"
+                print(f"  执行阶段：{bank_stage_text}", flush=True)
+            else:
+                print(f"  执行范围：{job.source} / {job.mode} / {effective_stage}", flush=True)
+        else:
+            print(f"开始第 {index}/{len(plans)} 个任务：{dataset.entity_name} -> {accountbook.name}/{job.month}")
         identity = {
             "accountbook": accountbook.key,
             "accountbookName": accountbook.name,
@@ -268,6 +291,7 @@ def main() -> int:
                     *(["--receipt-id", args.receipt_id] if args.receipt_id else []),
                     *(["--test-upload"] if args.test_upload else []),
                     *(["--stage", args.stage] if args.stage else []),
+                    *(["--concise"] if args.concise else []),
                 ], cwd=ROOT, check=False)
                 if completed.returncode == 0:
                     state.update(status="succeeded", exit_code=0, event="run_succeeded")
@@ -285,7 +309,8 @@ def main() -> int:
             print(f"任务失败并停止后续任务：{dataset.key}->{accountbook.key}/{job.month}，退出码={completed.returncode}", file=sys.stderr)
             logger.error("任务失败并停止后续任务：%s->%s/%s code=%s", dataset.key, accountbook.key, job.month, completed.returncode)
             return completed.returncode
-    print(f"串行任务完成：{len(plans)} 个。")
+    if not args.concise:
+        print(f"串行任务完成：{len(plans)} 个。")
     return 0
 
 

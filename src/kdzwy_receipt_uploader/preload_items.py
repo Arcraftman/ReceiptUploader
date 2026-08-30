@@ -66,6 +66,56 @@ def apply_preloaded_items(values_by_invoice: dict[str, dict[str, Any]], preloade
             values["auxiliaryItem"] = {"itemClass": values.get("itemClass", ""), "itemClassId": item_class_id, "id": str(item.get("id", "")), "number": str(item.get("number", "")), "name": str(item.get("name", name))}
 
 
+def preload_bank_counterparties(
+    api: Any,
+    records: Mapping[str, Mapping[str, Any]],
+    *,
+    create_missing: bool = True,
+) -> PreloadedItems:
+    """Resolve/create bank customers and suppliers from the authoritative statement map."""
+    wanted: dict[int, set[str]] = {1: set(), 5: set()}
+    for record in records.values():
+        name = str(record.get("counterpartyName") or "").strip()
+        config_company = str(record.get("configCompany") or "").strip()
+        if not name or (config_company and name == config_company):
+            continue
+        direction = str(record.get("flowDirection") or "").strip().lower()
+        if direction == "inflow":
+            wanted[1].add(name)
+        elif direction == "outflow":
+            wanted[5].add(name)
+
+    result = PreloadedItems(
+        source_columns={
+            str(class_id): sorted(names) for class_id, names in wanted.items()
+        }
+    )
+    for class_id, names in sorted(wanted.items()):
+        data = api.get_items_v1(class_id, page_size=500)
+        rows = list(data.get("rows", [])) if isinstance(data, dict) else []
+        bucket = result.by_class.setdefault(class_id, {})
+        for row in rows:
+            if isinstance(row, dict) and str(row.get("name", "")).strip():
+                bucket[str(row["name"]).strip()] = dict(row)
+        if not create_missing:
+            continue
+        for name in sorted(names):
+            if name in bucket:
+                continue
+            number = api.get_next_item_number_v1(class_id)
+            created = api.create_item_v1(class_id, number, name)
+            bucket[name] = created
+            result.created.append(
+                {
+                    "itemClassId": class_id,
+                    "name": name,
+                    "number": created.get("number"),
+                    "id": created.get("id"),
+                }
+            )
+    return result
+
+
 def preload_items(api: Any, month_dir: Path, config: Any, extra_columns: list[Mapping[str, Any]] | None = None, create_missing: bool = True) -> PreloadedItems:
     wanted = collect_source_item_names(month_dir, config, extra_columns)
     result = PreloadedItems(source_columns={str(class_id): names for class_id, names in wanted.items()})

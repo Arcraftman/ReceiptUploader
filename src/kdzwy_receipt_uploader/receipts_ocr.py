@@ -13,6 +13,7 @@ import inspect
 import os
 import re
 import logging
+import threading
 import time
 import unicodedata
 import urllib.error
@@ -20,6 +21,7 @@ import urllib.request
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from importlib import metadata as importlib_metadata
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping
@@ -36,6 +38,7 @@ class OcrPipelineError(ValueError):
 
 _OCR_ENGINE: Any | None = None
 _OCR_CACHE_VERSION = 3
+_ANALYSIS_MEMORY_LOCK = threading.Lock()
 
 
 def _get_ocr_engine() -> Any:
@@ -510,8 +513,20 @@ class OpenAICompatibleTemplateSelector:
     def choose(self, ocr_text: str, templates: list[Mapping[str, Any]], invoice_code: str = "", final_template_context: Mapping[str, Any] | None = None, business_rules: str = "", verified_memory: list[Mapping[str, Any]] | None = None, prompt_path: Path | None = None) -> dict[str, Any]:
         if not self.api_key:
             return {"status": f"待提供{self.provider_name} API", "invoiceCode": invoice_code, "templatePath": "", "confidence": 0, "reason": f"未配置 {self.api_key_env}", "raw": None, "textLength": len(ocr_text)}
-        catalog = [{key: value for key, value in item.items() if key in {"id", "name", "path", "decisionCode", "decisionName", "documentBlock", "documentType", "settlementMethod", "businessType", "currency", "keywords", "summary", "entries", "matchRules", "amountSource"}} for item in templates]
-        sample = dict(final_template_context or {})
+        catalog = [{key: value for key, value in item.items() if key in {"id", "name", "path", "decisionCode", "decisionName", "documentBlock", "documentType", "settlementMethod", "businessType", "currency", "keywords", "summary", "entries", "matchRules", "amountSource", "bankAccountNumber"}} for item in templates]
+        # Dynamic account/item catalogs are used by local validation and entry
+        # rendering, not by the classifier.  Sending them to Qwen made the
+        # request unnecessarily large and caused opaque HTTP 400 responses.
+        sample = {
+            key: copy.deepcopy(value)
+            for key, value in dict(final_template_context or {}).items()
+            if key
+            not in {
+                "dynamicAccountCatalog",
+                "dynamicItemClassCatalog",
+                "runtimeAccountMeta",
+            }
+        }
         if prompt_path is None or not prompt_path.is_file():
             return {
                 "status": "error",
@@ -543,19 +558,75 @@ class OpenAICompatibleTemplateSelector:
                 {"role": "user", "content": prompt},
             ],
         }
-        request = urllib.request.Request(self.endpoint, data=json.dumps(body, ensure_ascii=False).encode("utf-8"), headers={"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"}, method="POST")
-        try:
-            with urllib.request.urlopen(request, timeout=self.timeout) as response:
-                payload = json.loads(response.read().decode("utf-8"))
-            content = payload["choices"][0]["message"]["content"]
-            parsed = _parse_json_object(content)
-            parsed["status"] = "success"
-            parsed["invoiceCode"] = invoice_code
-            parsed["raw"] = payload
-            parsed["textLength"] = len(ocr_text)
-            return parsed
-        except (OSError, KeyError, IndexError, json.JSONDecodeError, TypeError, ValueError) as exc:
-            return {"status": "error", "invoiceCode": invoice_code, "templatePath": "", "confidence": 0, "reason": str(exc), "raw": None, "textLength": len(ocr_text)}
+        request_data = json.dumps(body, ensure_ascii=False).encode("utf-8")
+        retryable_http_codes = {408, 409, 429, 500, 502, 503, 504}
+        for attempt in range(3):
+            request = urllib.request.Request(
+                self.endpoint,
+                data=request_data,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {self.api_key}",
+                },
+                method="POST",
+            )
+            try:
+                with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                    payload = json.loads(response.read().decode("utf-8"))
+                content = payload["choices"][0]["message"]["content"]
+                parsed = _parse_json_object(content)
+                parsed["status"] = "success"
+                parsed["invoiceCode"] = invoice_code
+                parsed["raw"] = payload
+                parsed["textLength"] = len(ocr_text)
+                return parsed
+            except urllib.error.HTTPError as exc:
+                try:
+                    error_body = exc.read().decode("utf-8", errors="replace").strip()
+                except OSError:
+                    error_body = ""
+                if exc.code in retryable_http_codes and attempt < 2:
+                    time.sleep(0.5 * (2**attempt))
+                    continue
+                detail = error_body or str(exc.reason or exc)
+                return {
+                    "status": "error",
+                    "invoiceCode": invoice_code,
+                    "templatePath": "",
+                    "confidence": 0,
+                    "reason": f"HTTP {exc.code}: {detail}",
+                    "raw": {"httpStatus": exc.code, "errorBody": error_body},
+                    "textLength": len(ocr_text),
+                }
+            except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
+                if attempt < 2:
+                    time.sleep(0.5 * (2**attempt))
+                    continue
+                return {"status": "error", "invoiceCode": invoice_code, "templatePath": "", "confidence": 0, "reason": str(exc), "raw": None, "textLength": len(ocr_text)}
+            except (KeyError, IndexError, json.JSONDecodeError, TypeError, ValueError) as exc:
+                return {"status": "error", "invoiceCode": invoice_code, "templatePath": "", "confidence": 0, "reason": str(exc), "raw": None, "textLength": len(ocr_text)}
+        raise AssertionError("Qwen retry loop exited unexpectedly")
+
+
+def extract_bank_transaction_date(ocr_text: str) -> str:
+    """Extract the transaction/accounting date from bank OCR text."""
+    labelled_patterns = (
+        r"(?:记账日期|交易日期|入账日期|出账日期|业务日期|交易时间|交易日期时间)\s*[:：]?\s*(20\d{2})[-/.年]?(\d{2})[-/.月]?(\d{2})日?",
+        r"(?:记账日期|交易日期|入账日期|出账日期|业务日期|交易时间|交易日期时间)\s*[:：]?\s*(20\d{2})(\d{2})(\d{2})",
+    )
+    fallback_patterns = (
+        r"(?<!\d)(20\d{2})[-/.年](\d{1,2})[-/.月](\d{1,2})日?(?!\d)",
+        r"(?<!\d)(20\d{2})(\d{2})(\d{2})(?!\d)",
+    )
+    for pattern in (*labelled_patterns, *fallback_patterns):
+        for match in re.finditer(pattern, ocr_text):
+            candidate = f"{int(match.group(1)):04d}-{int(match.group(2)):02d}-{int(match.group(3)):02d}"
+            try:
+                datetime.strptime(candidate, "%Y-%m-%d")
+            except ValueError:
+                continue
+            return candidate
+    return ""
 
 
 def enforce_template_explanation(
@@ -590,6 +661,30 @@ def enforce_template_explanation(
     if not isinstance(map_values, Mapping):
         map_values = {}
     source_key = source_from_folder_name(artifact.source_folder) or artifact.source_side
+    bank_account_number = ""
+    bank_transaction_date = ""
+    bank_invoice_numbers: list[str] = []
+    if source_key == "bank":
+        bank_account_number = str(map_values.get("bankAccountNumber") or "").strip()
+        if not re.fullmatch(r"[0-9]+", bank_account_number):
+            raise OcrPipelineError(
+                f"银行业务缺少 project.json 固定银行存款科目号：invoice={artifact.invoice_code}"
+            )
+        bank_transaction_date = extract_bank_transaction_date(artifact.text)
+        if not bank_transaction_date:
+            raise OcrPipelineError(
+                f"银行 OCR 原文未识别出交易日期：invoice={artifact.invoice_code}"
+            )
+        extracted_fields = decision.get("extractedFields")
+        if not isinstance(extracted_fields, dict):
+            extracted_fields = {}
+            decision["extractedFields"] = extracted_fields
+        extracted_fields["transactionDate"] = bank_transaction_date
+        if str(map_values.get("flowDirection") or "") == "inflow":
+            for value in map_values.get("invoiceNumbers") or []:
+                number = str(value or "").strip()
+                if re.fullmatch(r"\d{8,20}", number) and number not in bank_invoice_numbers:
+                    bank_invoice_numbers.append(number)
     sales_map = {artifact.invoice_code: dict(map_values)} if source_key == "sales" else {}
     purchase_map = {artifact.invoice_code: dict(map_values)} if source_key == "purchase" else {}
     rendered = VoucherTemplateEngine([template]).render(
@@ -603,7 +698,19 @@ def enforce_template_explanation(
             template_name=str(template.get("name") or ""),
         ),
     )
-    explanation = str(rendered.get("explanation") or "")
+    explanation_header = str(rendered.get("explanation_header") or "")
+    explanation_body = str(rendered.get("explanation_body") or "").rstrip()
+    if bank_invoice_numbers:
+        explanation_body = " ".join(bank_invoice_numbers)
+    explanation_separator = str(template.get("explanation_separator", " "))
+    explanation = explanation_separator.join(
+        part for part in (explanation_header, explanation_body) if part
+    )
+    bank_entry_explanation = (
+        f"{explanation.rstrip()} {bank_transaction_date}"
+        if source_key == "bank"
+        else explanation
+    )
     template_entries = template.get("entries") if isinstance(template.get("entries"), list) else []
     account_container = context_values.get("dynamicAccountCatalog")
     account_rows = account_container.get("accounts", []) if isinstance(account_container, Mapping) else []
@@ -613,6 +720,7 @@ def enforce_template_explanation(
             accounts_by_number.setdefault(str(account.get("number") or ""), []).append(account)
 
     entries: list[dict[str, Any]] = []
+    bank_deposit_entry_count = 0
     for index, template_entry in enumerate(template_entries, 1):
         if not isinstance(template_entry, Mapping):
             raise OcrPipelineError(f"模板分录不是对象：{relative_path} entries[{index}]")
@@ -620,6 +728,12 @@ def enforce_template_explanation(
         if not isinstance(selector, Mapping):
             raise OcrPipelineError(f"模板分录缺少accountSelector：{relative_path} entries[{index}]")
         account_number = str(selector.get("number") or "").strip()
+        is_bank_deposit_entry = (
+            source_key == "bank" and "银行存款" in str(selector.get("name") or "")
+        )
+        if is_bank_deposit_entry:
+            bank_deposit_entry_count += 1
+            account_number = bank_account_number
         account_matches = accounts_by_number.get(account_number, [])
         if len(account_matches) != 1:
             raise OcrPipelineError(
@@ -646,11 +760,21 @@ def enforce_template_explanation(
             "accountId": str(account.get("id") or ""),
             "amount": amount,
             "amountFor": amount,
-            "explanation": explanation,
+            "explanation": (
+                bank_entry_explanation if is_bank_deposit_entry else explanation
+            ),
             "cur": "RMB",
             "rate": "1",
         })
+    if source_key == "bank" and bank_deposit_entry_count != 1:
+        raise OcrPipelineError(
+            f"银行模板必须恰好包含一条银行存款分录：template={relative_path}, actual={bank_deposit_entry_count}"
+        )
     decision["filledEntries"] = entries
+    if source_key == "bank":
+        decision["bankAccountNumber"] = bank_account_number
+        decision["bankTransactionDate"] = bank_transaction_date
+        decision["invoiceNumbers"] = bank_invoice_numbers
     item_catalog = context_values.get("dynamicItemClassCatalog")
 
     def find_auxiliary(item_class_id: int, name: str) -> tuple[dict[str, Any] | None, int]:
@@ -679,7 +803,6 @@ def enforce_template_explanation(
 
     for index, entry in enumerate(entries):
         if isinstance(entry, dict):
-            entry["explanation"] = explanation
             template_entry = template_entries[index] if index < len(template_entries) and isinstance(template_entries[index], Mapping) else {}
             auxiliary_rule = template_entry.get("auxiliary") if isinstance(template_entry, Mapping) else None
             if not isinstance(auxiliary_rule, Mapping):
@@ -689,8 +812,19 @@ def enforce_template_explanation(
             counterparty_name = str(
                 map_values.get("customName") if source_key == "sales"
                 else map_values.get("supplierName") if source_key == "purchase"
+                else map_values.get("counterpartyName") if source_key == "bank"
                 else ""
             ).strip()
+            if source_key == "bank" and not counterparty_name:
+                extracted = decision.get("extractedFields")
+                if isinstance(extracted, Mapping):
+                    counterparty_name = str(
+                        extracted.get("counterpartyName")
+                        or extracted.get("counterparty")
+                        or extracted.get("payeeName")
+                        or extracted.get("payerName")
+                        or ""
+                    ).strip()
             if not counterparty_name:
                 raise OcrPipelineError(f"业务映射缺少交易对方名称：source={source_key}, invoice={artifact.invoice_code}")
             mapped = map_values.get("auxiliaryItem")
@@ -724,9 +858,225 @@ def enforce_template_explanation(
                 "name": counterparty_name,
                 "field": str(auxiliary_rule.get("field") or ""),
             }
-    decision["explanation_header"] = str(rendered.get("explanation_header") or "")
-    decision["explanation_body"] = str(rendered.get("explanation_body") or "")
-    decision["explanation"] = explanation
+    decision["explanation_header"] = explanation_header
+    decision["explanation_body"] = explanation_body
+    decision["explanation"] = bank_entry_explanation if source_key == "bank" else explanation
+
+
+def enforce_dynamic_supplier_payables_exception(
+    decision: dict[str, Any],
+    artifact: OcrArtifact,
+    template_root: Path,
+    final_template_context: Mapping[str, Any] | None,
+    chosen_record: Mapping[str, Any],
+) -> bool:
+    """Resolve a user-configured dynamic AP split, or keep it pending safely."""
+    context_values = dict(final_template_context or {})
+    map_values = context_values.get("businessMapValues")
+    if not isinstance(map_values, Mapping):
+        map_values = {}
+    definition = chosen_record.get("exception")
+    if not isinstance(definition, Mapping):
+        raise OcrPipelineError("动态异常模板缺少 exception 定义")
+
+    bank_account_number = str(map_values.get("bankAccountNumber") or "").strip()
+    transaction_date = extract_bank_transaction_date(artifact.text)
+    exception_config = map_values.get("exceptionConfig")
+    allocations = (
+        exception_config.get("allocations")
+        if isinstance(exception_config, Mapping)
+        and isinstance(exception_config.get("allocations"), list)
+        else []
+    )
+    errors: list[str] = []
+    expected_template_id = str(chosen_record.get("id") or "")
+    configured_template_id = (
+        str(exception_config.get("template_id") or "").strip()
+        if isinstance(exception_config, Mapping)
+        else ""
+    )
+    configured_handling = (
+        str(exception_config.get("handling") or "").strip()
+        if isinstance(exception_config, Mapping)
+        else ""
+    )
+    if not isinstance(exception_config, Mapping):
+        errors.append("project.json 的 sources.bank.exceptions 未包含该供应商")
+    elif configured_handling != "dynamic_supplier_payables":
+        errors.append(
+            "exception handling 不匹配："
+            f"expected=dynamic_supplier_payables, actual={configured_handling or '-'}"
+        )
+    elif configured_template_id != expected_template_id:
+        errors.append(
+            "exception template_id 不匹配："
+            f"expected={expected_template_id}, actual={configured_template_id or '-'}"
+        )
+    if not allocations:
+        errors.append("allocations 为空，等待填写实际应付账款供应商和金额")
+    if not re.fullmatch(r"[0-9]+", bank_account_number):
+        errors.append("缺少有效 bank_account_number")
+    if not transaction_date:
+        errors.append("OCR 未识别出交易日期")
+
+    try:
+        required_total = Decimal(str(map_values.get("amount"))).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
+    except (InvalidOperation, TypeError, ValueError):
+        required_total = Decimal("0")
+        errors.append("银行流水金额无效")
+
+    normalized_allocations: list[tuple[str, Decimal]] = []
+    for index, allocation in enumerate(allocations, 1):
+        if not isinstance(allocation, Mapping):
+            errors.append(f"allocations[{index}] 不是对象")
+            continue
+        supplier_name = str(allocation.get("supplier_name") or "").strip()
+        try:
+            amount = Decimal(str(allocation.get("amount"))).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
+        except (InvalidOperation, TypeError, ValueError):
+            errors.append(f"allocations[{index}] 金额无效")
+            continue
+        if not supplier_name:
+            errors.append(f"allocations[{index}] 缺少 supplier_name")
+        elif amount <= 0:
+            errors.append(f"allocations[{index}] amount 必须大于 0")
+        else:
+            normalized_allocations.append((supplier_name, amount))
+    allocated_total = sum((amount for _, amount in normalized_allocations), Decimal("0"))
+    if allocations and allocated_total != required_total:
+        errors.append(
+            "动态供应商分摊合计必须等于银行付款："
+            f"allocations={format(allocated_total, 'f')}, bank={format(required_total, 'f')}"
+        )
+
+    account_rows = (
+        context_values.get("dynamicAccountCatalog", {}).get("accounts", [])
+        if isinstance(context_values.get("dynamicAccountCatalog"), Mapping)
+        else []
+    )
+    accounts_by_number: dict[str, list[Mapping[str, Any]]] = {}
+    for account in account_rows if isinstance(account_rows, list) else []:
+        if isinstance(account, Mapping):
+            accounts_by_number.setdefault(str(account.get("number") or ""), []).append(account)
+    payable_number = str(definition.get("allocationAccountNumber") or "2202")
+    payable_matches = accounts_by_number.get(payable_number, [])
+    bank_matches = accounts_by_number.get(bank_account_number, [])
+    if len(payable_matches) != 1:
+        errors.append(f"目标账套应付账款科目无法唯一解析：number={payable_number}")
+    if len(bank_matches) != 1:
+        errors.append(f"目标账套银行存款科目无法唯一解析：number={bank_account_number}")
+
+    item_catalog = context_values.get("dynamicItemClassCatalog")
+
+    def find_supplier(name: str) -> tuple[dict[str, Any] | None, int]:
+        matches: dict[str, dict[str, Any]] = {}
+
+        def visit(value: Any, inherited_class_id: int | None = None) -> None:
+            if isinstance(value, Mapping):
+                own_class_id = value.get("itemClassId", inherited_class_id)
+                try:
+                    class_id = int(own_class_id) if own_class_id not in (None, "") else inherited_class_id
+                except (TypeError, ValueError):
+                    class_id = inherited_class_id
+                item_id = value.get("id")
+                if (
+                    class_id == 5
+                    and item_id not in (None, "", 0, "0")
+                    and str(value.get("name") or "").strip() == name
+                ):
+                    matches[str(item_id)] = dict(value)
+                for child in value.values():
+                    visit(child, class_id)
+            elif isinstance(value, list):
+                for child in value:
+                    visit(child, inherited_class_id)
+
+        visit(item_catalog)
+        if len(matches) != 1:
+            return None, len(matches)
+        return next(iter(matches.values())), 1
+
+    suppliers: list[tuple[str, Decimal, dict[str, Any]]] = []
+    for supplier_name, amount in normalized_allocations:
+        supplier, match_count = find_supplier(supplier_name)
+        if supplier is None:
+            errors.append(
+                "动态供应商无法唯一解析："
+                f"itemClassId=5, name={supplier_name}, matches={match_count}"
+            )
+        else:
+            suppliers.append((supplier_name, amount, supplier))
+
+    decision["exceptionType"] = str(definition.get("type") or "")
+    decision["exceptionConfig"] = copy.deepcopy(dict(exception_config or {}))
+    decision["exceptionValidationErrors"] = errors
+    decision["bankAccountNumber"] = bank_account_number
+    decision["bankTransactionDate"] = transaction_date
+    decision["invoiceNumbers"] = []
+    decision["explanation_header"] = ""
+    decision["explanation_body"] = "付供应商款"
+    decision["explanation"] = (
+        f"付供应商款 {transaction_date}" if transaction_date else "付供应商款"
+    )
+    extracted_fields = decision.get("extractedFields")
+    if not isinstance(extracted_fields, dict):
+        extracted_fields = {}
+        decision["extractedFields"] = extracted_fields
+    extracted_fields["transactionDate"] = transaction_date
+
+    if errors:
+        decision["status"] = "exception"
+        decision["analysisStatus"] = "exception_pending"
+        decision["exceptionStatus"] = "pending"
+        decision["blockReason"] = "；".join(errors)
+        decision["filledEntries"] = []
+        return False
+
+    payable_account = payable_matches[0]
+    bank_account = bank_matches[0]
+    entries: list[dict[str, Any]] = []
+    for supplier_name, amount, supplier in suppliers:
+        numeric_amount = float(amount)
+        entries.append({
+            "dc": 1,
+            "accountNumber": payable_number,
+            "accountName": str(payable_account.get("fullName") or ""),
+            "accountId": str(payable_account.get("id") or ""),
+            "amount": numeric_amount,
+            "amountFor": numeric_amount,
+            "explanation": "付供应商款",
+            "cur": "RMB",
+            "rate": "1",
+            "auxiliary": {
+                "itemClassId": 5,
+                "itemClass": "供应商",
+                "id": str(supplier.get("id") or ""),
+                "number": str(supplier.get("number") or ""),
+                "name": supplier_name,
+                "field": "supplierId",
+            },
+        })
+    entries.append({
+        "dc": -1,
+        "accountNumber": bank_account_number,
+        "accountName": str(bank_account.get("fullName") or ""),
+        "accountId": str(bank_account.get("id") or ""),
+        "amount": float(required_total),
+        "amountFor": float(required_total),
+        "explanation": f"付供应商款 {transaction_date}",
+        "cur": "RMB",
+        "rate": "1",
+    })
+    decision["filledEntries"] = entries
+    decision["status"] = "success"
+    decision["analysisStatus"] = "ready_for_review"
+    decision["exceptionStatus"] = "resolved"
+    decision["selectionMode"] = "deterministic_exception"
+    return True
 
 
 def compact_analysis_for_storage(decision: Mapping[str, Any]) -> dict[str, Any]:
@@ -735,7 +1085,8 @@ def compact_analysis_for_storage(decision: Mapping[str, Any]) -> dict[str, Any]:
     for key in (
         "templatePath", "templateId", "decisionCode", "decisionName", "selectionMode", "confidence", "reason", "status", "analysisStatus",
         "explanation_header", "explanation_body", "explanation", "sourceFolder", "configCompany",
-        "partyRule", "sourcePdf", "validation",
+        "partyRule", "bankAccountNumber", "bankTransactionDate", "invoiceNumbers", "sourcePdf", "validation",
+        "exceptionStatus", "exceptionType", "exceptionConfig", "exceptionValidationErrors",
     ):
         if key in decision:
             result[key] = copy.deepcopy(decision[key])
@@ -749,7 +1100,10 @@ def compact_analysis_for_storage(decision: Mapping[str, Any]) -> dict[str, Any]:
         if not isinstance(raw_entry, Mapping):
             continue
         entry = copy.deepcopy(dict(raw_entry))
-        for key in ("entryId", "amountFrom", "explanation"):
+        removable_keys = ["entryId", "amountFrom"]
+        if str(decision.get("sourceFolder") or "") != "bank":
+            removable_keys.append("explanation")
+        for key in removable_keys:
             entry.pop(key, None)
         if entry.get("auxiliary") is None:
             entry.pop("auxiliary", None)
@@ -798,7 +1152,26 @@ def _keyword_matches(normalized_text: str, keyword: Any) -> bool:
     return normalized_keyword in normalized_text
 
 
-def _rule_candidates(candidate_records: list[dict[str, Any]], artifact: OcrArtifact) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+def _contains_foreign_currency(ocr_text: str) -> bool:
+    text = unicodedata.normalize("NFKC", str(ocr_text or "")).casefold()
+    if any(marker in text for marker in ("美元", "美金", "港币", "欧元")):
+        return True
+    return any(
+        re.search(pattern, text, flags=re.IGNORECASE) is not None
+        for pattern in (
+            r"(?<![a-z])usd(?![a-z])",
+            r"(?<![a-z])us\s*\$",
+            r"(?<![a-z])hkd(?![a-z])",
+            r"(?<![a-z])eur(?![a-z])",
+        )
+    )
+
+
+def _rule_candidates(
+    candidate_records: list[dict[str, Any]],
+    artifact: OcrArtifact,
+    business_values: Mapping[str, Any] | None = None,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     metadata = json.loads(artifact.metadata_path.read_text(encoding="utf-8"))
     fields = metadata.get("fields", {}) if isinstance(metadata.get("fields"), Mapping) else {}
     text = _normalize_match_text(artifact.text)
@@ -806,6 +1179,14 @@ def _rule_candidates(candidate_records: list[dict[str, Any]], artifact: OcrArtif
     explicit: list[tuple[int, int, int, dict[str, Any]]] = []
     defaults: list[tuple[int, dict[str, Any]]] = []
     reasons: dict[str, str] = {}
+    has_business_values = isinstance(business_values, Mapping)
+    values = business_values if has_business_values else {}
+    flow_direction = str(values.get("flowDirection") or "").strip().lower()
+    invoice_numbers = [
+        str(value).strip()
+        for value in values.get("invoiceNumbers") or []
+        if str(value).strip()
+    ]
     for item in candidate_records:
         rules=item.get("matchRules", {}) if isinstance(item.get("matchRules"), Mapping) else {}
         if not rules and len(candidate_records) == 1:
@@ -815,13 +1196,68 @@ def _rule_candidates(candidate_records: list[dict[str, Any]], artifact: OcrArtif
         if source_folders and folder not in source_folders:
             reasons[str(item.get("path"))]="sourceFolder不匹配"
             continue
+        if bool(rules.get("excludeCounterpartyEqualsConfigCompany")):
+            counterparty_name = str(values.get("counterpartyName") or "").strip()
+            config_company = str(values.get("configCompany") or "").strip()
+            if counterparty_name and config_company and counterparty_name == config_company:
+                reasons[str(item.get("path"))] = "交易对方是资料公司自身"
+                continue
+        configured_counterparties = [
+            str(value).strip()
+            for value in rules.get("counterpartyNames", [])
+            if str(value).strip()
+        ]
+        actual_counterparty = str(values.get("counterpartyName") or "").strip()
+        matched_counterparty = ""
+        if configured_counterparties:
+            normalized_actual = _normalize_match_text(actual_counterparty)
+            matched_counterparty = next(
+                (
+                    value
+                    for value in configured_counterparties
+                    if _normalize_match_text(value) == normalized_actual
+                ),
+                "",
+            )
+            if not matched_counterparty:
+                reasons[str(item.get("path"))] = "交易对方不匹配"
+                continue
+        required_exception_handling = str(
+            rules.get("requiresExceptionHandling") or ""
+        ).strip()
+        exception_config = values.get("exceptionConfig")
+        actual_exception_handling = (
+            str(exception_config.get("handling") or "").strip()
+            if isinstance(exception_config, Mapping)
+            else ""
+        )
+        if (
+            required_exception_handling
+            and actual_exception_handling != required_exception_handling
+        ):
+            reasons[str(item.get("path"))] = "未在本月项目中配置对应交易对象 exception"
+            continue
+        allowed_directions = {
+            str(value).strip().lower()
+            for value in rules.get("flowDirections", [])
+            if str(value).strip()
+        }
+        if allowed_directions and flow_direction and flow_direction not in allowed_directions:
+            reasons[str(item.get("path"))] = "资金方向不匹配"
+            continue
+        if (
+            bool(rules.get("requiresInvoiceNumbers"))
+            and has_business_values
+            and not invoice_numbers
+        ):
+            reasons[str(item.get("path"))] = "缺少流水表纯数字发票索引"
+            continue
         blocks=set(str(x) for x in fields.get("allowedTemplateBlocks", []))
         if blocks and str(item.get("documentBlock", "")) not in blocks:
             reasons[str(item.get("path"))]="销售/进项目录业务板块不匹配"
             continue
         currency = str(item.get("currency") or "")
-        foreign_currency_markers = ("美元", "usd", "us$", "美金", "港币", "hkd", "欧元", "eur")
-        if currency == "人民币" and any(_keyword_matches(text, marker) for marker in foreign_currency_markers):
+        if currency == "人民币" and _contains_foreign_currency(artifact.text):
             reasons[str(item.get("path"))]="OCR明确为外币，人民币模板不匹配"
             continue
         required=[str(x).lower() for x in rules.get("requiredKeywords", [])]
@@ -842,18 +1278,24 @@ def _rule_candidates(candidate_records: list[dict[str, Any]], artifact: OcrArtif
             continue
         any_keywords=[str(x).lower() for x in rules.get("anyKeywords", [])]
         matched_keywords = [keyword for keyword in any_keywords if _keyword_matches(text, keyword)]
+        if matched_counterparty:
+            matched_keywords.append(matched_counterparty)
         for group in keyword_groups:
             matched_keywords.extend(
                 str(keyword).lower() for keyword in group if _keyword_matches(text, keyword)
             )
-        if any_keywords and not matched_keywords and not bool(rules.get("defaultForSource")):
+        default_allowed = bool(rules.get("defaultForSource")) and (
+            not bool(rules.get("defaultRequiresBusinessValues"))
+            or has_business_values
+        )
+        if any_keywords and not matched_keywords and not default_allowed:
             reasons[str(item.get("path"))]="未命中业务关键词"
             continue
         priority = int(rules.get("priority", 0) or 0)
         if matched_keywords or keyword_groups:
             longest = max((_normalize_match_text(keyword).__len__() for keyword in matched_keywords), default=0)
             explicit.append((longest, len(matched_keywords), priority, item))
-        elif bool(rules.get("defaultForSource")):
+        elif default_allowed:
             defaults.append((priority, item))
         else:
             reasons[str(item.get("path"))]="没有可审计的业务命中词"
@@ -883,18 +1325,46 @@ def _load_analysis_memory(path: Path) -> dict[str, Any]:
 
 
 def _save_analysis_memory(path: Path, memory: dict[str, Any], invoice_code: str, decision: Mapping[str, Any]) -> None:
-    processed = [item for item in memory.get("processed", []) if isinstance(item, dict) and item.get("invoiceCode") != invoice_code]
-    processed.append({"invoiceCode": invoice_code, "templatePath": decision.get("templatePath", ""), "analysisStatus": decision.get("analysisStatus", ""), "confidence": decision.get("confidence", 0)})
-    memory["processed"] = processed
-    verified = [item for item in memory.get("verifiedDecisions", []) if isinstance(item, dict) and item.get("invoiceCode") != invoice_code]
-    if decision.get("analysisStatus") == "ready_for_review":
-        fields = decision.get("extractedFields", {}) if isinstance(decision.get("extractedFields"), Mapping) else {}
-        verified.append({"invoiceCode": invoice_code, "templatePath": decision.get("templatePath", ""), "businessType": decision.get("businessType", ""), "sellerName": fields.get("sellerName", ""), "buyerName": fields.get("buyerName", ""), "confidence": decision.get("confidence", 0)})
-    memory["verifiedDecisions"] = verified
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(json.dumps(memory, ensure_ascii=False, indent=2), encoding="utf-8")
-    temporary.replace(path)
+    with _ANALYSIS_MEMORY_LOCK:
+        # Each worker starts from a snapshot. Reload inside the lock so one
+        # worker cannot overwrite decisions saved by another worker.
+        current = _load_analysis_memory(path)
+        processed = [item for item in current.get("processed", []) if isinstance(item, dict) and item.get("invoiceCode") != invoice_code]
+        processed.append({"invoiceCode": invoice_code, "templatePath": decision.get("templatePath", ""), "analysisStatus": decision.get("analysisStatus", ""), "confidence": decision.get("confidence", 0)})
+        current["processed"] = processed
+        verified = [item for item in current.get("verifiedDecisions", []) if isinstance(item, dict) and item.get("invoiceCode") != invoice_code]
+        if decision.get("analysisStatus") == "ready_for_review":
+            fields = decision.get("extractedFields", {}) if isinstance(decision.get("extractedFields"), Mapping) else {}
+            verified.append({"invoiceCode": invoice_code, "templatePath": decision.get("templatePath", ""), "businessType": decision.get("businessType", ""), "sellerName": fields.get("sellerName", ""), "buyerName": fields.get("buyerName", ""), "confidence": decision.get("confidence", 0)})
+        current["verifiedDecisions"] = verified
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_name(
+            f".{path.name}.{os.getpid()}.{threading.get_ident()}.tmp"
+        )
+        temporary.write_text(json.dumps(current, ensure_ascii=False, indent=2), encoding="utf-8")
+        saved = False
+        last_error: OSError | None = None
+        for attempt in range(6):
+            try:
+                temporary.replace(path)
+                saved = True
+                break
+            except OSError as exc:
+                last_error = exc
+                if attempt < 5:
+                    time.sleep(0.05 * (attempt + 1))
+        if not saved:
+            logging.getLogger(__name__).warning(
+                "分析记忆写入失败但不阻断当前记录：%s：%s",
+                path,
+                last_error,
+            )
+            try:
+                temporary.unlink(missing_ok=True)
+            except OSError:
+                pass
+        memory.clear()
+        memory.update(copy.deepcopy(current))
 
 
 def analyze_ocr_and_choose_template(artifact: OcrArtifact, template_root: Path, selector: OpenAICompatibleTemplateSelector | None = None, final_template_context: Mapping[str, Any] | None = None) -> dict[str, Any]:
@@ -912,7 +1382,7 @@ def analyze_ocr_and_choose_template(artifact: OcrArtifact, template_root: Path, 
         enriched = dict(record)
         try:
             template_payload = catalog.load_template(record)
-            enriched.update({key: template_payload.get(key) for key in ("decisionCode", "decisionName", "documentBlock", "documentType", "settlementMethod", "businessType", "currency", "keywords", "matchRules", "amountSource") if template_payload.get(key) is not None})
+            enriched.update({key: template_payload.get(key) for key in ("decisionCode", "decisionName", "documentBlock", "documentType", "settlementMethod", "businessType", "currency", "keywords", "matchRules", "amountSource", "exception") if template_payload.get(key) is not None})
         except Exception:
             pass
         enriched["templateFileName"] = Path(str(record.get("path", ""))).name
@@ -922,6 +1392,24 @@ def analyze_ocr_and_choose_template(artifact: OcrArtifact, template_root: Path, 
     if not candidate_records:
         raise OcrPipelineError(f"{artifact.source_folder} 没有符合买卖方方向的模板候选")
     source_key = artifact.source_side if artifact.source_side in {"sales", "purchase", "bank", "misc"} else "misc"
+    runtime_map_values = (
+        final_template_context.get("businessMapValues")
+        if isinstance(final_template_context, Mapping)
+        else None
+    )
+    if not isinstance(runtime_map_values, Mapping):
+        runtime_map_values = {}
+    required_bank_account_number = ""
+    if source_key == "bank":
+        required_bank_account_number = str(
+            runtime_map_values.get("bankAccountNumber") or ""
+        ).strip()
+        if not re.fullmatch(r"[0-9]+", required_bank_account_number):
+            raise OcrPipelineError(
+                f"银行模板选择缺少固定银行存款科目号：invoice={artifact.invoice_code}"
+            )
+        for item in candidate_records:
+            item["bankAccountNumber"] = required_bank_account_number
     scoped_records = []
     for item in candidate_records:
         rules = item.get("matchRules") if isinstance(item.get("matchRules"), Mapping) else {}
@@ -933,7 +1421,11 @@ def analyze_ocr_and_choose_template(artifact: OcrArtifact, template_root: Path, 
     if not scoped_records:
         raise OcrPipelineError(f"模板范围为空：source={source_key}，目录={template_root / source_key}")
     candidate_records = scoped_records
-    rule_candidates, rejected = _rule_candidates(candidate_records, artifact)
+    rule_candidates, rejected = _rule_candidates(
+        candidate_records,
+        artifact,
+        runtime_map_values,
+    )
     if not rule_candidates:
         raise OcrPipelineError(
             "OCR文字没有命中可审计的模板规则，禁止退回全部候选猜测："
@@ -952,41 +1444,70 @@ def analyze_ocr_and_choose_template(artifact: OcrArtifact, template_root: Path, 
         .replace("{{source_company}}", str(metadata.get("configCompany") or ""))
         .replace("{{template_directory}}", f"templates/{template_root.name}/{source_key}")
     )
+    if source_key == "bank":
+        business_rules += (
+            "\n\n# 当前银行固定科目\n"
+            f"bankAccountNumber={required_bank_account_number}。"
+            "该值来自 project.json，模板选择、模板渲染和最终分录中的银行存款科目号必须完全一致；禁止模型修改或猜测。"
+        )
     memory_path = artifact.output_dir.parent / "analysis_memory.json"
     memory = _load_analysis_memory(memory_path)
-    active_selector = selector or OpenAICompatibleTemplateSelector.from_settings({})
-    choose_parameters = inspect.signature(active_selector.choose).parameters
-    if "business_rules" in choose_parameters:
-        choose_kwargs = {
-            "final_template_context": final_template_context,
-            "business_rules": business_rules,
-            "verified_memory": list(memory.get("verifiedDecisions", [])),
-        }
-        if "prompt_path" in choose_parameters:
-            choose_kwargs["prompt_path"] = template_root / "prompts" / "invoice_classifier_prompt.txt"
-        decision = active_selector.choose(
-            artifact.text, rule_candidates, artifact.invoice_code,
-            **choose_kwargs,
-        )
-    else:
-        decision = active_selector.choose(artifact.text, rule_candidates, artifact.invoice_code)
-    allowed_paths = {str(item.get("path", "")) for item in rule_candidates}
-    decision.setdefault("status", "success" if decision.get("templatePath") else "pending")
     if len(rule_candidates) == 1:
         forced = rule_candidates[0]
-        decision["templatePath"] = str(forced.get("path") or "")
-        decision["templateId"] = str(forced.get("id") or "")
-        decision["decisionCode"] = str(forced.get("decisionCode") or "")
-        decision["selectionMode"] = "deterministic_rule"
-        decision["confidence"] = 0.99
-        if decision.get("status") not in {"error", "待提供Qwen API"}:
-            decision["status"] = "success"
+        decision = {
+            "status": "success",
+            "templatePath": str(forced.get("path") or ""),
+            "templateId": str(forced.get("id") or ""),
+            "decisionCode": str(forced.get("decisionCode") or ""),
+            "selectionMode": "deterministic_rule",
+            "confidence": 0.99,
+            "reason": "银行流水方向与模板规则已唯一确定，无需调用模型猜测",
+            "extractedFields": {
+                "transactionDirection": str(
+                    runtime_map_values.get("flowDirection") or ""
+                ),
+                "counterpartyName": str(
+                    runtime_map_values.get("counterpartyName") or ""
+                ),
+                "amount": runtime_map_values.get("amount"),
+            },
+        }
+    else:
+        active_selector = selector or OpenAICompatibleTemplateSelector.from_settings({})
+        choose_parameters = inspect.signature(active_selector.choose).parameters
+        if "business_rules" in choose_parameters:
+            choose_kwargs = {
+                "final_template_context": final_template_context,
+                "business_rules": business_rules,
+                "verified_memory": list(memory.get("verifiedDecisions", [])),
+            }
+            if "prompt_path" in choose_parameters:
+                choose_kwargs["prompt_path"] = template_root / "prompts" / "invoice_classifier_prompt.txt"
+            decision = active_selector.choose(
+                artifact.text, rule_candidates, artifact.invoice_code,
+                **choose_kwargs,
+            )
+        else:
+            decision = active_selector.choose(artifact.text, rule_candidates, artifact.invoice_code)
+    allowed_paths = {str(item.get("path", "")) for item in rule_candidates}
+    decision.setdefault("status", "success" if decision.get("templatePath") else "pending")
     chosen = str(decision.get("templatePath", ""))
     if chosen and chosen not in allowed_paths:
         decision["status"] = "invalid"
         decision["reason"] = "Qwen 返回的模板路径不在 templates 根目录候选中"
         decision["templatePath"] = ""
-    enforce_template_explanation(decision, artifact, template_root, final_template_context)
+    chosen_record = next((item for item in rule_candidates if str(item.get("path", "")) == str(decision.get("templatePath", ""))), None)
+    exception_ready: bool | None = None
+    if chosen_record and isinstance(chosen_record.get("exception"), Mapping):
+        exception_ready = enforce_dynamic_supplier_payables_exception(
+            decision,
+            artifact,
+            template_root,
+            final_template_context,
+            chosen_record,
+        )
+    else:
+        enforce_template_explanation(decision, artifact, template_root, final_template_context)
     decision["ocrFields"] = fields
     decision["allowedTemplateBlocks"] = allowed_blocks
     decision["sourceFolder"] = artifact.source_folder
@@ -1000,7 +1521,6 @@ def analyze_ocr_and_choose_template(artifact: OcrArtifact, template_root: Path, 
     decision["templateCandidatesBeforeRules"] = len(candidate_records)
     decision["ruleRejectedCandidates"] = rejected
     decision["ruleFallbackUsed"] = rule_fallback
-    chosen_record = next((item for item in rule_candidates if str(item.get("path", "")) == str(decision.get("templatePath", ""))), None)
     if chosen_record:
         expected_id = str(chosen_record.get("id") or "")
         returned_id = str(decision.get("templateId") or "")
@@ -1010,23 +1530,54 @@ def analyze_ocr_and_choose_template(artifact: OcrArtifact, template_root: Path, 
         decision["decisionCode"] = str(chosen_record.get("decisionCode") or "")
         decision["decisionName"] = str(chosen_record.get("decisionName") or "")
     validation = {
-        "folderRule": bool(set(fields.get("allowedTemplateBlocks", [])) & {str(chosen_record.get("documentBlock", ""))}) if chosen_record else False,
+        "folderRule": (
+            str(chosen_record.get("documentBlock", "")) == "银行"
+            if source_key == "bank" and chosen_record
+            else bool(set(fields.get("allowedTemplateBlocks", [])) & {str(chosen_record.get("documentBlock", ""))}) if chosen_record else False
+        ),
         "sourceFolderRule": bool(chosen_record) and (
             not chosen_record.get("matchRules", {}).get("sourceFolders")
             or artifact.source_folder.lower()
             in {str(value).strip().lower() for value in chosen_record.get("matchRules", {}).get("sourceFolders", [])}
         ),
         "confidenceRule": float(decision.get("confidence", 0) or 0) >= 0.9,
-        "mapSourceRule": (str(chosen_record.get("amountSource", "")) == str(fields.get("mapSource", ""))) if chosen_record else False,
+        "mapSourceRule": (
+            str(chosen_record.get("amountSource", "")) == "source"
+            if source_key == "bank" and chosen_record
+            else (str(chosen_record.get("amountSource", "")) == str(fields.get("mapSource", ""))) if chosen_record else False
+        ),
     }
+    if source_key == "bank":
+        configured_directions = {
+            str(value).strip().lower()
+            for value in (
+                chosen_record.get("matchRules", {}).get("flowDirections", [])
+                if chosen_record
+                else []
+            )
+        }
+        actual_direction = str(runtime_map_values.get("flowDirection") or "").lower()
+        validation["flowDirectionRule"] = bool(
+            chosen_record
+            and actual_direction
+            and (
+                not configured_directions
+                or actual_direction in configured_directions
+            )
+        )
     from .final_template_sample import validate_filled_entries
-    sample_errors = validate_filled_entries(decision, final_template_context or {}) if final_template_context else []
+    sample_errors = validate_filled_entries(decision, final_template_context or {}) if final_template_context and exception_ready is not False else list(decision.get("exceptionValidationErrors") or [])
     decision["finalTemplateValidationErrors"] = sample_errors
     validation["finalTemplateRule"] = not sample_errors if final_template_context else True
+    if exception_ready is not None:
+        validation["exceptionRule"] = exception_ready
     decision["validation"] = validation
-    decision["analysisStatus"] = "ready_for_review" if decision.get("status") == "success" and all(validation.values()) else "blocked"
-    if decision["analysisStatus"] == "blocked":
-        decision["blockReason"] = "系统强校验未全部通过，禁止进入可提交receipt"
+    if exception_ready is False:
+        decision["analysisStatus"] = "exception_pending"
+    else:
+        decision["analysisStatus"] = "ready_for_review" if decision.get("status") == "success" and all(validation.values()) else "blocked"
+    if decision["analysisStatus"] != "ready_for_review":
+        decision.setdefault("blockReason", "系统强校验未全部通过，禁止进入可提交receipt")
     decision["businessPrompt"] = str(prompt_path.resolve())
     decision["memoryFile"] = str(memory_path.resolve())
     _save_analysis_memory(memory_path, memory, artifact.invoice_code, decision)

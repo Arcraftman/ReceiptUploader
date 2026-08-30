@@ -50,6 +50,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="根据公司配置自动创建 data 和 runtime 工作区")
     parser.add_argument("--config", type=Path, required=True, help="config/companies/company_<company_id>_<真实公司名>.json")
     parser.add_argument("--month", required=True, help="明确指定会计月份 YYYY-MM")
+    parser.add_argument("--quiet", action="store_true", help="成功时不输出工作区 JSON；错误仍正常显示")
     args = parser.parse_args()
 
     try:
@@ -106,7 +107,6 @@ def main() -> int:
         for source in BUILT_IN_SOURCES:
             directories = (
                 month_root / "input" / source,
-                workspace_generated / "maps" / source,
                 workspace_generated / "receipts" / source,
                 workspace_generated / "ocr" / source,
                 workspace_root / "state" / source,
@@ -120,10 +120,13 @@ def main() -> int:
         execution_enabled_sources = [
             source for source in BUILT_IN_SOURCES if source_execution_flags[source]
         ]
-        print(json.dumps({
+        result = {
             "status": "ok",
-            "company_key": company_key,
-            "source_company_key": source_company_key,
+            "dataset": {
+                "company_key": company_key,
+                "company_id": company_id,
+                "company_name": company_name,
+            },
             "template_company": template_key,
             "target": {
                 "accountbook_key": accountbook.key,
@@ -136,8 +139,11 @@ def main() -> int:
             "sources": list(BUILT_IN_SOURCES),
             "execution_enabled_sources": execution_enabled_sources,
             "created_directories": created_directories,
+            "created_files": [],
             "project_config": str(project_config_path),
-        }, ensure_ascii=False, indent=2))
+        }
+        if not args.quiet:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
     except (OSError, json.JSONDecodeError, CompanyRegistryError) as exc:
         print(f"工作区配置错误：{exc}", file=sys.stderr)

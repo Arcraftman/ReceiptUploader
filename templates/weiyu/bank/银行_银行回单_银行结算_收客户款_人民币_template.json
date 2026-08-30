@@ -17,6 +17,9 @@
     "sourceFolders": [
       "bank"
     ],
+    "flowDirections": [
+      "inflow"
+    ],
     "allowedDocumentBlocks": [
       "银行"
     ],
@@ -38,7 +41,10 @@
       "100201",
       "1122"
     ],
-    "priority": 290
+    "priority": 290,
+    "defaultForSource": true,
+    "defaultRequiresBusinessValues": true,
+    "excludeCounterpartyEqualsConfigCompany": true
   },
   "summary": {
     "header": "",

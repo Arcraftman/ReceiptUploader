@@ -73,7 +73,7 @@ function Get-CompanyChoices {
             CompanyId = [string]$accountbook.company_id
             CompanyName = [string]$accountbook.name
             LoginAccount = [string]$accountbook.login_account
-            ConfigName = if ($null -ne $configRecord) { $configRecord.Path.Name } else { '' }
+            ConfigName = if ($null -ne $configRecord) { $configRecord.Path.BaseName } else { '' }
             TemplateCompany = if ($null -ne $config) { [string]$config.template_company } else { '' }
         }
     }
@@ -89,7 +89,7 @@ function Show-Companies {
         Write-Host ('[{0}] {1} | {2}' -f ($i + 1), $company.CompanyId, $company.CompanyName)
     }
     if ($choices.Count -eq 0) { Write-Host '    没有可用公司。' -ForegroundColor Yellow }
-    Write-Host '本列表可同时用于选择资料公司和目标账套公司；本列表不判断或复用历史月份状态。' -ForegroundColor DarkGray
+    Write-Host '本列表同时用于选择 dataset 公司和 target 账套公司；不会判断或复用历史月份状态。' -ForegroundColor DarkGray
 }
 
 function Resolve-CompanyChoice {
@@ -98,10 +98,10 @@ function Resolve-CompanyChoice {
     $normalized = $Selector.Trim()
     if (-not $normalized) { throw '公司选择不能为空。' }
     $configName = if ($normalized.EndsWith('.json', [StringComparison]::OrdinalIgnoreCase)) {
-        $normalized
+        $normalized.Substring(0, $normalized.Length - 5)
     }
     else {
-        $normalized + '.json'
+        $normalized
     }
     $matches = @(Get-CompanyChoices | Where-Object {
         $_.CompanyId -eq $normalized -or
@@ -141,15 +141,10 @@ function Invoke-Discovery {
 function Invoke-MonthSpecification {
     param([string[]]$Tokens)
 
-    if ($Tokens.Count -notin @(3, 4)) { throw '格式：month SOURCE_COMPANY_ID YYYY-MM [TARGET_COMPANY_ID]' }
+    if ($Tokens.Count -ne 4) { throw '格式：month DATASET_COMPANY_ID YYYY-MM TARGET_COMPANY_ID' }
     $choice = Resolve-CompanyChoice -Selector $Tokens[1]
     $month = $Tokens[2]
-    $targetChoice = if ($Tokens.Count -eq 4) {
-        Resolve-CompanyChoice -Selector $Tokens[3]
-    }
-    else {
-        $choice
-    }
+    $targetChoice = Resolve-CompanyChoice -Selector $Tokens[3]
     if ($month -notmatch '^\d{4}-(0[1-9]|1[0-2])$') { throw "月份必须严格使用 YYYY-MM：$month" }
     if (-not $choice.ConfigName -or -not $choice.TemplateCompany) {
         $defaultTemplate = Get-DefaultBaseTemplate
@@ -171,7 +166,7 @@ function Invoke-MonthSpecification {
         $targetChoice.CompanyKey
     )
     if ($exitCode -ne 0) { throw "月份初始化失败，退出码：$exitCode" }
-    Write-Host '下一步：编辑该月 data/inbox/.../project.json 中的 mode、analysis_stage 和 sources，再运行 run_company.bat 公司配置名 月份。' -ForegroundColor Green
+    Write-Host '下一步：检查该月 project.json 的 dataset、target、mode、analysis_stage 和 sources，再运行 run_company.bat 公司配置名 月份。' -ForegroundColor Green
 }
 
 function Invoke-StatusView {
@@ -180,12 +175,80 @@ function Invoke-StatusView {
     if ($LASTEXITCODE -ne 0) { Write-Host "状态命令退出码：$LASTEXITCODE" -ForegroundColor Yellow }
 }
 
+function Invoke-BankWorkflow {
+    param([string[]]$Tokens)
+
+    if ($Tokens.Count -ne 3) { throw '格式：bank DATASET_COMPANY_ID YYYY-MM' }
+    $choice = Resolve-CompanyChoice -Selector $Tokens[1]
+    $month = $Tokens[2]
+    if ($month -notmatch '^\d{4}-(0[1-9]|1[0-2])$') { throw "月份必须严格使用 YYYY-MM：$month" }
+    if (-not $choice.ConfigName) { throw "资料公司尚未初始化配置：$($choice.CompanyName)" }
+    $exitCode = Invoke-BatchCommand -Path (Join-Path $CommandsRoot 'run_bank.bat') -Arguments @(
+        $choice.ConfigName,
+        $month
+    )
+    if ($exitCode -ne 0) { throw "银行链路失败，退出码：$exitCode" }
+}
+
+function Invoke-BankVerification {
+    param([string[]]$Tokens)
+
+    if ($Tokens.Count -ne 3) { throw '格式：verify DATASET_COMPANY_ID YYYY-MM' }
+    $choice = Resolve-CompanyChoice -Selector $Tokens[1]
+    $month = $Tokens[2]
+    if ($month -notmatch '^\d{4}-(0[1-9]|1[0-2])$') { throw "月份必须严格使用 YYYY-MM：$month" }
+    if (-not $choice.ConfigName) { throw "资料公司尚未初始化配置：$($choice.CompanyName)" }
+    $exitCode = Invoke-BatchCommand -Path (Join-Path $CommandsRoot 'verify_bank.bat') -Arguments @(
+        $choice.ConfigName,
+        $month
+    )
+    if ($exitCode -ge 2) { throw "银行 receipt 验证命令失败，退出码：$exitCode" }
+}
+
+function Invoke-UnmatchedBankList {
+    param([string[]]$Tokens)
+
+    if ($Tokens.Count -ne 3) { throw '格式：unmatched DATASET_COMPANY_ID YYYY-MM' }
+    $choice = Resolve-CompanyChoice -Selector $Tokens[1]
+    $month = $Tokens[2]
+    if ($month -notmatch '^\d{4}-(0[1-9]|1[0-2])$') { throw "月份必须严格使用 YYYY-MM：$month" }
+    if (-not $choice.ConfigName) { throw "资料公司尚未初始化配置：$($choice.CompanyName)" }
+    $exitCode = Invoke-BatchCommand -Path (Join-Path $CommandsRoot 'list_unmatched_bank.bat') -Arguments @(
+        $choice.ConfigName,
+        $month
+    )
+    if ($exitCode -ne 0) { throw "读取银行排除标记失败，退出码：$exitCode" }
+}
+
+function Invoke-BankExceptionList {
+    param([string[]]$Tokens)
+
+    if ($Tokens.Count -ne 3) { throw '格式：exceptions DATASET_COMPANY_ID YYYY-MM' }
+    $choice = Resolve-CompanyChoice -Selector $Tokens[1]
+    $month = $Tokens[2]
+    if ($month -notmatch '^\d{4}-(0[1-9]|1[0-2])$') { throw "月份必须严格使用 YYYY-MM：$month" }
+    if (-not $choice.ConfigName) { throw "资料公司尚未初始化配置：$($choice.CompanyName)" }
+    $exitCode = Invoke-BatchCommand -Path (Join-Path $CommandsRoot 'list_bank_exceptions.bat') -Arguments @(
+        $choice.ConfigName,
+        $month
+    )
+    if ($exitCode -ne 0) { throw "读取银行 exception 失败，退出码：$exitCode" }
+}
+
 function Show-Help {
     Write-Host ''
     Write-Host '命令：'
-    Write-Host '  month 资料公司ID YYYY-MM [目标公司ID]  创建月份项目并显式写入目标账套'
-    Write-Host '    同公司示例：month 17867515 2026-09'
+    Write-Host '  month dataset公司ID YYYY-MM target公司ID  创建月份项目并显式写入资料与目标身份'
+    Write-Host '    同公司示例：month 17867515 2026-09 17867515'
     Write-Host '    指定目标：month 17867515 2026-09 20151038'
+    Write-Host '  bank dataset公司ID YYYY-MM  按配置执行裁剪、特殊分流、剩余 OCR/匹配、LLM 或 prepare+existing'
+    Write-Host '    示例：bank 17867515 2026-09'
+    Write-Host '  verify dataset公司ID YYYY-MM  仅在 LLM → prepare+existing 后检查最终 receipt'
+    Write-Host '    示例：verify 17867515 2026-09'
+    Write-Host '  unmatched dataset公司ID YYYY-MM  只列出未被 exception 接管的普通未匹配流水'
+    Write-Host '    示例：unmatched 17867515 2026-09'
+    Write-Host '  exceptions dataset公司ID YYYY-MM  列出已分流特殊对象、裁剪原件和特殊 PDF 副本'
+    Write-Host '    示例：exceptions 17867515 2026-09'
     Write-Host '  list                   查看可访问公司'
     Write-Host '  login                  刷新已有公司会话'
     Write-Host '  discover               重新发现公司并刷新会话'
@@ -197,8 +260,8 @@ function Show-Help {
 
 function Show-QuickHelp {
     Write-Host ''
-    Write-Host '下一步：month 资料公司ID YYYY-MM [目标公司ID]（省略目标时明确使用资料公司自己的账套）'
-    Write-Host '其他命令：list | status | login | discover | help | quit'
+    Write-Host '下一步：month dataset公司ID YYYY-MM target公司ID（两者都必须明确指定）'
+    Write-Host '其他命令：bank dataset公司ID YYYY-MM | exceptions dataset公司ID YYYY-MM | unmatched dataset公司ID YYYY-MM | verify dataset公司ID YYYY-MM | list | status | login | discover | help | quit'
 }
 
 function Split-MenuCommand {
@@ -215,9 +278,20 @@ if ($ValidateOnly) {
         if ($resolvedChoice.CompanyKey -ne $validationChoices[0].CompanyKey) {
             throw 'Company selector validation failed.'
         }
+        if ($resolvedChoice.ConfigName.EndsWith('.json', [StringComparison]::OrdinalIgnoreCase)) {
+            throw 'Company config selector must not retain the .json extension.'
+        }
     }
     $sampleTokens = @(Split-MenuCommand -Text 'month 17867515 2026-09 20151038')
     if ($sampleTokens.Count -ne 4) { throw 'Menu command parser validation failed.' }
+    $bankTokens = @(Split-MenuCommand -Text 'bank 17867515 2026-09')
+    if ($bankTokens.Count -ne 3) { throw 'Bank command parser validation failed.' }
+    $verifyTokens = @(Split-MenuCommand -Text 'verify 17867515 2026-09')
+    if ($verifyTokens.Count -ne 3) { throw 'Verify command parser validation failed.' }
+    $unmatchedTokens = @(Split-MenuCommand -Text 'unmatched 17867515 2026-09')
+    if ($unmatchedTokens.Count -ne 3) { throw 'Unmatched command parser validation failed.' }
+    $exceptionTokens = @(Split-MenuCommand -Text 'exceptions 17867515 2026-09')
+    if ($exceptionTokens.Count -ne 3) { throw 'Exception command parser validation failed.' }
     $batchExit = Invoke-BatchCommand -Path (Join-Path $CommandsRoot 'discover_companies.bat') -Arguments @('--help')
     if ($batchExit -ne 0) { throw "Nested BAT exit-code validation failed: $batchExit" }
     Show-Companies
@@ -243,6 +317,10 @@ while ($true) {
             { $_ -in @('quit', 'exit', 'q', '0') } { return }
             'list' { Show-Companies; break }
             'month' { Invoke-MonthSpecification -Tokens $tokens; break }
+            'bank' { Invoke-BankWorkflow -Tokens $tokens; break }
+            'verify' { Invoke-BankVerification -Tokens $tokens; break }
+            'unmatched' { Invoke-UnmatchedBankList -Tokens $tokens; break }
+            'exceptions' { Invoke-BankExceptionList -Tokens $tokens; break }
             'login' { Invoke-HttpLogin; break }
             'discover' { Invoke-Discovery; Show-Companies; break }
             'status' { Invoke-StatusView; break }

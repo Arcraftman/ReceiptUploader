@@ -20,6 +20,7 @@ import initialize_company_month as month_initializer  # noqa: E402
 from initialize_company_month import (  # noqa: E402
     BUILT_IN_SOURCES,
     choose_template,
+    load_default_bank_exceptions,
     normalize_month,
     normalize_input_settings,
     normalize_source_settings,
@@ -92,15 +93,16 @@ class InitializeCompanyMonthLegacyTests(unittest.TestCase):
         with self.assertRaises(CompanyRegistryError):
             normalize_source_settings({"sales": {"enabled": "false"}})
 
-    def test_month_cli_accepts_source_month_and_optional_target(self) -> None:
+    def test_month_cli_requires_dataset_month_and_target(self) -> None:
         with patch.object(sys, "argv", ["initialize_company_month.py", "company_1_测试公司", "2026-09"]):
-            args = parse_args()
-        self.assertEqual(args.company_config_name, "company_1_测试公司")
-        self.assertEqual(args.month, "2026-09")
-        self.assertEqual(args.target_accountbook, "")
+            with self.assertRaises(SystemExit) as raised:
+                parse_args()
+        self.assertEqual(raised.exception.code, 2)
 
         with patch.object(sys, "argv", ["initialize_company_month.py", "company_1_测试公司", "2026-09", "company_2"]):
             args = parse_args()
+        self.assertEqual(args.company_config_name, "company_1_测试公司")
+        self.assertEqual(args.month, "2026-09")
         self.assertEqual(args.target_accountbook, "company_2")
 
         for obsolete in (["--sources", "sales"], ["--template-company", "weiyu"], ["--dataset-key", "demo"]):
@@ -339,7 +341,7 @@ if __name__ == "__main__":
     unittest.main()
 
 
-class InitializeCompanyMonthV5Tests(unittest.TestCase):
+class InitializeCompanyMonthV7Tests(unittest.TestCase):
     def test_new_month_defaults_are_explicit_and_sources_are_disabled(self) -> None:
         self.assertEqual(
             normalize_input_settings(None),
@@ -347,9 +349,36 @@ class InitializeCompanyMonthV5Tests(unittest.TestCase):
         )
         sources = normalize_source_settings(None)
         self.assertEqual(set(sources), set(BUILT_IN_SOURCES))
-        self.assertTrue(all(row == {"enabled": False} for row in sources.values()))
+        expected_core = {
+            "enabled": False,
+            "mode": "analysis-only",
+            "analysis_stage": "ocr",
+            "preload_items": False,
+        }
+        self.assertTrue(all(
+            sources[source] == expected_core
+            for source in ("sales", "purchase", "misc")
+        ))
+        self.assertEqual(
+            set(sources["bank"]),
+            {*expected_core, "banks", "exceptions"},
+        )
+        self.assertEqual(sources["bank"]["banks"], {})
+        self.assertEqual(
+            sources["bank"]["exceptions"],
+            load_default_bank_exceptions(),
+        )
 
-    def test_initializer_writes_only_v5_month_contract(self) -> None:
+    def test_existing_month_exception_configuration_is_not_merged_with_new_defaults(self) -> None:
+        custom = ["客户甲"]
+        sources = normalize_source_settings(
+            {"bank": {"exceptions": custom}},
+            bank_exception_defaults=["默认供应商"],
+        )
+
+        self.assertEqual(sources["bank"]["exceptions"], custom)
+
+    def test_initializer_writes_explicit_v7_dataset_target_and_sources_contract(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
 
@@ -372,16 +401,47 @@ class InitializeCompanyMonthV5Tests(unittest.TestCase):
                     "key": "weiyu", "name": "微誉", "directory": "weiyu", "enabled": True,
                 }],
             })
+            write(
+                root / "config" / "bank_exception.defaults.json",
+                {
+                    "version": 2,
+                    "exceptions": ["TIPS电子缴税款业务待报解预算收入"],
+                    "pdf_keywords": {
+                        "TIPS电子缴税款业务待报解预算收入": [
+                            "上海银行电子缴税付款凭证"
+                        ]
+                    },
+                },
+            )
             write(root / "templates" / "weiyu" / "index.json", {"version": "5.0"})
             completed = subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
             with (
                 patch.object(month_initializer, "ROOT", root),
                 patch.object(month_initializer, "ACCOUNTBOOKS_PATH", accountbooks),
                 patch.object(month_initializer.subprocess, "run", return_value=completed),
-                patch.object(sys, "argv", ["initialize_company_month.py", config_name, "2026-10"]),
+                patch.object(sys, "argv", ["initialize_company_month.py", config_name, "2026-10", "company_1"]),
             ):
                 self.assertEqual(month_initializer.main(), 0)
             project = json.loads((root / "data" / "inbox" / "company_1_测试公司" / "2026-10" / "project.json").read_text(encoding="utf-8"))
-            self.assertEqual(project["version"], 5)
+            self.assertEqual(project["version"], 7)
+            self.assertEqual(project["dataset"], {
+                "company_key": "company_1", "company_id": "1", "company_name": "测试公司",
+            })
+            self.assertEqual(project["target"], {
+                "accountbook_key": "company_1", "company_id": "1", "company_name": "测试公司",
+            })
             self.assertIn("input", project)
-            self.assertFalse({"dataset", "company_config", "login_account", "workspace_directory"} & set(project))
+            self.assertTrue(all(
+                set(project["sources"][source]) >= {
+                    "enabled", "mode", "analysis_stage", "preload_items"
+                }
+                for source in BUILT_IN_SOURCES
+            ))
+            self.assertEqual(project["sources"]["bank"]["banks"], {})
+            self.assertEqual(
+                project["sources"]["bank"]["exceptions"],
+                load_default_bank_exceptions(
+                    root / "config" / "bank_exception.defaults.json"
+                ),
+            )
+            self.assertFalse({"company_key", "company_id", "company_name", "company_config", "login_account", "workspace_directory"} & set(project))
