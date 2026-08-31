@@ -20,6 +20,9 @@
     "flowDirections": [
       "inflow"
     ],
+    "counterpartyRoles": [
+      "customer"
+    ],
     "allowedDocumentBlocks": [
       "银行"
     ],
@@ -44,11 +47,17 @@
     "priority": 290,
     "defaultForSource": true,
     "defaultRequiresBusinessValues": true,
-    "excludeCounterpartyEqualsConfigCompany": true
+    "excludeCounterpartyEqualsConfigCompany": true,
+    "settlementEvidencePriority": [
+      "flowDirection=inflow",
+      "counterpartyType=customer或itemClass=客户",
+      "invoiceNumbers非空或已解析应收账款辅助核算"
+    ],
+    "purposeTextPolicy": "已验证为应收账款回款时，账号服务费、报销、项目款和服务费等付款方用途文字不得将本公司收款重分类为费用。"
   },
   "summary": {
     "header": "",
-    "body": "收客户款 【备注】",
+    "body": "收客户款 {source.counterpartyName}",
     "separator": " "
   },
   "amountSource": "source",
@@ -79,9 +88,13 @@
   ],
   "enabled": true,
   "historicalEvidence": {
-    "count": 64,
+    "count": 66,
     "accountPatterns": [
       "100201/112201"
+    ],
+    "verifiedBusinessPatterns": [
+      "客户汇入账号服务相关款项并关联销售发票：借银行存款，贷应收账款",
+      "客户汇入附言为报销但关联销售发票：借银行存款，贷应收账款"
     ]
   }
 }

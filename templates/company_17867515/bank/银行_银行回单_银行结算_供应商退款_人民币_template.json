@@ -1,0 +1,88 @@
+{
+  "id": "bank-supplier-refund-cny",
+  "name": "银行_银行回单_银行结算_供应商退款_人民币",
+  "version": "1.0",
+  "documentBlock": "银行",
+  "documentType": "银行回单",
+  "settlementMethod": "银行结算",
+  "businessType": "供应商退款",
+  "currency": "人民币",
+  "keywords": [
+    "供应商退款",
+    "退回供应商款",
+    "退货款"
+  ],
+  "when": {},
+  "matchRules": {
+    "sourceFolders": [
+      "bank"
+    ],
+    "flowDirections": [
+      "inflow"
+    ],
+    "counterpartyRoles": [
+      "supplier"
+    ],
+    "allowedDocumentBlocks": [
+      "银行"
+    ],
+    "anyKeywords": [
+      "供应商退款",
+      "退回供应商款",
+      "退货款",
+      "退款"
+    ],
+    "excludeKeywords": [],
+    "expectedAccounts": [
+      "100201",
+      "2202"
+    ],
+    "priority": 950,
+    "defaultForSource": true,
+    "defaultRequiresBusinessValues": true,
+    "excludeCounterpartyEqualsConfigCompany": true,
+    "requiresInvoiceNumbers": false,
+    "evidencePolicy": "对手方必须由进项资料或目标账套供应商目录证明为供应商；资金流入仅用于判断退款方向。"
+  },
+  "summary": {
+    "header": "",
+    "body": "收到供应商退款 {source.counterpartyName}",
+    "separator": " "
+  },
+  "amountSource": "source",
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "100201",
+        "name": "银行存款_上海银行"
+      },
+      "amountFrom": "source.amount",
+      "amountForFrom": "source.amount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "2202",
+        "name": "应付账款"
+      },
+      "amountFrom": "source.amount",
+      "amountForFrom": "source.amount",
+      "auxiliary": {
+        "field": "supplierId",
+        "itemClassId": 5,
+        "selector": "auxiliaryItem"
+      }
+    }
+  ],
+  "enabled": true,
+  "historicalEvidence": {
+    "count": 1,
+    "accountPatterns": [
+      "100201/220201"
+    ],
+    "verifiedBusinessPatterns": [
+      "上海方顺医疗器械有限公司汇入500元：借银行存款，贷应付账款"
+    ]
+  }
+}

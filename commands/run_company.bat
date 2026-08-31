@@ -22,6 +22,10 @@ if not exist "%PYTHON_EXE%" set "PYTHON_EXE=python"
 "%PYTHON_EXE%" "%PROJECT_ROOT%\scripts\commands\prepare_company_workspace.py" --config "%COMPANY_CONFIG%" --month "%RUN_MONTH%"
 if errorlevel 1 exit /b %ERRORLEVEL%
 
+set "PROJECT_CONFIG=%PROJECT_ROOT%\data\inbox\%COMPANY_CONFIG_NAME%\%RUN_MONTH%\project.json"
+call "%PROJECT_ROOT%\commands\login_companies.bat" --project-config "%PROJECT_CONFIG%" --no-pause
+if errorlevel 1 exit /b %ERRORLEVEL%
+
 "%PYTHON_EXE%" "%PROJECT_ROOT%\scripts\commands\run_companies.py" --jobs-config "%COMPANY_CONFIG%" --month "%RUN_MONTH%"
 exit /b %ERRORLEVEL%
 

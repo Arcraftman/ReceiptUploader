@@ -622,7 +622,7 @@ class OpenAICompatibleTemplateSelector:
 
     def choose(self, ocr_text: str, templates: list[Mapping[str, Any]], invoice_code: str = "", final_template_context: Mapping[str, Any] | None = None, business_rules: str = "", verified_memory: list[Mapping[str, Any]] | None = None, prompt_path: Path | None = None) -> dict[str, Any]:
         if not self.api_key:
-            return {"status": f"待提供{self.provider_name} API", "invoiceCode": invoice_code, "templatePath": "", "confidence": 0, "reason": f"未配置 {self.api_key_env}", "raw": None, "textLength": len(ocr_text)}
+            return {"status": f"待提供{self.provider_name} API", "invoiceCode": invoice_code, "templatePath": "", "confidence": 0, "reason": f"未配置 {self.api_key_env}", "raw": None, "textLength": len(ocr_text), "selectionMode": "llm_not_called", "llmAttempted": False, "llmProvider": self.provider_name, "llmModel": self.model}
         catalog = [{key: value for key, value in item.items() if key in {"id", "name", "path", "decisionCode", "decisionName", "documentBlock", "documentType", "settlementMethod", "businessType", "currency", "keywords", "summary", "entries", "matchRules", "amountSource", "bankAccountNumber"}} for item in templates]
         # Dynamic account/item catalogs are used by local validation and entry
         # rendering, not by the classifier.  Sending them to Qwen made the
@@ -689,6 +689,11 @@ class OpenAICompatibleTemplateSelector:
                 parsed["invoiceCode"] = invoice_code
                 parsed["raw"] = payload
                 parsed["textLength"] = len(ocr_text)
+                parsed["selectionMode"] = "llm_api"
+                parsed["llmAttempted"] = True
+                parsed["llmProvider"] = self.provider_name
+                parsed["llmModel"] = self.model
+                parsed["llmRequestId"] = str(payload.get("id") or payload.get("request_id") or "")
                 return parsed
             except urllib.error.HTTPError as exc:
                 try:
@@ -707,14 +712,18 @@ class OpenAICompatibleTemplateSelector:
                     "reason": f"HTTP {exc.code}: {detail}",
                     "raw": {"httpStatus": exc.code, "errorBody": error_body},
                     "textLength": len(ocr_text),
+                    "selectionMode": "llm_api_error",
+                    "llmAttempted": True,
+                    "llmProvider": self.provider_name,
+                    "llmModel": self.model,
                 }
             except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
                 if attempt < 2:
                     time.sleep(0.5 * (2**attempt))
                     continue
-                return {"status": "error", "invoiceCode": invoice_code, "templatePath": "", "confidence": 0, "reason": str(exc), "raw": None, "textLength": len(ocr_text)}
+                return {"status": "error", "invoiceCode": invoice_code, "templatePath": "", "confidence": 0, "reason": str(exc), "raw": None, "textLength": len(ocr_text), "selectionMode": "llm_api_error", "llmAttempted": True, "llmProvider": self.provider_name, "llmModel": self.model}
             except (KeyError, IndexError, json.JSONDecodeError, TypeError, ValueError) as exc:
-                return {"status": "error", "invoiceCode": invoice_code, "templatePath": "", "confidence": 0, "reason": str(exc), "raw": None, "textLength": len(ocr_text)}
+                return {"status": "error", "invoiceCode": invoice_code, "templatePath": "", "confidence": 0, "reason": str(exc), "raw": None, "textLength": len(ocr_text), "selectionMode": "llm_api_error", "llmAttempted": True, "llmProvider": self.provider_name, "llmModel": self.model}
         raise AssertionError("Qwen retry loop exited unexpectedly")
 
 
@@ -960,9 +969,19 @@ def enforce_template_explanation(
                         "field": str(auxiliary_rule.get("field") or ""),
                     }
                     continue
+            resolved_item_class = str(mapped.get("itemClass") or "").strip()
+            if not resolved_item_class:
+                resolved_item_class = {
+                    1: "客户",
+                    2: "存货",
+                    3: "职员",
+                    4: "项目",
+                    5: "供应商",
+                    6: "部门",
+                }.get(item_class_id, str(map_values.get("itemClass") or ""))
             entry["auxiliary"] = {
                 "itemClassId": item_class_id,
-                "itemClass": str(map_values.get("itemClass") or mapped.get("itemClass") or ""),
+                "itemClass": resolved_item_class,
                 "id": str(mapped.get("id")),
                 "number": str(mapped.get("number") or ""),
                 "name": counterparty_name,
@@ -1194,6 +1213,7 @@ def compact_analysis_for_storage(decision: Mapping[str, Any]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key in (
         "templatePath", "templateId", "decisionCode", "decisionName", "selectionMode", "confidence", "reason", "status", "analysisStatus",
+        "llmAttempted", "llmProvider", "llmModel", "llmRequestId",
         "explanation_header", "explanation_body", "explanation", "sourceFolder", "configCompany",
         "partyRule", "bankAccountNumber", "bankTransactionDate", "invoiceNumbers", "sourcePdf", "validation",
         "exceptionStatus", "exceptionType", "exceptionConfig", "exceptionValidationErrors",
@@ -1277,6 +1297,65 @@ def _contains_foreign_currency(ocr_text: str) -> bool:
     )
 
 
+def _enrich_bank_counterparty_roles(
+    final_template_context: Mapping[str, Any] | None,
+    business_values: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Resolve customer/supplier roles from the live target-accountbook catalog."""
+    values = dict(business_values)
+    counterparty_name = str(values.get("counterpartyName") or "").strip()
+    if not counterparty_name or not isinstance(final_template_context, Mapping):
+        return values
+    catalog = final_template_context.get("dynamicItemClassCatalog")
+    matches: dict[str, dict[str, Any]] = {}
+
+    def visit(value: Any, inherited_class_id: int | None = None) -> None:
+        if isinstance(value, Mapping):
+            own_class_id = value.get("itemClassId", inherited_class_id)
+            try:
+                class_id = int(own_class_id) if own_class_id not in (None, "") else inherited_class_id
+            except (TypeError, ValueError):
+                class_id = inherited_class_id
+            if (
+                class_id in {1, 5}
+                and value.get("id") not in (None, "", 0, "0")
+                and str(value.get("name") or "").strip() == counterparty_name
+            ):
+                role = "customer" if class_id == 1 else "supplier"
+                matches[role] = dict(value)
+            for child in value.values():
+                visit(child, class_id)
+        elif isinstance(value, list):
+            for child in value:
+                visit(child, inherited_class_id)
+
+    visit(catalog)
+    roles = sorted(matches)
+    values["counterpartyRoles"] = roles
+    values["counterpartyRoleSource"] = (
+        "dynamic_item_catalog" if matches else "unresolved"
+    )
+    values.pop("auxiliaryItem", None)
+    values.pop("supplierName", None)
+    values.pop("customerName", None)
+    values.pop("customName", None)
+    if not roles:
+        values.pop("counterpartyType", None)
+        values.pop("itemClass", None)
+    if len(roles) == 1:
+        role = roles[0]
+        values["counterpartyType"] = role
+        values["itemClass"] = "客户" if role == "customer" else "供应商"
+        if role == "customer":
+            values["customerName"] = counterparty_name
+            values["customName"] = counterparty_name
+        else:
+            values["supplierName"] = counterparty_name
+        if role in matches:
+            values["auxiliaryItem"] = matches[role]
+    return values
+
+
 def _rule_candidates(
     candidate_records: list[dict[str, Any]],
     artifact: OcrArtifact,
@@ -1292,6 +1371,15 @@ def _rule_candidates(
     has_business_values = isinstance(business_values, Mapping)
     values = business_values if has_business_values else {}
     flow_direction = str(values.get("flowDirection") or "").strip().lower()
+    actual_counterparty_roles = {
+        str(value).strip().lower()
+        for value in values.get("counterpartyRoles") or []
+        if str(value).strip()
+    }
+    if not actual_counterparty_roles:
+        legacy_role = str(values.get("counterpartyType") or "").strip().lower()
+        if legacy_role:
+            actual_counterparty_roles.add(legacy_role)
     invoice_numbers = [
         str(value).strip()
         for value in values.get("invoiceNumbers") or []
@@ -1354,6 +1442,14 @@ def _rule_candidates(
         }
         if allowed_directions and flow_direction and flow_direction not in allowed_directions:
             reasons[str(item.get("path"))] = "资金方向不匹配"
+            continue
+        configured_roles = {
+            str(value).strip().lower()
+            for value in rules.get("counterpartyRoles", [])
+            if str(value).strip()
+        }
+        if configured_roles and not (configured_roles & actual_counterparty_roles):
+            reasons[str(item.get("path"))] = "目标账套客户/供应商目录身份不匹配"
             continue
         if (
             bool(rules.get("requiresInvoiceNumbers"))
@@ -1511,6 +1607,12 @@ def analyze_ocr_and_choose_template(artifact: OcrArtifact, template_root: Path, 
         runtime_map_values = {}
     required_bank_account_number = ""
     if source_key == "bank":
+        runtime_map_values = _enrich_bank_counterparty_roles(
+            final_template_context,
+            runtime_map_values,
+        )
+        if isinstance(final_template_context, dict):
+            final_template_context["businessMapValues"] = runtime_map_values
         required_bank_account_number = str(
             runtime_map_values.get("bankAccountNumber") or ""
         ).strip()
@@ -1562,43 +1664,22 @@ def analyze_ocr_and_choose_template(artifact: OcrArtifact, template_root: Path, 
         )
     memory_path = artifact.output_dir.parent / "analysis_memory.json"
     memory = _load_analysis_memory(memory_path)
-    if len(rule_candidates) == 1:
-        forced = rule_candidates[0]
-        decision = {
-            "status": "success",
-            "templatePath": str(forced.get("path") or ""),
-            "templateId": str(forced.get("id") or ""),
-            "decisionCode": str(forced.get("decisionCode") or ""),
-            "selectionMode": "deterministic_rule",
-            "confidence": 0.99,
-            "reason": "银行流水方向与模板规则已唯一确定，无需调用模型猜测",
-            "extractedFields": {
-                "transactionDirection": str(
-                    runtime_map_values.get("flowDirection") or ""
-                ),
-                "counterpartyName": str(
-                    runtime_map_values.get("counterpartyName") or ""
-                ),
-                "amount": runtime_map_values.get("amount"),
-            },
+    active_selector = selector or OpenAICompatibleTemplateSelector.from_settings({})
+    choose_parameters = inspect.signature(active_selector.choose).parameters
+    if "business_rules" in choose_parameters:
+        choose_kwargs = {
+            "final_template_context": final_template_context,
+            "business_rules": business_rules,
+            "verified_memory": list(memory.get("verifiedDecisions", [])),
         }
+        if "prompt_path" in choose_parameters:
+            choose_kwargs["prompt_path"] = template_root / "prompts" / "invoice_classifier_prompt.txt"
+        decision = active_selector.choose(
+            artifact.text, rule_candidates, artifact.invoice_code,
+            **choose_kwargs,
+        )
     else:
-        active_selector = selector or OpenAICompatibleTemplateSelector.from_settings({})
-        choose_parameters = inspect.signature(active_selector.choose).parameters
-        if "business_rules" in choose_parameters:
-            choose_kwargs = {
-                "final_template_context": final_template_context,
-                "business_rules": business_rules,
-                "verified_memory": list(memory.get("verifiedDecisions", [])),
-            }
-            if "prompt_path" in choose_parameters:
-                choose_kwargs["prompt_path"] = template_root / "prompts" / "invoice_classifier_prompt.txt"
-            decision = active_selector.choose(
-                artifact.text, rule_candidates, artifact.invoice_code,
-                **choose_kwargs,
-            )
-        else:
-            decision = active_selector.choose(artifact.text, rule_candidates, artifact.invoice_code)
+        decision = active_selector.choose(artifact.text, rule_candidates, artifact.invoice_code)
     allowed_paths = {str(item.get("path", "")) for item in rule_candidates}
     decision.setdefault("status", "success" if decision.get("templatePath") else "pending")
     chosen = str(decision.get("templatePath", ""))

@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from functools import lru_cache
+import json
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -83,37 +85,175 @@ def apply_preloaded_items(values_by_invoice: dict[str, dict[str, Any]], preloade
             values["auxiliaryItem"] = {"itemClass": values.get("itemClass", ""), "itemClassId": item_class_id, "id": str(item.get("id", "")), "number": str(item.get("number", "")), "name": str(item.get("name", name))}
 
 
+@lru_cache(maxsize=64)
+def load_bank_counterparty_policy(template_root: Path) -> dict[str, Any]:
+    """Load one company's cross-month bank decision policy."""
+    path = Path(template_root).resolve() / "rules" / "bank_counterparties.json"
+    if not path.is_file():
+        return {"version": 1, "counterparties": {}, "separateHandling": []}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"无法读取公司银行规则 {path}: {exc}") from exc
+    if not isinstance(payload, dict) or payload.get("version") != 1:
+        raise ValueError(f"公司银行规则必须是 version 1：{path}")
+    if not isinstance(payload.get("counterparties", {}), dict):
+        raise ValueError(f"counterparties 必须是对象：{path}")
+    if not isinstance(payload.get("separateHandling", []), list):
+        raise ValueError(f"separateHandling 必须是数组：{path}")
+    return payload
+
+
+def resolve_bank_counterparty_policy(
+    policy: Mapping[str, Any], name: str, direction: str
+) -> dict[str, Any]:
+    """Resolve an exact company rule without learning one-time transaction IDs."""
+    normalized_name = str(name).strip().casefold()
+    normalized_direction = str(direction).strip().lower()
+    for canonical_name, raw_profile in policy.get("counterparties", {}).items():
+        if not isinstance(raw_profile, Mapping):
+            continue
+        names = {
+            str(canonical_name).strip().casefold(),
+            *{
+                str(alias).strip().casefold()
+                for alias in raw_profile.get("aliases", [])
+                if str(alias).strip()
+            },
+        }
+        if normalized_name not in names:
+            continue
+        roles = sorted({
+            str(role).strip().lower()
+            for role in raw_profile.get("roles", [])
+            if str(role).strip().lower() in {"customer", "supplier"}
+        })
+        matching_rules = [
+            dict(rule)
+            for rule in raw_profile.get("rules", [])
+            if isinstance(rule, Mapping)
+            and str(rule.get("direction") or "").strip().lower()
+            in {"", normalized_direction}
+        ]
+        if len(matching_rules) > 1:
+            raise ValueError(
+                f"公司银行规则同一方向存在多个决定：{canonical_name}/{normalized_direction}"
+            )
+        rule = matching_rules[0] if matching_rules else {}
+        return {
+            "canonicalName": str(canonical_name).strip(),
+            "roles": roles,
+            "preferredTemplatePath": str(rule.get("template") or "").strip().replace("\\", "/"),
+            "businessType": str(rule.get("businessType") or "").strip(),
+            "confirmedByUser": bool(raw_profile.get("confirmedByUser")),
+            "accounts": list(rule.get("accounts") or []),
+        }
+    return {}
+
+
+def load_bank_counterparty_role_overrides(template_root: Path) -> dict[str, int]:
+    """Return confirmed single-role names used by bank auxiliary preloading."""
+    role_ids = {"customer": 1, "supplier": 5}
+    result: dict[str, int] = {}
+    policy = load_bank_counterparty_policy(Path(template_root))
+    for canonical_name, raw_profile in policy.get("counterparties", {}).items():
+        if not isinstance(raw_profile, Mapping) or not bool(raw_profile.get("confirmedByUser")):
+            continue
+        roles = {
+            str(value).strip().lower()
+            for value in raw_profile.get("roles", [])
+            if str(value).strip().lower() in role_ids
+        }
+        if len(roles) != 1:
+            continue
+        class_id = role_ids[next(iter(roles))]
+        for name in [canonical_name, *(raw_profile.get("aliases", []) or [])]:
+            normalized_name = str(name).strip()
+            if normalized_name:
+                result[normalized_name] = class_id
+    return result
+
+
+def load_bank_separate_handling(template_root: Path) -> tuple[list[str], dict[str, list[str]]]:
+    """Return company-level names and PDF keywords excluded from ordinary bank flow."""
+    names: list[str] = []
+    pdf_keywords: dict[str, list[str]] = {}
+    policy = load_bank_counterparty_policy(Path(template_root))
+    for record in policy.get("separateHandling", []):
+        if not isinstance(record, Mapping):
+            continue
+        keywords = [
+            str(value).strip()
+            for value in record.get("pdfKeywords", [])
+            if str(value).strip()
+        ]
+        for raw_name in record.get("counterpartyNames", []):
+            name = str(raw_name).strip()
+            if not name:
+                continue
+            names.append(name)
+            if keywords:
+                pdf_keywords[name] = keywords
+    return list(dict.fromkeys(names)), pdf_keywords
+
+
 def preload_bank_counterparties(
     api: Any,
     records: Mapping[str, Mapping[str, Any]],
     *,
     create_missing: bool = True,
+    role_evidence: Mapping[int, list[str]] | None = None,
 ) -> PreloadedItems:
-    """Resolve/create bank customers and suppliers from the authoritative statement map."""
+    """Resolve roles from source documents and live catalogs, never bank direction."""
+    normalized_evidence = {
+        int(class_id): {
+            str(name).strip() for name in names if str(name).strip()
+        }
+        for class_id, names in (role_evidence or {}).items()
+        if int(class_id) in {1, 5}
+    }
+    catalogs: dict[int, dict[str, dict[str, Any]]] = {}
+    for class_id in (1, 5):
+        data = api.get_items_v1(class_id, page_size=500)
+        rows = list(data.get("rows", [])) if isinstance(data, dict) else []
+        catalogs[class_id] = {
+            str(row["name"]).strip(): dict(row)
+            for row in rows
+            if isinstance(row, dict) and str(row.get("name", "")).strip()
+        }
+
     wanted: dict[int, set[str]] = {1: set(), 5: set()}
     for record in records.values():
         name = str(record.get("counterpartyName") or "").strip()
         config_company = str(record.get("configCompany") or "").strip()
         if not name or (config_company and name == config_company):
             continue
-        direction = str(record.get("flowDirection") or "").strip().lower()
-        if direction == "inflow":
-            wanted[1].add(name)
-        elif direction == "outflow":
-            wanted[5].add(name)
+        evidence_classes = [
+            class_id
+            for class_id in (1, 5)
+            if name in normalized_evidence.get(class_id, set())
+        ]
+        if evidence_classes:
+            for class_id in evidence_classes:
+                wanted[class_id].add(name)
+            continue
+        existing_classes = [
+            class_id for class_id in (1, 5) if name in catalogs[class_id]
+        ]
+        if existing_classes:
+            for class_id in existing_classes:
+                wanted[class_id].add(name)
+        # Unknown names remain unresolved. Creating a customer/supplier solely
+        # from cash direction would turn refunds into the wrong auxiliary role.
 
     result = PreloadedItems(
+        by_class=catalogs,
         source_columns={
             str(class_id): sorted(names) for class_id, names in wanted.items()
         }
     )
     for class_id, names in sorted(wanted.items()):
-        data = api.get_items_v1(class_id, page_size=500)
-        rows = list(data.get("rows", [])) if isinstance(data, dict) else []
-        bucket = result.by_class.setdefault(class_id, {})
-        for row in rows:
-            if isinstance(row, dict) and str(row.get("name", "")).strip():
-                bucket[str(row["name"]).strip()] = dict(row)
+        bucket = result.by_class[class_id]
         if not create_missing:
             continue
         for name in sorted(names):

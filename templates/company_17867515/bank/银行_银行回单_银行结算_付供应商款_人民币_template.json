@@ -20,6 +20,9 @@
     "flowDirections": [
       "outflow"
     ],
+    "counterpartyRoles": [
+      "supplier"
+    ],
     "allowedDocumentBlocks": [
       "银行"
     ],
@@ -59,11 +62,18 @@
     "priority": 290,
     "defaultForSource": true,
     "defaultRequiresBusinessValues": true,
-    "excludeCounterpartyEqualsConfigCompany": true
+    "excludeCounterpartyEqualsConfigCompany": true,
+    "requiresInvoiceNumbers": false,
+    "settlementEvidencePriority": [
+      "flowDirection=outflow",
+      "counterpartyRoles包含supplier或已解析供应商辅助核算",
+      "invoiceNumbers仅作为增强证据，不是必需条件"
+    ],
+    "purposeTextPolicy": "已验证为供应商付款时，服务费、培训费、运费、电话费、电费、水费、物业费和通讯费等用途文字不得导致blocked，也不得在银行阶段重复确认费用。"
   },
   "summary": {
     "header": "",
-    "body": "付供应商款【备注】",
+    "body": "付供应商款 {source.counterpartyName}",
     "separator": " "
   },
   "amountSource": "source",
@@ -94,10 +104,15 @@
   ],
   "enabled": true,
   "historicalEvidence": {
-    "count": 133,
+    "count": 138,
     "accountPatterns": [
       "220201/100201",
       "220201/100204"
+    ],
+    "verifiedBusinessPatterns": [
+      "支付已挂账通讯费：借应付账款，贷银行存款",
+      "支付已挂账物业水电费：借应付账款，贷银行存款",
+      "没有关联发票号的服务费、培训费和运费付款仍按供应商应付账款结算"
     ]
   }
 }

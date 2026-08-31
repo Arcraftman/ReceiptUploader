@@ -20,6 +20,7 @@ from .responsibility_chain import run_selected_sources_safe
 from .source_profile import source_from_folder_name, normalize_source_key
 from .simple_logging import configure_pipeline_logger
 from .bank_receipt_verifier import verify_bank_receipts
+from .exception_ledger import append_exception, blocking_document_ids, replace_stage_exceptions, resolve_document_stage
 
 
 def audit(paths: ProjectPaths, result: dict[str, Any]) -> None:
@@ -58,6 +59,8 @@ def run_confirm_sequential(
     valid: list[tuple[Path, Any]],
     api: KdzwyApi,
     paths: ProjectPaths,
+    exception_ledger_path: Path,
+    source: str,
 ) -> tuple[bool, int]:
     """Process receipts in order; stop only on an API/workflow failure."""
     completed = 0
@@ -67,6 +70,12 @@ def run_confirm_sequential(
             result = process_one(receipt, api)
             result["unresolvedInvoiceCodes"] = receipt.unresolved_invoice_codes
             audit(paths, result)
+            resolve_document_stage(
+                exception_ledger_path,
+                source,
+                "upload",
+                receipt.invoice_codes or [receipt.receipt_id],
+            )
             try:
                 _write_upload_checkpoint(path, result)
             except OSError as checkpoint_error:
@@ -86,6 +95,15 @@ def run_confirm_sequential(
                 "stoppedBeforeNext": True,
             }
             audit(paths, result)
+            append_exception(
+                exception_ledger_path,
+                source,
+                "upload",
+                str((receipt.invoice_codes or [receipt.receipt_id])[0]),
+                "upload_failed_or_ambiguous",
+                str(exc),
+                {"receiptId": receipt.receipt_id, "file": str(path)},
+            )
             try:
                 archive(path, paths.failed, receipt, result)
             except OSError as archive_error:
@@ -136,6 +154,7 @@ def main(argv: list[str] | None = None) -> int:
     pdf_map = None
     pdf_map_path = args.pdf_map
     source = normalize_source_key(args.source) or "sales"
+    exception_ledger_path = runtime_root / "generated" / "maps" / source / "workflow_exceptions.json"
     if pdf_map_path is None:
         map_names = ["upload_pdf_map.json", "xlsx_pdf_map.json"] if args.test_upload and source in {"sales", "purchase"} else ["xlsx_pdf_map.json"]
         for map_name in map_names:
@@ -195,6 +214,17 @@ def main(argv: list[str] | None = None) -> int:
         result = {"status": "validation_failed", **item, "completedAt": datetime.now(timezone.utc).isoformat()}
         print(f"校验失败：{item['file']} -> {item['error']}")
         audit(paths, result)
+    replace_stage_exceptions(
+        exception_ledger_path,
+        source,
+        "receipt_validation",
+        ({
+            "documentId": str(item.get("receiptId") or item.get("file") or "*"),
+            "errorType": "receipt_validation_failed",
+            "message": str(item.get("error") or "receipt校验失败"),
+            "details": item,
+        } for item in invalid),
+    )
     if args.confirm and source in {"bank", "misc", "all"}:
         print("真实上传已阻断：bank/misc/all 责任链尚未完成业务规则封装；请先使用 --source sales 或 --source purchase。", file=sys.stderr)
         logger.error("阻断：bank/misc/all 不允许真实上传")
@@ -212,13 +242,28 @@ def main(argv: list[str] | None = None) -> int:
         print("DRY-RUN 完成：未调用任何真实接口。")
         logger.info("DRY-RUN 完成: valid=%s invalid=%s", len(valid), len(invalid))
         return 1 if invalid else 0
+    blocked_ids = blocking_document_ids(exception_ledger_path, source)
+    uploadable: list[tuple[Path, Any]] = []
+    excluded_by_ledger: list[str] = []
+    for path, receipt in valid:
+        document_ids = {str(code) for code in receipt.invoice_codes if str(code)} or {receipt.receipt_id}
+        if "*" in blocked_ids or document_ids.intersection(blocked_ids):
+            excluded_by_ledger.append(receipt.receipt_id)
+            continue
+        uploadable.append((path, receipt))
+    valid = uploadable
+    if excluded_by_ledger:
+        print(f"异常台账已排除 {len(excluded_by_ledger)} 张，不会真实上传：{excluded_by_ledger[:5]}")
+    if not valid:
+        print(f"没有全流程通过的 receipt；真实上传已停止。异常台账：{exception_ledger_path}", file=sys.stderr)
+        return 3
     try:
         api = KdzwyApi(config)
     except ApiError as exc:
         print(f"无法加载账簿会话：{exc}", file=sys.stderr)
         return 2
     try:
-        failed, processed = run_confirm_sequential(valid, api, paths)
+        failed, processed = run_confirm_sequential(valid, api, paths, exception_ledger_path, source)
     finally:
         if hasattr(api, "close"):
             api.close()

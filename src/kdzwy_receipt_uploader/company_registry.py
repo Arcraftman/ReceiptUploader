@@ -690,8 +690,8 @@ def build_job_settings(defaults: dict[str, Any], accountbook: AccountbookProfile
     if analysis_stage not in {"ocr", "llm", "existing", "all"}:
         raise CompanyRegistryError(f"不支持的分析阶段：{analysis_stage}")
     analysis_validation = str(settings.get("analysis_validation", "strict")).strip().lower()
-    if analysis_validation not in {"strict", "relaxed"}:
-        raise CompanyRegistryError('analysis_validation 只支持 "strict" 或 "relaxed"')
+    if analysis_validation not in {"strict", "relaxed", "exceptions"}:
+        raise CompanyRegistryError('analysis_validation 只支持 "strict"、"relaxed" 或 "exceptions"')
     settings["analysis_validation"] = analysis_validation
     paths = settings["paths"]
     if not isinstance(paths, dict):
@@ -742,6 +742,14 @@ def validate_accountbook_session(project_root: Path, accountbook: AccountbookPro
     actual = str(payload.get("company_name") or "").strip()
     if actual != accountbook.name:
         raise CompanyRegistryError(f"账套会话不匹配：配置={accountbook.name}，会话={actual or '未标明公司'}，文件={session_path}")
+    actual_company_id = str(payload.get("company_id") or "").strip()
+    if actual_company_id != accountbook.company_id:
+        raise CompanyRegistryError(
+            f"账套会话 company_id 不匹配：配置={accountbook.company_id}，"
+            f"会话={actual_company_id or '未标明'}，请重新登录：{session_path}"
+        )
+    if not str(payload.get("dbid") or "").strip():
+        raise CompanyRegistryError(f"账套会话缺少锁定 DBID，请重新登录：{session_path}")
     if not isinstance(payload.get("cookies"), list) or not payload.get("access_token"):
         raise CompanyRegistryError(f"账套会话缺少 Cookie 或 access_token：{session_path}")
     return session_path

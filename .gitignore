@@ -17,8 +17,7 @@ http_sessions/
 **/*.sessions.json
 **/credentials.json
 **/secrets.json
-**/config/app.json
-**/config/accounts.json
+
 
 # Never commit private keys or certificates.
 *.pem

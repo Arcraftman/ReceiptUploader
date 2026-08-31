@@ -14,6 +14,7 @@ class BankReceiptSplitError(RuntimeError):
 
 
 _FAST_OCR_ENGINE: Any | None = None
+_BLANK_SLICE_MAX_INK_RATIO = 0.001
 _FILENAME_INDEX_LABELS = (
     ("交易流水号", "transaction_serial"),
     ("交易流水", "transaction_serial"),
@@ -64,15 +65,34 @@ def _extract_filename_index(
     return "", "bank_exception"
 
 
+def _visible_ink_ratio(pixmap: fitz.Pixmap) -> float:
+    """Estimate dark-pixel density without allocating another full image."""
+    pixel_count = max(1, int(pixmap.width) * int(pixmap.height))
+    channels = max(1, int(pixmap.n))
+    sample_step = max(1, pixel_count // 100_000)
+    samples = memoryview(pixmap.samples)
+    inspected = 0
+    dark = 0
+    for pixel_index in range(0, pixel_count, sample_step):
+        offset = pixel_index * channels
+        if offset + min(3, channels) > len(samples):
+            break
+        inspected += 1
+        color_channels = min(3, channels)
+        if min(samples[offset : offset + color_channels]) < 220:
+            dark += 1
+    return dark / max(1, inspected)
+
+
 def _recognize_filename_index(
     page: fitz.Page, configured_length: int, configured_prefix: str
-) -> tuple[str, str, str]:
+) -> tuple[str, str, str, bool]:
     native_text = page.get_text("text") or ""
     native_index, native_source = _extract_filename_index(
         native_text, configured_length, configured_prefix
     )
     if native_index:
-        return native_index, "pdf-text-fast", native_source
+        return native_index, "pdf-text-fast", native_source, False
     pixmap = page.get_pixmap(matrix=fitz.Matrix(150 / 72, 150 / 72), alpha=False)
     result, _ = _get_fast_ocr_engine()(pixmap.tobytes("png"))
     lines: list[tuple[float, float, str]] = []
@@ -87,7 +107,12 @@ def _recognize_filename_index(
     filename_index, index_source = _extract_filename_index(
         ocr_text, configured_length, configured_prefix
     )
-    return filename_index, "rapidocr-150dpi-fast", index_source
+    blank_slice = (
+        not native_text.strip()
+        and not ocr_text.strip()
+        and _visible_ink_ratio(pixmap) <= _BLANK_SLICE_MAX_INK_RATIO
+    )
+    return filename_index, "rapidocr-150dpi-fast", index_source, blank_slice
 
 
 def _fingerprint(
@@ -104,7 +129,7 @@ def _fingerprint(
         "partsPerPage": parts_per_page,
         "filenameIndexLength": filename_index_length,
         "filenameIndexPrefix": filename_index_prefix,
-        "namingVersion": 6,
+        "namingVersion": 7,
     }
 
 
@@ -180,6 +205,10 @@ def _split_one_bank(
             bank_exception_count = (
                 len(bank_exceptions) if isinstance(bank_exceptions, list) else 0
             )
+            blank_slices = manifest.get("blankSlices", [])
+            blank_slice_count = (
+                len(blank_slices) if isinstance(blank_slices, list) else 0
+            )
             _remove_orphan_pdfs(output_dir, previous_outputs)
             return {
                 "bankKey": bank_key,
@@ -191,6 +220,7 @@ def _split_one_bank(
                 "outputCount": len(outputs),
                 "recognizedCount": len(outputs) - bank_exception_count,
                 "bankExceptionCount": bank_exception_count,
+                "blankSliceCount": blank_slice_count,
                 "outputDirectory": str(output_dir.resolve()),
             }
 
@@ -198,6 +228,7 @@ def _split_one_bank(
     generated_names: list[str] = []
     generated_records: list[dict[str, Any]] = []
     bank_exceptions: list[str] = []
+    blank_slices: list[dict[str, Any]] = []
     seen_filename_keys: set[str] = set()
     try:
         with fitz.open(source_pdf) as source:
@@ -213,9 +244,25 @@ def _split_one_bank(
                     with fitz.open() as target:
                         target_page = target.new_page(width=width, height=bottom - top)
                         target_page.show_pdf_page(target_page.rect, source, page_index, clip=clip)
-                        filename_index, ocr_engine, index_source = _recognize_filename_index(
+                        filename_index, ocr_engine, index_source, blank_slice = _recognize_filename_index(
                             target_page, filename_index_length, filename_index_prefix
                         )
+                        if blank_slice:
+                            blank_slices.append({
+                                "page": page_index + 1,
+                                "part": part_index + 1,
+                                "reason": "no_pdf_text_no_ocr_text_low_ink",
+                            })
+                            generated_records.append({
+                                "page": page_index + 1,
+                                "part": part_index + 1,
+                                "filenameIndex": "",
+                                "indexSource": "blank_slice",
+                                "ocrEngine": ocr_engine,
+                                "file": "",
+                                "blank": True,
+                            })
+                            continue
                         filename_key = filename_index.casefold()
                         if filename_index and filename_key not in seen_filename_keys:
                             relative_name = f"{filename_index}.pdf"
@@ -253,6 +300,7 @@ def _split_one_bank(
         "outputs": generated_names,
         "records": generated_records,
         "bankExceptions": bank_exceptions,
+        "blankSlices": blank_slices,
     }
     temporary_manifest = manifest_path.with_suffix(".json.tmp")
     temporary_manifest.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -267,6 +315,7 @@ def _split_one_bank(
         "outputCount": len(generated_names),
         "recognizedCount": len(generated_names) - len(bank_exceptions),
         "bankExceptionCount": len(bank_exceptions),
+        "blankSliceCount": len(blank_slices),
         "outputDirectory": str(output_dir.resolve()),
     }
 
@@ -318,6 +367,9 @@ def split_configured_bank_pdfs(
             "recognizedReceiptCount": sum(int(item["recognizedCount"]) for item in results),
             "bankExceptionReceiptCount": sum(
                 int(item["bankExceptionCount"]) for item in results
+            ),
+            "blankSliceCount": sum(
+                int(item.get("blankSliceCount", 0)) for item in results
             ),
         },
     }

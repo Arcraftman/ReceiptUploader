@@ -1,7 +1,9 @@
 ﻿param(
     [string]$ConfigPath = (Join-Path $PSScriptRoot '..\..\config\kdzwy.json'),
     [string]$AccountbooksPath = (Join-Path $PSScriptRoot '..\..\runtime\registry\accountbooks.json'),
-    [string]$ManifestPath = (Join-Path $PSScriptRoot '..\..\http_sessions\kdzwy.company_sessions.json')
+    [string]$ManifestPath = (Join-Path $PSScriptRoot '..\..\http_sessions\kdzwy.company_sessions.json'),
+    [string]$AccountbookKey = '',
+    [string]$ProjectConfigPath = ''
 )
 
 $ProjectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
@@ -14,38 +16,26 @@ function Normalize-CompanyText {
     param([string]$Value)
     if ([string]::IsNullOrWhiteSpace($Value)) { return '' }
     $normalized = $Value.Normalize([Text.NormalizationForm]::FormKC).Trim()
-    $normalized = [regex]::Replace($normalized, '\s+', '')
+    $normalized = [regex]::Replace($normalized, '[\s\p{Cf}]+', '')
     return $normalized.ToLowerInvariant()
 }
 
 function Find-ExactCompany {
-    param($Value, [string]$CompanyName)
+    param($Value, [string]$CompanyId)
 
     if ($null -eq $Value) { return $null }
     if ($Value -is [Collections.IDictionary] -or $Value -is [Management.Automation.PSCustomObject]) {
         $props = $Value.PSObject.Properties
-        $nameProps = $props | Where-Object { $_.Name -in @('customerName', 'customer_name', 'companyName', 'company_name', 'name', 'company') } | ForEach-Object { $_.Value }
-        $targetText = Normalize-CompanyText $CompanyName
-        foreach ($nameValue in $nameProps) {
-            $candidate = [string]$nameValue
-            if (-not $candidate) { continue }
-            $candidateText = Normalize-CompanyText $candidate
-            if ($candidateText -eq $targetText) { return $Value }
-        }
-        foreach ($nameValue in $nameProps) {
-            $candidate = [string]$nameValue
-            if (-not $candidate) { continue }
-            if ([string]$candidate -eq $CompanyName) { return $Value }
-            if ([string]$candidate -ieq $CompanyName) { return $Value }
-        }
+        $candidateId = $props | Where-Object { $_.Name -in @('companyId', 'company_id', 'customerId') } | Select-Object -First 1 -ExpandProperty Value
+        if ($candidateId -and ([string]$candidateId).Trim() -eq $CompanyId.Trim()) { return $Value }
         foreach ($prop in $props) {
-            $found = Find-ExactCompany -Value $prop.Value -CompanyName $CompanyName
+            $found = Find-ExactCompany -Value $prop.Value -CompanyId $CompanyId
             if ($null -ne $found) { return $found }
         }
     }
     elseif ($Value -is [Collections.IEnumerable] -and $Value -isnot [string]) {
         foreach ($item in $Value) {
-            $found = Find-ExactCompany -Value $item -CompanyName $CompanyName
+            $found = Find-ExactCompany -Value $item -CompanyId $CompanyId
             if ($null -ne $found) { return $found }
         }
     }
@@ -174,6 +164,16 @@ if (-not (Test-Path -LiteralPath $AccountbooksPath)) {
 }
 $accountbooksConfig = Get-Content -LiteralPath $AccountbooksPath -Raw | ConvertFrom-Json
 $enabledAccountbooks = @($accountbooksConfig.accountbooks | Where-Object { $_.enabled -eq $true })
+if ($ProjectConfigPath) {
+    if (-not (Test-Path -LiteralPath $ProjectConfigPath)) { throw "找不到月份配置：$ProjectConfigPath" }
+    $projectConfig = Get-Content -LiteralPath $ProjectConfigPath -Raw | ConvertFrom-Json
+    $AccountbookKey = ([string]$projectConfig.target.accountbook_key).Trim()
+    if (-not $AccountbookKey) { throw "月份配置缺少 target.accountbook_key：$ProjectConfigPath" }
+}
+if ($AccountbookKey) {
+    $enabledAccountbooks = @($enabledAccountbooks | Where-Object { ([string]$_.key).Trim() -eq $AccountbookKey.Trim() })
+    if ($enabledAccountbooks.Count -ne 1) { throw "无法唯一找到目标账套：$AccountbookKey" }
+}
 if ($enabledAccountbooks.Count -eq 0) {
     throw "账套清单没有 enabled=true 的公司：$AccountbooksPath；请先运行 commands\discover_companies.bat。"
 }
@@ -221,12 +221,16 @@ foreach ($loginAccount in $loginAccounts) {
 
     foreach ($accountbook in $accountbooksForLogin) {
         $targetCompany = ([string]$accountbook.name).Trim()
+        $targetCompanyId = ([string]$accountbook.company_id).Trim()
+        if (-not $targetCompanyId) { throw "目标账套缺少 company_id：$targetCompany" }
         try {
             $searchUri = 'https://vip1-gj.kdzwy.com/guanjia/customer/search?customerName=' + [Uri]::EscapeDataString($targetCompany)
             $searchResponse = $client.GetAsync($searchUri).GetAwaiter().GetResult()
             $searchJson = (Get-ResponseText $searchResponse) | ConvertFrom-Json
-            $company = Find-ExactCompany -Value $searchJson -CompanyName $targetCompany
-            if ($null -eq $company -or -not $company.companyId) { throw '登录成功，但没有精确找到目标公司。' }
+            $company = Find-ExactCompany -Value $searchJson -CompanyId $targetCompanyId
+            if ($null -eq $company -or ([string]$company.companyId).Trim() -ne $targetCompanyId) {
+                throw "登录成功，但没有按 company_id 精确找到目标公司：$targetCompanyId / $targetCompany"
+            }
 
             $accountUrlUri = 'https://vip1-gj.kdzwy.com/guanjia/customer/accounturl?companyId=' + [Uri]::EscapeDataString([string]$company.companyId)
             $accountUrlResponse = $client.GetAsync($accountUrlUri).GetAwaiter().GetResult()
@@ -270,10 +274,10 @@ foreach ($loginAccount in $loginAccounts) {
             if (-not $initText) { throw '账套初始化接口返回空内容。' }
             $initJson = $initText | ConvertFrom-Json
             $liveCompany = if ($initJson.data.myCompany) { $initJson.data.myCompany } elseif ($initJson.myCompany) { $initJson.myCompany } else { $null }
-            $companyMatched = $true
-            if (Normalize-CompanyText ([string]$liveCompany) -ne Normalize-CompanyText $targetCompany) {
-                $companyMatched = $false
-            }
+            $liveCompanyId = if ($initJson.data.companyId) { [string]$initJson.data.companyId } elseif ($initJson.companyId) { [string]$initJson.companyId } else { '' }
+            $liveDbid = if ($initJson.data.DBID) { [string]$initJson.data.DBID } elseif ($initJson.DBID) { [string]$initJson.DBID } else { '' }
+            if ($liveCompanyId -ne $targetCompanyId) { throw "账套初始化 company_id 不匹配：期望 $targetCompanyId，实际 $liveCompanyId" }
+            if (-not $liveDbid) { throw '账套初始化未返回 DBID。' }
 
             $sessionCookies = @(
                 foreach ($cookie in $cookies.GetCookies([Uri]'https://vip4-kj.kdzwy.com/')) {
@@ -297,19 +301,24 @@ foreach ($loginAccount in $loginAccounts) {
                 cookies = $sessionCookies
                 access_token = [string]$accessToken
                 refresh_token = [string]$refreshToken
-                company_name = [string]$liveCompany
+                company_name = $targetCompany
+                reported_company_name = [string]$liveCompany
+                company_id = $liveCompanyId
+                dbid = $liveDbid
                 verified_at = $verifiedAt
             }
 
             $companySessionPath = Resolve-CompanySessionPath -Accountbook $accountbook -LoginAccountKey $accountKey -CompanyName $targetCompany
             Write-JsonAtomically -Value $sessionPayload -Path $companySessionPath
             $successfulPayloads += $sessionPayload
-            $manifestEntries += [ordered]@{ login_account = $accountKey; company_name = [string]$liveCompany; company_name_expected = $targetCompany; company_matched = $companyMatched; session_file = [IO.Path]::GetFullPath($companySessionPath); verified_at = $verifiedAt }
+            $manifestEntries += [ordered]@{ login_account = $accountKey; company_name = $targetCompany; company_id = $liveCompanyId; dbid = $liveDbid; session_file = [IO.Path]::GetFullPath($companySessionPath); verified_at = $verifiedAt }
             $results += [ordered]@{
                 login_account = $accountKey
-                company_name = [string]$liveCompany
-                status = if ($companyMatched) { 'ok' } else { 'ok-mismatch' }
-                company_match = if ($companyMatched) { 'exact' } else { 'fuzzy' }
+                company_name = $targetCompany
+                company_id = $liveCompanyId
+                dbid = $liveDbid
+                status = 'ok'
+                company_match = 'company-id-exact'
                 target_company = $targetCompany
                 accounting_host = $accountUri.Host
                 accounting_path = $accountUri.AbsolutePath

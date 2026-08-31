@@ -20,7 +20,7 @@ class KdzwyApi:
 
     def __init__(self, config: AppConfig) -> None:
         self.config = config
-        self.origin, self.cookies, session_dbid, self.access_token, self.session_company = self._load_session(config.cookie_file)
+        self.origin, self.cookies, session_dbid, self.access_token, self.session_company, self.session_company_id = self._load_session(config.cookie_file)
         if config.expected_company and self.session_company != config.expected_company:
             raise ApiError(
                 f"账簿会话公司不匹配：期望 {config.expected_company}，实际 {self.session_company or '未标明公司'}"
@@ -45,7 +45,7 @@ class KdzwyApi:
             self._shared_read_cache.pop(key, None)
 
     @staticmethod
-    def _load_session(path: Path) -> tuple[str, str, str | None, str | None, str | None]:
+    def _load_session(path: Path) -> tuple[str, str, str | None, str | None, str | None, str | None]:
         try:
             payload = json.loads(path.read_text(encoding="utf-8-sig"))
         except (OSError, json.JSONDecodeError) as exc:
@@ -75,9 +75,10 @@ class KdzwyApi:
         return (
             f"{parsed.scheme}://{parsed.netloc}",
             "; ".join(pairs),
-            parse_qs(parsed.query).get("dbId", parse_qs(parsed.query).get("dbid", [None]))[0],
+            str(payload.get("dbid") or parse_qs(parsed.query).get("dbId", parse_qs(parsed.query).get("dbid", [None]))[0] or "") or None,
             payload.get("access_token") if isinstance(payload.get("access_token"), str) else None,
             payload.get("company_name") if isinstance(payload.get("company_name"), str) else None,
+            str(payload.get("company_id") or "") or None,
         )
 
     def _request(self, method: str, endpoint: str, body: bytes | None, headers: dict[str, str], timeout: int) -> dict[str, Any]:
@@ -204,8 +205,13 @@ class KdzwyApi:
             lambda: self.unwrap_data(endpoint, self.get_json(endpoint)),
         )
         dynamic_dbid = result.get("DBID") or result.get("dbId")
-        if dynamic_dbid:
-            self.dbid = str(dynamic_dbid)
+        dynamic_company_id = result.get("companyId") or result.get("company_id")
+        if not self.dbid or not self.session_company_id:
+            raise ApiError("账套会话缺少锁定 DBID/company_id，请重新登录")
+        if dynamic_dbid and str(dynamic_dbid) != str(self.dbid):
+            raise ApiError(f"账套会话串账：锁定 DBID={self.dbid}，实时 DBID={dynamic_dbid}")
+        if dynamic_company_id and str(dynamic_company_id) != str(self.session_company_id):
+            raise ApiError(f"账套会话串账：锁定 company_id={self.session_company_id}，实时 company_id={dynamic_company_id}")
         return result
 
     def get_voucher_words(self) -> list[dict[str, Any]]:

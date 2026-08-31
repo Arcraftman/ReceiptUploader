@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -110,12 +111,33 @@ class PipelineStateStore:
 
     def _commit(self, state: Mapping[str, Any], *, event: str) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = self.path.with_suffix(self.path.suffix + ".tmp")
-        with temporary.open("w", encoding="utf-8", newline="") as stream:
-            stream.write(json.dumps(state, ensure_ascii=False, indent=2) + "\n")
-            stream.flush()
-            os.fsync(stream.fileno())
-        os.replace(temporary, self.path)
+        temporary = self.path.with_name(
+            f".{self.path.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp"
+        )
+        try:
+            with temporary.open("w", encoding="utf-8", newline="") as stream:
+                stream.write(json.dumps(state, ensure_ascii=False, indent=2) + "\n")
+                stream.flush()
+                os.fsync(stream.fileno())
+            last_error: PermissionError | None = None
+            for attempt in range(6):
+                try:
+                    os.replace(temporary, self.path)
+                    last_error = None
+                    break
+                except PermissionError as exc:
+                    last_error = exc
+                    if attempt < 5:
+                        time.sleep(0.1 * (attempt + 1))
+            if last_error is not None:
+                raise PipelineStateError(
+                    f"Windows持续占用任务状态文件，重试后仍无法保存：{self.path}：{last_error}"
+                ) from last_error
+        finally:
+            try:
+                temporary.unlink(missing_ok=True)
+            except OSError:
+                pass
         self._append_event(state, event=event)
 
     def _append_event(self, state: Mapping[str, Any], *, event: str) -> None:

@@ -364,3 +364,122 @@ def filter_bank_exception_pdfs(
     }
     _write_json(manifest_path, result)
     return result
+
+
+def quarantine_bank_runtime_exceptions(
+    exception_report: Mapping[str, Any],
+    output_root: Path,
+    manifest_path: Path,
+    ocr_report: Mapping[str, Any],
+    match_report: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Append all post-split OCR/matching abnormalities to bank exceptions."""
+    result = dict(exception_report)
+    entries = dict(result.get("entries") or {})
+    runtime_keys: set[str] = set()
+
+    def add_entry(
+        bank_key: str,
+        reason: str,
+        ordinal: int,
+        record: Mapping[str, Any],
+        source_pdf: object = None,
+    ) -> None:
+        index = str(record.get("index") or "").strip()
+        key = f"{bank_key}__runtime__{reason}__{index or ordinal}"
+        suffix = 2
+        while key in entries:
+            key = f"{bank_key}__runtime__{reason}__{index or ordinal}_{suffix}"
+            suffix += 1
+        source_path = Path(str(source_pdf)).resolve() if source_pdf else None
+        if source_path is not None and not source_path.is_file():
+            source_path = None
+        copied_path = None
+        if source_path is not None:
+            copied_path = _copy_special_pdf(
+                source_path,
+                output_root,
+                f"_运行异常_{reason}",
+                key,
+            )
+        statement = record.get("statement")
+        entries[key] = {
+            "key": key,
+            "bankKey": bank_key,
+            "index": index,
+            "counterpartyName": str(record.get("counterpartyName") or ""),
+            "matchMethod": f"runtime_{reason}",
+            "flowDirection": str(record.get("flowDirection") or ""),
+            "amount": record.get("ourDebitAmount") or record.get("ourCreditAmount"),
+            "statement": statement,
+            "sourcePdf": str(source_path) if source_path else None,
+            "copiedPdf": str(copied_path) if copied_path else None,
+            "pdfStatus": "separated" if copied_path else "missing",
+            "reason": reason,
+            "details": dict(record),
+            "downstreamEligible": False,
+        }
+        runtime_keys.add(key)
+
+    for ordinal, error in enumerate(ocr_report.get("errors") or [], start=1):
+        if not isinstance(error, Mapping):
+            continue
+        add_entry(
+            str(error.get("bankKey") or "unknown_bank"),
+            "ocr_error",
+            ordinal,
+            error,
+            error.get("sourcePdf") or error.get("pdf"),
+        )
+
+    banks = match_report.get("banks") or {}
+    if isinstance(banks, Mapping):
+        for bank_key, bank_report in banks.items():
+            if not isinstance(bank_report, Mapping):
+                continue
+            categories = (
+                ("unmatched_statement", "unmatchedStatements"),
+                ("unmatched_receipt", "unmatchedReceipts"),
+                ("person_name", "skippedPersonNameStatements"),
+                ("direction_error", "directionErrors"),
+            )
+            for reason, field in categories:
+                for ordinal, record in enumerate(bank_report.get(field) or [], start=1):
+                    if not isinstance(record, Mapping):
+                        continue
+                    receipt = record.get("receipt")
+                    source_pdf = receipt.get("pdf") if isinstance(receipt, Mapping) else None
+                    add_entry(str(bank_key), reason, ordinal, record, source_pdf)
+            for ordinal, duplicate in enumerate(bank_report.get("duplicateIndexes") or [], start=1):
+                if not isinstance(duplicate, Mapping):
+                    continue
+                receipts = duplicate.get("receipts") or []
+                if not receipts:
+                    add_entry(str(bank_key), "duplicate_index", ordinal, duplicate)
+                    continue
+                for receipt_ordinal, receipt in enumerate(receipts, start=1):
+                    receipt_record = receipt if isinstance(receipt, Mapping) else {}
+                    add_entry(
+                        str(bank_key),
+                        "duplicate_index",
+                        ordinal * 1000 + receipt_ordinal,
+                        duplicate,
+                        receipt_record.get("pdf"),
+                    )
+
+    result["entries"] = entries
+    summary = dict(result.get("summary") or {})
+    summary["runtimeExceptionCount"] = len(runtime_keys)
+    summary["totalExceptionCount"] = len(entries)
+    summary["exceptionPdfCount"] = sum(
+        bool(item.get("sourcePdf")) for item in entries.values()
+    )
+    summary["copiedPdfCount"] = sum(
+        bool(item.get("copiedPdf")) for item in entries.values()
+    )
+    summary["missingPdfCount"] = sum(
+        item.get("pdfStatus") == "missing" for item in entries.values()
+    )
+    result["summary"] = summary
+    _write_json(manifest_path, result)
+    return result
