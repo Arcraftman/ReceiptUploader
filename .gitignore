@@ -17,7 +17,6 @@ http_sessions/
 **/*.sessions.json
 **/credentials.json
 **/secrets.json
-**/config/kdzwy.json
 **/config/app.json
 **/config/accounts.json
 
