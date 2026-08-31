@@ -313,6 +313,31 @@ def dataset_from_company(company: CompanyProfile) -> DatasetProfile:
     )
 
 
+def resolve_company_template(root: Path, key: str, name: str) -> TemplateCompanyProfile:
+    """Resolve one company's template directly from templates/<company_key>."""
+    normalized = _required_text(key, "template_company").lower()
+    if not normalized.startswith("company_") or any(
+        character not in "abcdefghijklmnopqrstuvwxyz0123456789_-"
+        for character in normalized
+    ):
+        raise CompanyRegistryError(f"template_company 必须使用 company_<company_id>：{key}")
+    templates_root = (root / "templates").resolve()
+    template_root = (templates_root / normalized).resolve()
+    try:
+        template_root.relative_to(templates_root)
+    except ValueError as exc:
+        raise CompanyRegistryError(f"模板目录越过 templates：{normalized}") from exc
+    if not template_root.is_dir():
+        raise CompanyRegistryError(f"公司模板目录不存在：{template_root}")
+    if not (template_root / "index.json").is_file():
+        raise CompanyRegistryError(f"公司模板缺少 index.json：{template_root}")
+    return TemplateCompanyProfile(
+        key=normalized,
+        name=_required_text(name, "company_name"),
+        directory=normalized,
+    )
+
+
 def load_template_companies(path: Path) -> dict[str, TemplateCompanyProfile]:
     payload = _read_object(path)
     if payload.get("version") != 2:

@@ -18,8 +18,8 @@ from kdzwy_receipt_uploader.company_registry import (  # noqa: E402
     load_company_jobs,
     load_company_profile,
     load_accountbooks,
-    load_template_companies,
     normalize_month,
+    resolve_company_template,
     resolve_target_accountbook,
     workspace_relative_path,
 )
@@ -64,10 +64,7 @@ def main() -> int:
         template_key = required_text(company.template_company, "template_company")
         month = normalize_month(args.month)
 
-        templates = load_template_companies(ROOT / "config" / "template_companies.json")
-        template = templates.get(template_key)
-        if template is None or not template.enabled:
-            raise CompanyRegistryError(f"模板公司不存在或未启用：{template_key}")
+        template = resolve_company_template(ROOT, template_key, company_name)
         template_index = ROOT / "templates" / template.directory / "index.json"
         if not template_index.is_file():
             raise CompanyRegistryError(f"模板缺少 index.json：{template_index}")

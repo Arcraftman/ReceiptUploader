@@ -19,7 +19,7 @@ from kdzwy_receipt_uploader.company_registry import (  # noqa: E402
     CompanyRegistryError,
     load_accountbooks,
     load_company_profile,
-    load_template_companies,
+    resolve_company_template,
     normalize_month,
     validate_bank_configs,
     validate_bank_exceptions,
@@ -213,18 +213,9 @@ def resolve_company_config(selector: str) -> Path:
     return path
 
 
-def choose_template(payload: dict[str, Any], templates_path: Path) -> str:
-    templates = load_template_companies(templates_path)
+def choose_template(payload: dict[str, Any], company_name: str) -> str:
     selected = str(payload.get("template_company") or "").strip().lower()
-    template = templates.get(selected)
-    if template is None or not template.enabled:
-        available = ", ".join(sorted(key for key, item in templates.items() if item.enabled))
-        raise CompanyRegistryError(
-            "公司尚未准备可用模板；请通过 commands/start.bat 的 "
-            f"month DATASET_COMPANY_ID YYYY-MM TARGET_COMPANY_ID 自动初始化。当前可用模板：{available or '无'}"
-        )
-    if not (ROOT / "templates" / template.directory / "index.json").is_file():
-        raise CompanyRegistryError(f"模板缺少 index.json：templates/{template.directory}")
+    resolve_company_template(ROOT, selected, company_name)
     return selected
 
 
@@ -270,7 +261,7 @@ def main() -> int:
 
         accountbooks = load_accountbooks(ACCOUNTBOOKS_PATH)
 
-        template_key = choose_template(payload, ROOT / "config" / "template_companies.json")
+        template_key = choose_template(payload, company_name)
         data_root = (ROOT / company.data_root).resolve()
         inbox_root = (ROOT / "data" / "inbox").resolve()
         try:

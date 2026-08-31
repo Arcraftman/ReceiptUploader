@@ -22,8 +22,8 @@ from kdzwy_receipt_uploader.company_registry import (  # noqa: E402
     load_company_jobs,
     load_company_profile,
     load_pipeline_defaults,
-    load_template_companies,
     normalize_month,
+    resolve_company_template,
     resolve_target_accountbook,
     resolve_project_path,
     validate_accountbook_session,
@@ -73,7 +73,6 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="按月份配置串行处理资料公司并写入指定账套")
     parser.add_argument("--accountbooks-config", type=Path, default=ROOT / "runtime" / "registry" / "accountbooks.json")
     parser.add_argument("--jobs-config", type=Path, default=None, help="单个公司配置；默认加载 config/companies/*.json")
-    parser.add_argument("--template-companies-config", type=Path, default=ROOT / "config" / "template_companies.json")
     parser.add_argument("--defaults-config", type=Path, default=ROOT / "config" / "pipeline.defaults.json")
     parser.add_argument("--app-config", type=Path, default=ROOT / "config" / "app.json")
     parser.add_argument("--accountbook", action="append", default=[], help="只运行指定账套 key，可重复")
@@ -106,7 +105,6 @@ def main() -> int:
 
     try:
         accountbooks = load_accountbooks(args.accountbooks_config.resolve())
-        template_companies = load_template_companies(args.template_companies_config.resolve())
         company_config_paths = [args.jobs_config.resolve()] if args.jobs_config else sorted((ROOT / "config" / "companies").glob("*.json"))
         if not company_config_paths:
             raise CompanyRegistryError("config/companies 中没有公司配置")
@@ -162,11 +160,11 @@ def main() -> int:
     for accountbook, dataset, job in selected:
         try:
             template_company_key = job.template_company
-            template_company = template_companies.get(template_company_key)
-            if template_company is None or not template_company.enabled:
-                raise CompanyRegistryError(f"模板公司不存在或未启用：{template_company_key}")
-            if not re.fullmatch(r"[a-z][a-z0-9_-]*", template_company.directory):
-                raise CompanyRegistryError(f"模板目录必须使用英文小写 key：{template_company.directory}")
+            template_company = resolve_company_template(
+                ROOT,
+                template_company_key,
+                dataset.entity_name,
+            )
             template_root = (ROOT / "templates" / template_company.directory).resolve()
             try:
                 template_root.relative_to((ROOT / "templates").resolve())
