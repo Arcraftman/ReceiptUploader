@@ -39,6 +39,7 @@ from kdzwy_receipt_uploader.preupload_review import build_preupload_report
 from kdzwy_receipt_uploader.final_template_sample import build_final_template_context, load_final_template_sample
 from kdzwy_receipt_uploader.preload_items import (
     apply_preloaded_items,
+    collect_map_item_names,
     preload_bank_counterparties,
     preload_items,
 )
@@ -757,32 +758,11 @@ def main() -> int:
             preload_already_done = False
 
     preload_enabled = preload_mode != "off"
-    if preload_enabled and not preload_already_done and str(settings.get("accountbook_source", "live")) == "live":
-        checkpoint("item_preload")
-        preload_config = AppConfig.from_json(app_config_path, ROOT)
-        preload_api = KdzwyApi(replace(preload_config, expected_company=expected_company))
-        preload_api.get_dynamic_system_params()
-        preload_result = preload_items(preload_api, input_dir, config, extra_columns=settings.get("item_source_columns", []), create_missing=True)
-        preload_report = {"sourceColumns": preload_result.source_columns, "created": preload_result.created, "counts": {str(class_id): len(rows) for class_id, rows in preload_result.by_class.items()}}
-        preload_path = map_path.parent / "item_preload.report.json"
-        preload_path.write_text(json.dumps(preload_report, ensure_ascii=False, indent=2), encoding="utf-8")
-        if preload_mode == "once":
-            preload_state_path.parent.mkdir(parents=True, exist_ok=True)
-            preload_state_tmp = preload_state_path.with_suffix(".json.tmp")
-            preload_state_tmp.write_text(
-                json.dumps(
-                    {"status": "success", "fingerprint": preload_fingerprint},
-                    ensure_ascii=False,
-                    indent=2,
-                ) + "\n",
-                encoding="utf-8",
-            )
-            preload_state_tmp.replace(preload_state_path)
-        print(f"ItemClass预加载完成：{preload_report['counts']}，新增：{len(preload_result.created)}")
-        checkpoint("item_preload_complete", artifacts={"itemPreloadReport": str(preload_path.resolve())}, counters={"itemPreloadCreatedCount": len(preload_result.created)})
-    elif preload_already_done:
-        print(f"ItemClass预加载已完成且输入Excel未变化，本次跳过：{settings.get('source', 'all')}")
-        checkpoint("item_preload_reused")
+    if preload_enabled and str(settings.get("accountbook_source", "live")) == "live":
+        if preload_already_done:
+            print(f"ItemClass本地输入未变化；业务映射生成后仍会核对远端：{settings.get('source', 'all')}")
+        else:
+            print(f"ItemClass将在业务映射生成后核对远端：{settings.get('source', 'all')}")
     usage_path = input_dir / config.usage_filename
     sales_map_report = _empty_map_report()
     purchase_map_report = _empty_map_report()
@@ -809,6 +789,81 @@ def main() -> int:
         purchase_map_report["report"]["summary"]["excludedByUsagePdfFilterCount"] = purchase_map_total_count - len(purchase_map_report["map"])
         purchase_map_path.write_text(json.dumps(purchase_map_report["map"], ensure_ascii=False, indent=2), encoding="utf-8")
         purchase_map_report_path.write_text(json.dumps(purchase_map_report["report"], ensure_ascii=False, indent=2), encoding="utf-8")
+    if preload_enabled and str(settings.get("accountbook_source", "live")) == "live":
+        checkpoint("item_preload")
+        map_item_names = collect_map_item_names(
+            sales_map_report.get("map", {}),
+            purchase_map_report.get("map", {}),
+        )
+        preload_config = AppConfig.from_json(app_config_path, ROOT)
+        preload_api = KdzwyApi(replace(preload_config, expected_company=expected_company))
+        preload_api.get_dynamic_system_params()
+        preload_result = preload_items(
+            preload_api,
+            input_dir,
+            config,
+            create_missing=True,
+            wanted_items=map_item_names,
+        )
+        apply_preloaded_items(
+            sales_map_report["map"], preload_result, 1,
+            "customName", "customerId", "customerNumber",
+        )
+        apply_preloaded_items(
+            purchase_map_report["map"], preload_result, 5,
+            "supplierName", "supplierId", "supplierNumber",
+        )
+        if pipeline_source_key in {"sales", "all"}:
+            sales_map_path.write_text(
+                json.dumps(sales_map_report["map"], ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+        if pipeline_source_key in {"purchase", "all"}:
+            purchase_map_path.write_text(
+                json.dumps(purchase_map_report["map"], ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+        preload_report = {
+            "sourceColumns": preload_result.source_columns,
+            "created": preload_result.created,
+            "counts": {
+                str(class_id): len(rows)
+                for class_id, rows in preload_result.by_class.items()
+            },
+            "sourceKind": "generated_business_maps",
+        }
+        preload_path = map_path.parent / "item_preload.report.json"
+        preload_path.write_text(
+            json.dumps(preload_report, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        if preload_mode == "once":
+            preload_state_path.parent.mkdir(parents=True, exist_ok=True)
+            preload_state_tmp = preload_state_path.with_suffix(".json.tmp")
+            preload_state_tmp.write_text(
+                json.dumps(
+                    {
+                        "status": "success",
+                        "fingerprint": preload_fingerprint,
+                        "verifiedSourceColumns": preload_result.source_columns,
+                        "sourceKind": "generated_business_maps",
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                ) + "\n",
+                encoding="utf-8",
+            )
+            preload_state_tmp.replace(preload_state_path)
+        print(
+            f"ItemClass远端核对完成：客户={len(map_item_names.get(1, []))}，"
+            f"供应商={len(map_item_names.get(5, []))}，新增={len(preload_result.created)}"
+        )
+        checkpoint(
+            "item_preload_complete",
+            artifacts={"itemPreloadReport": str(preload_path.resolve())},
+            counters={"itemPreloadCreatedCount": len(preload_result.created)},
+        )
+
     mapping_artifacts = {}
     if pipeline_source_key in {"purchase", "all"}:
         mapping_artifacts.update({

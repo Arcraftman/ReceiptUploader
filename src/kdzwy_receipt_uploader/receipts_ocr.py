@@ -37,7 +37,7 @@ class OcrPipelineError(ValueError):
 
 
 _OCR_ENGINE: Any | None = None
-_OCR_CACHE_VERSION = 3
+_OCR_CACHE_VERSION = 6
 _ANALYSIS_MEMORY_LOCK = threading.Lock()
 
 
@@ -133,8 +133,98 @@ def extract_invoice_fields(text: str) -> dict[str, Any]:
 
     invoice_number = first_match([r"发票号码[:：]?([0-9]{8,24})", r"发票号[:：]?([0-9]{8,24})"])
     issue_date = first_match([r"开票日期[:：]?([0-9]{4}年[0-9]{1,2}月[0-9]{1,2}日)", r"开票日期[:：]?([0-9]{4}[-/][0-9]{1,2}[-/][0-9]{1,2})"])
-    total_amount = first_match([r"[（(]小写[）)][:：]?￥?([0-9,]+(?:\.[0-9]{1,2})?)", r"价税合计[:：]?￥?([0-9,]+(?:\.[0-9]+)?)"])
-    tax_rate = first_match([r"税率/征收率[:：]?([0-9]+(?:\.[0-9]+)?%)", r"税率[:：]?([0-9]+(?:\.[0-9]+)?%)", r"([0-9]+(?:\.[0-9]+)?%)"])
+    total_amount = first_match([
+        r"[（(]小写[）)][:：]?[¥￥]?([0-9,]+(?:[.．][0-9]{1,2})?)",
+        r"价税合计[（(]?小写[）)]?[:：]?[¥￥]?([0-9,]+(?:[.．][0-9]{1,2})?)",
+        r"价税合计[:：]?[¥￥]?([0-9,]+(?:[.．][0-9]+)?)",
+    ])
+    total_amount = total_amount.replace("．", ".") if total_amount else ""
+    adjacent_total_evidence = ""
+    if not total_amount:
+        # A common OCR layout emits the gross amount first, then emits
+        # `价税合计（大写）` and `（小写）` as independent lines.  Associate
+        # only an explicitly currency-prefixed amount close to those labels;
+        # never fall back to the largest number in the document.
+        label_indexes = [index for index, line in enumerate(lines) if "小写" in line]
+        label_indexes.extend(
+            index for index, line in enumerate(lines)
+            if "价税合计" in line and index not in label_indexes
+        )
+        for label_index in label_indexes:
+            nearby_indexes = [
+                index
+                for distance in range(1, 5)
+                for index in (label_index - distance, label_index + distance)
+                if 0 <= index < len(lines)
+            ]
+            for nearby_index in nearby_indexes:
+                match = re.search(r"[¥￥]\s*([0-9,]+(?:[.．][0-9]{1,2})?)", lines[nearby_index])
+                if not match:
+                    continue
+                total_amount = match.group(1).replace(",", "").replace("．", ".")
+                adjacent_total_evidence = f"{lines[nearby_index]} | {lines[label_index]}"
+                break
+            if total_amount:
+                break
+    tax_rate = first_match([
+        r"税率/征收率[:：]?([0-9]+(?:[.．][0-9]+)?[%％])",
+        r"税率[:：]?([0-9]+(?:[.．][0-9]+)?[%％])",
+        r"([0-9]+(?:[.．][0-9]+)?[%％])",
+    ])
+    tax_rate = tax_rate.replace("．", ".").replace("％", "%") if tax_rate else ""
+    if not tax_rate:
+        tax_rate = next((label for label in ("免税", "不征税", "零税率") if label in "\n".join(lines)), "")
+    tax_rate_method = "explicit_ocr_text" if tax_rate else ""
+    derived_tax_evidence = ""
+    if not tax_rate and total_amount:
+        # When OCR misses the small tax-rate cell, derive a rate only from an
+        # independently verifiable money equation.  Every candidate must use
+        # currency-prefixed OCR values, satisfy net + tax = gross, and round
+        # back to the tax amount at one standard VAT rate.
+        try:
+            gross = Decimal(total_amount.replace(",", ""))
+        except InvalidOperation:
+            gross = Decimal("-1")
+        money_values: set[Decimal] = set()
+        for line in lines:
+            for raw_value in re.findall(r"[¥￥]\s*([0-9][0-9,]*(?:[.．][0-9]{1,2})?)", line):
+                try:
+                    money_values.add(Decimal(raw_value.replace(",", "").replace("．", ".")))
+                except InvalidOperation:
+                    continue
+        standard_rates = {
+            Decimal("0.01"): "1%",
+            Decimal("0.03"): "3%",
+            Decimal("0.05"): "5%",
+            Decimal("0.06"): "6%",
+            Decimal("0.09"): "9%",
+            Decimal("0.13"): "13%",
+        }
+        tolerance = Decimal("0.02")
+        derived_candidates: list[tuple[Decimal, Decimal, Decimal, str]] = []
+        for net_amount in money_values:
+            if net_amount <= 0 or net_amount == gross:
+                continue
+            for tax_amount in money_values:
+                if tax_amount <= 0 or tax_amount in {gross, net_amount}:
+                    continue
+                if abs(net_amount + tax_amount - gross) > tolerance:
+                    continue
+                for rate, label in standard_rates.items():
+                    expected_tax = (net_amount * rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                    if abs(expected_tax - tax_amount) <= tolerance:
+                        derived_candidates.append((rate, net_amount, tax_amount, label))
+        candidate_rates = {candidate[0] for candidate in derived_candidates}
+        if len(candidate_rates) == 1:
+            _, net_amount, tax_amount, tax_rate = max(
+                derived_candidates,
+                key=lambda candidate: candidate[1],
+            )
+            tax_rate_method = "amount_equation"
+            derived_tax_evidence = (
+                f"gross={gross}; net={net_amount}; tax={tax_amount}; "
+                f"tax=round(net*{tax_rate},2)"
+            )
     buyer = ""
     seller = ""
     for index, line in enumerate(lines):
@@ -158,20 +248,40 @@ def extract_invoice_fields(text: str) -> dict[str, Any]:
         buyer = first_match([r"购买方名称[:：]?(.+)"])
     if not seller:
         seller = first_match([r"销售方名称[:：]?(.+)"])
-    fields["_normalizedText"] = "\n".join(lines)
+    normalized_text = "\n".join(lines)
+    total_amount_evidence = adjacent_total_evidence
+    total_amount_method = "adjacent_small_amount_label" if adjacent_total_evidence else ""
+    if total_amount:
+        if not total_amount_method:
+            for line in lines:
+                if "小写" in line and total_amount.replace(",", "") in line.replace(",", "").replace("．", "."):
+                    total_amount_evidence = line
+                    total_amount_method = "explicit_small_amount_label"
+                    break
+        if not total_amount_method:
+            total_amount_method = "explicit_total_amount_label"
+    tax_rate_evidence = derived_tax_evidence or next(
+        (line for line in lines if tax_rate and (tax_rate in line.replace("％", "%").replace("．", ".") or tax_rate in {"免税", "不征税", "零税率"} and tax_rate in line)),
+        "",
+    )
+    fields["_normalizedText"] = normalized_text
     fields["invoiceNumber"] = invoice_number
     fields["issueDate"] = issue_date
     fields["buyer"] = buyer
     fields["seller"] = seller
     fields["totalAmountWithTax"] = total_amount.replace(",", "") if total_amount else ""
     fields["taxRate"] = tax_rate
+    fields["totalAmountEvidence"] = total_amount_evidence
+    fields["totalAmountMethod"] = total_amount_method
+    fields["taxRateEvidence"] = tax_rate_evidence
+    fields["taxRateMethod"] = tax_rate_method
     fields["fieldConfidence"] = {
         "invoiceNumber": 1.0 if invoice_number else 0.0,
         "issueDate": 0.95 if issue_date else 0.0,
         "buyer": 0.95 if buyer else 0.0,
         "seller": 0.95 if seller else 0.0,
         "totalAmountWithTax": 0.9 if total_amount else 0.0,
-        "taxRate": 0.85 if tax_rate else 0.0,
+        "taxRate": 0.95 if tax_rate_method == "amount_equation" else (0.85 if tax_rate else 0.0),
     }
     fields["criticalFieldsReady"] = all(fields["fieldConfidence"][key] >= 0.85 for key in ("invoiceNumber", "buyer", "seller", "totalAmountWithTax"))
     return fields

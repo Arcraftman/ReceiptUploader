@@ -203,7 +203,7 @@ def main() -> int:
             validate_mode_stage(job.mode, effective_stage)
             preload_mode = settings.get("preload_items", False)
             if preload_mode is True or preload_mode == "once":
-                print("[提示] preload_items=once；仅首次或输入Excel变化后预加载，并创建远端不存在的客户/供应商。")
+                print("[提示] preload_items=once；每次按实际业务映射核对当前目标账套，仅创建远端缺失的客户/供应商。")
             elif preload_mode == "auto":
                 print("[警告] preload_items=auto；每次都会检查并创建远端不存在的客户/供应商。")
             preload_needs_session = preload_mode is True or str(preload_mode).strip().lower() in {"once", "auto"}

@@ -282,11 +282,44 @@ class KdzwyApi:
     def create_item_v1(self, item_class_id: int, number: str, name: str, remark: str = "") -> dict[str, Any]:
         dbid = self.dbid or self.get_dynamic_system_params().get("DBID")
         endpoint = f"/jdy-fi/{quote(str(dbid))}/gl/v1/item"
-        data = self.unwrap_data(endpoint, self.post_json(endpoint, {"itemClassId": str(item_class_id), "number": str(number), "name": str(name).strip(), "remark": remark}))
-        if not isinstance(data, dict) or data.get("id") in (None, "", 0, "0"):
-            raise ApiError(f"新版辅助对象创建未返回有效 itemId：itemClassId={item_class_id}, name={name}")
+        normalized_name = str(name).strip()
+        data = self.unwrap_data(endpoint, self.post_json(endpoint, {"itemClassId": str(item_class_id), "number": str(number), "name": normalized_name, "remark": remark}))
         self._invalidate_cached_reads("items")
-        return data
+        if isinstance(data, dict):
+            item_id = data.get("id") or data.get("itemId") or data.get("itemID") or data.get("item_id")
+            if item_id not in (None, "", 0, "0"):
+                normalized = dict(data)
+                normalized["id"] = item_id
+                normalized.setdefault("name", normalized_name)
+                normalized.setdefault("number", str(number))
+                return normalized
+
+        # Some deployments acknowledge a successful create without returning
+        # the new item id.  Resolve only an exact, unique remote match instead
+        # of treating the ambiguous response as failure or creating it again.
+        lookup = self.get_items_v1(item_class_id, match_con=normalized_name, page_size=500)
+        exact_matches = [
+            dict(row)
+            for row in (lookup.get("rows", []) if isinstance(lookup, dict) else [])
+            if isinstance(row, dict) and str(row.get("name", "")).strip() == normalized_name
+        ]
+        if len(exact_matches) == 1:
+            resolved = exact_matches[0]
+            item_id = resolved.get("id") or resolved.get("itemId") or resolved.get("itemID") or resolved.get("item_id")
+            if item_id not in (None, "", 0, "0"):
+                resolved["id"] = item_id
+                resolved.setdefault("number", str(number))
+                return resolved
+        if len(exact_matches) > 1:
+            raise ApiError(
+                f"新版辅助对象创建后精确回查不唯一：itemClassId={item_class_id}, "
+                f"name={normalized_name}, matches={len(exact_matches)}"
+            )
+        raise ApiError(
+            f"新版辅助对象创建未返回有效 itemId，且精确回查未找到："
+            f"itemClassId={item_class_id}, name={normalized_name}, "
+            f"response={json.dumps(data, ensure_ascii=False)[:500]}"
+        )
 
     def get_all_items_v1(self, class_ids: tuple[int, ...] = (1, 2, 3, 4, 5, 6), page_size: int = 500) -> dict[str, dict[str, Any]]:
         labels = {1: "客户", 2: "职员", 3: "项目", 4: "存货", 5: "供应商", 6: "部门"}

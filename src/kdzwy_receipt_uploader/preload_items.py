@@ -31,7 +31,7 @@ def _collect_column(path: Path, sheet_name: str, column: str, start_column: int,
         result = []
         for row_number, values in enumerate(sheet.iter_rows(min_col=index, max_col=index, values_only=True), start=1):
             value = str(values[0]).strip() if values and values[0] not in (None, "") else ""
-            if value and value not in {"客户名称", "销售方名称", "供应商名称", "名称"}:
+            if value and value not in {"客户名称", "购买方名称", "销售方名称", "供应商名称", "名称", "发票清单"}:
                 result.append(value)
         return sorted(set(result))
     finally:
@@ -52,6 +52,23 @@ def collect_source_item_names(month_dir: Path, config: Any, extra_columns: list[
         values = _collect_column(Path(spec["path"]), str(spec["sheet"]), str(spec["column"]), 1, 1)
         names.setdefault(class_id, set()).update(values)
     return {class_id: sorted(values) for class_id, values in names.items()}
+
+
+def collect_map_item_names(
+    sales_map: Mapping[str, Mapping[str, Any]] | None,
+    purchase_map: Mapping[str, Mapping[str, Any]] | None,
+) -> dict[int, list[str]]:
+    """Collect authoritative customer and supplier names from business maps."""
+    result: dict[int, set[str]] = {1: set(), 5: set()}
+    for values in (sales_map or {}).values():
+        name = str(values.get("customName") or values.get("customerName") or "").strip()
+        if name:
+            result[1].add(name)
+    for values in (purchase_map or {}).values():
+        name = str(values.get("supplierName") or values.get("sellerName") or "").strip()
+        if name:
+            result[5].add(name)
+    return {class_id: sorted(names) for class_id, names in result.items()}
 
 
 def apply_preloaded_items(values_by_invoice: dict[str, dict[str, Any]], preloaded: PreloadedItems, item_class_id: int, name_field: str, id_field: str, number_field: str) -> None:
@@ -116,8 +133,12 @@ def preload_bank_counterparties(
     return result
 
 
-def preload_items(api: Any, month_dir: Path, config: Any, extra_columns: list[Mapping[str, Any]] | None = None, create_missing: bool = True) -> PreloadedItems:
-    wanted = collect_source_item_names(month_dir, config, extra_columns)
+def preload_items(api: Any, month_dir: Path, config: Any, extra_columns: list[Mapping[str, Any]] | None = None, create_missing: bool = True, wanted_items: Mapping[int, list[str]] | None = None) -> PreloadedItems:
+    wanted = (
+        {int(class_id): sorted({str(name).strip() for name in names if str(name).strip()}) for class_id, names in wanted_items.items()}
+        if wanted_items is not None
+        else collect_source_item_names(month_dir, config, extra_columns)
+    )
     result = PreloadedItems(source_columns={str(class_id): names for class_id, names in wanted.items()})
     for class_id in sorted(set(wanted) | set(AUXILIARY_ITEM_CLASSES.values())):
         data = api.get_items_v1(class_id, page_size=500)
