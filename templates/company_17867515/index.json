@@ -1,0 +1,6 @@
+{
+  "version": "5.0",
+  "layout": "company/source-block",
+  "templatePattern": "*_template.json",
+  "description": "上海微誉信息技术有限公司业务模板；基础模板=weiyu，与目标账套动态目录独立。"
+}

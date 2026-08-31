@@ -1,6 +1,0 @@
-{
-  "version": "5.0",
-  "layout": "company/source-block",
-  "templatePattern": "*_template.json",
-  "description": "上海微誉已验证模板。仅保留2026-07已入账样本能够证明、且分录结构可安全固定的业务；未知或复杂业务必须blocked。"
-}
