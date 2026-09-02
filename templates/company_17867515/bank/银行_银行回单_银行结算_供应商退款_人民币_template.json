@@ -34,7 +34,7 @@
     ],
     "excludeKeywords": [],
     "expectedAccounts": [
-      "100201",
+      "source.bankAccountNumber",
       "2202"
     ],
     "priority": 950,
@@ -54,8 +54,8 @@
     {
       "dc": 1,
       "accountSelector": {
-        "number": "100201",
-        "name": "银行存款_上海银行"
+        "numberFrom": "source.bankAccountNumber",
+        "name": "银行存款（由project.json动态注入）"
       },
       "amountFrom": "source.amount",
       "amountForFrom": "source.amount"
@@ -79,7 +79,7 @@
   "historicalEvidence": {
     "count": 1,
     "accountPatterns": [
-      "100201/220201"
+      "{bankAccountNumber}/220201"
     ],
     "verifiedBusinessPatterns": [
       "上海方顺医疗器械有限公司汇入500元：借银行存款，贷应付账款"

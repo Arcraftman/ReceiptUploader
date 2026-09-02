@@ -39,7 +39,7 @@
     "expectedAccounts": [
       "560211",
       "22210101",
-      "2202"
+      "220201"
     ],
     "priority": 235
   },
@@ -71,8 +71,8 @@
     {
       "dc": -1,
       "accountSelector": {
-        "number": "2202",
-        "name": "应付账款"
+        "number": "220201",
+        "name": "应付账款_人民币户"
       },
       "amountFrom": "purchase_map.totalAmount",
       "amountForFrom": "purchase_map.totalAmount",

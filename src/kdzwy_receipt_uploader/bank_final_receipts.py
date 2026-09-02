@@ -41,7 +41,28 @@ def load_bank_records(map_path: Path, report_path: Path) -> tuple[dict[str, dict
 
 
 def source_values(record: Mapping[str, Any]) -> dict[str, Any]:
-    amount = record.get("ourDebitAmount") or record.get("ourCreditAmount")
+    amount = record.get("transactionAmount")
+    amount_source = str(record.get("amountSource") or "").strip()
+    if amount in (None, "") or not amount_source or record.get("amountValidated") is not True:
+        raise BankFinalReceiptError(
+            "银行记录缺少已验证 transactionAmount："
+            f"{record.get('bankKey')} / {record.get('index')}"
+        )
+    try:
+        normalized_amount = Decimal(str(amount)).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
+    except (InvalidOperation, TypeError, ValueError) as exc:
+        raise BankFinalReceiptError(
+            "银行 transactionAmount 不是有效金额："
+            f"{record.get('bankKey')} / {record.get('index')} / {amount}"
+        ) from exc
+    if normalized_amount <= 0:
+        raise BankFinalReceiptError(
+            "银行 transactionAmount 必须大于零："
+            f"{record.get('bankKey')} / {record.get('index')} / {amount}"
+        )
+    amount = format(normalized_amount, "f")
     company_housing_fund = None
     employee_housing_fund = None
     try:
@@ -57,6 +78,10 @@ def source_values(record: Mapping[str, Any]) -> dict[str, Any]:
     values = {
         "amount": amount,
         "totalAmount": amount,
+        "transactionAmount": amount,
+        "statementAmount": amount,
+        "amountSource": amount_source,
+        "amountValidated": True,
         "configCompany": record.get("configCompany"),
         "bankKey": record.get("bankKey"),
         "bankAccountNumber": record.get("bankAccountNumber"),
@@ -172,6 +197,34 @@ def _entries_from_analysis(analysis: Mapping[str, Any], amount: Any) -> list[dic
 def validate_bank_analysis_rules(
     record: Mapping[str, Any], analysis: Mapping[str, Any]
 ) -> None:
+    normalized = source_values(record)
+    transaction_amount = Decimal(str(normalized["transactionAmount"]))
+    extracted = analysis.get("extractedFields")
+    if not isinstance(extracted, Mapping):
+        raise BankFinalReceiptError(
+            f"银行分析缺少 extractedFields：{record.get('bankKey')} / {record.get('index')}"
+        )
+    if extracted.get("amountValidated") is not True:
+        raise BankFinalReceiptError(
+            f"银行分析金额尚未通过校验：{record.get('bankKey')} / {record.get('index')}"
+        )
+    if str(extracted.get("amountSource") or "") != str(normalized["amountSource"]):
+        raise BankFinalReceiptError(
+            f"银行分析金额来源不一致：{record.get('bankKey')} / {record.get('index')}"
+        )
+    try:
+        analyzed_amount = Decimal(str(extracted.get("transactionAmount"))).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
+    except (InvalidOperation, TypeError, ValueError) as exc:
+        raise BankFinalReceiptError(
+            f"银行分析缺少 transactionAmount：{record.get('bankKey')} / {record.get('index')}"
+        ) from exc
+    if analyzed_amount != transaction_amount:
+        raise BankFinalReceiptError(
+            f"银行分析金额与流水不一致：{record.get('bankKey')} / {record.get('index')}，"
+            f"流水={transaction_amount}，分析={analyzed_amount}"
+        )
     required_number = str(record.get("bankAccountNumber") or "").strip()
     if not re.fullmatch(r"[0-9]+", required_number):
         raise BankFinalReceiptError(
@@ -191,6 +244,22 @@ def validate_bank_analysis_rules(
     if len(bank_entries) != 1:
         raise BankFinalReceiptError(
             f"银行分析必须恰好包含一条银行存款分录：{record.get('bankKey')} / {record.get('index')}，实际={len(bank_entries)}"
+        )
+    debit_total = sum(
+        Decimal(str(entry.get("amount") or 0))
+        for entry in entries
+        if isinstance(entry, Mapping) and int(entry.get("dc") or 0) == 1
+    )
+    credit_total = sum(
+        Decimal(str(entry.get("amount") or 0))
+        for entry in entries
+        if isinstance(entry, Mapping) and int(entry.get("dc") or 0) == -1
+    )
+    if debit_total != transaction_amount or credit_total != transaction_amount:
+        raise BankFinalReceiptError(
+            f"银行分录金额必须与 transactionAmount 完全一致："
+            f"{record.get('bankKey')} / {record.get('index')}，"
+            f"transactionAmount={transaction_amount}，借={debit_total}，贷={credit_total}"
         )
     actual_number = str(bank_entries[0].get("accountNumber") or "").strip()
     if actual_number != required_number:
@@ -262,7 +331,7 @@ def generate_bank_final_receipts(
             })
             continue
         validate_bank_analysis_rules(record, current_analysis)
-        amount = source_values(record).get("amount") or "0.00"
+        amount = source_values(record)["transactionAmount"]
         receipt_id = f"bank-{company}-{month}-{key}"
         path = output_root / f"receipt_{key}" / "receipt.json"
         if path.exists():

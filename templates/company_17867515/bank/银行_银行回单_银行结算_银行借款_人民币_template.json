@@ -36,7 +36,7 @@
       "还利息"
     ],
     "expectedAccounts": [
-      "100204",
+      "source.bankAccountNumber",
       "2001"
     ],
     "priority": 290
@@ -51,8 +51,8 @@
     {
       "dc": 1,
       "accountSelector": {
-        "number": "100204",
-        "name": "银行存款_招行"
+        "numberFrom": "source.bankAccountNumber",
+        "name": "银行存款（由project.json动态注入）"
       },
       "amountFrom": "source.totalAmount",
       "amountForFrom": "source.totalAmount"
@@ -71,7 +71,7 @@
   "historicalEvidence": {
     "count": 1,
     "accountPatterns": [
-      "100204/2001"
+      "{bankAccountNumber}/2001"
     ]
   }
 }

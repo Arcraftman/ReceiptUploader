@@ -41,7 +41,7 @@
       "退货款"
     ],
     "expectedAccounts": [
-      "100201",
+      "source.bankAccountNumber",
       "1122"
     ],
     "priority": 290,
@@ -65,8 +65,8 @@
     {
       "dc": 1,
       "accountSelector": {
-        "number": "100201",
-        "name": "银行存款_上海银行"
+        "numberFrom": "source.bankAccountNumber",
+        "name": "银行存款（由project.json动态注入）"
       },
       "amountFrom": "source.amount",
       "amountForFrom": "source.amount"
@@ -90,7 +90,7 @@
   "historicalEvidence": {
     "count": 66,
     "accountPatterns": [
-      "100201/112201"
+      "{bankAccountNumber}/112201"
     ],
     "verifiedBusinessPatterns": [
       "客户汇入账号服务相关款项并关联销售发票：借银行存款，贷应收账款",

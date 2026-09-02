@@ -12,6 +12,7 @@ from typing import Any, Mapping, Sequence
 
 import pymupdf
 
+from .bank_receipt_ocr import _extract_text as _extract_bank_receipt_text
 from .bank_statement_matcher import read_bank_statement_rows
 
 
@@ -87,7 +88,11 @@ def _statement_date(index: object) -> str:
 def _pdf_text(pdf_path: Path) -> str:
     try:
         with pymupdf.open(pdf_path) as document:
-            return "\n".join(page.get_text("text") for page in document)
+            native_text = "\n".join(page.get_text("text", sort=True) for page in document)
+        if native_text.strip():
+            return native_text
+        ocr_text, _ = _extract_bank_receipt_text(pdf_path)
+        return ocr_text
     except Exception as exc:
         raise BankExceptionFilterError(f"无法读取切割后的 PDF：{pdf_path}：{exc}") from exc
 
@@ -251,10 +256,7 @@ def filter_bank_exception_pdfs(
             if item["bankKey"] == bank_key
             and item["counterpartyName"] == party_name
             and item["sourcePdf"] is None
-            and _money(
-                item["record"].get("ourDebitAmount")
-                or item["record"].get("ourCreditAmount")
-            )
+            and _money(item["record"].get("transactionAmount"))
             == receipt_amount
             and (
                 not receipt_date
@@ -326,7 +328,7 @@ def filter_bank_exception_pdfs(
             "counterpartyName": item["counterpartyName"],
             "matchMethod": item["matchMethod"],
             "flowDirection": str(record.get("flowDirection") or ""),
-            "amount": record.get("ourDebitAmount") or record.get("ourCreditAmount"),
+            "amount": record.get("transactionAmount"),
             "statement": record.get("statement"),
             "sourcePdf": str(source_pdf.resolve()) if isinstance(source_pdf, Path) else None,
             "copiedPdf": str(copied_pdf) if copied_pdf else None,
@@ -410,7 +412,7 @@ def quarantine_bank_runtime_exceptions(
             "counterpartyName": str(record.get("counterpartyName") or ""),
             "matchMethod": f"runtime_{reason}",
             "flowDirection": str(record.get("flowDirection") or ""),
-            "amount": record.get("ourDebitAmount") or record.get("ourCreditAmount"),
+            "amount": record.get("transactionAmount"),
             "statement": statement,
             "sourcePdf": str(source_path) if source_path else None,
             "copiedPdf": str(copied_path) if copied_path else None,

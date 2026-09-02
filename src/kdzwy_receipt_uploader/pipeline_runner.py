@@ -22,7 +22,11 @@ from kdzwy_receipt_uploader.api import KdzwyApi
 from kdzwy_receipt_uploader.config import AppConfig
 from kdzwy_receipt_uploader.matching import match_month_directory
 from kdzwy_receipt_uploader.user_context import resolve_current_user
-from kdzwy_receipt_uploader.sales_map import build_sales_map
+from kdzwy_receipt_uploader.sales_map import (
+    add_sales_pdf_fallback_candidates,
+    build_sales_map,
+    finalize_sales_ocr_fallbacks,
+)
 from kdzwy_receipt_uploader.purchase_map import build_purchase_map
 from kdzwy_receipt_uploader.auxiliary_items import create_auxiliary_item
 from kdzwy_receipt_uploader.item_class import build_auxiliary_expectation, resolve_item_class_id
@@ -646,9 +650,16 @@ def main() -> int:
             blocked_count = len(analyzed) - ready_count
             api_attempted_count = sum(bool(item.get("llmAttempted")) for item in analyzed.values())
             api_success_count = sum(item.get("selectionMode") == "llm_api" for item in analyzed.values())
+            amount_ready_count = sum(
+                isinstance(item.get("extractedFields"), dict)
+                and item["extractedFields"].get("amountValidated") is True
+                and item["extractedFields"].get("transactionAmount") not in (None, "")
+                for item in analyzed.values()
+            )
             print(
                 f"银行 LLM 分析完成：总数={len(analyzed)}，API已请求={api_attempted_count}，"
-                f"API成功响应={api_success_count}，可复核={ready_count}，blocked={blocked_count}"
+                f"API成功响应={api_success_count}，金额已标准化={amount_ready_count}，"
+                f"可复核={ready_count}，blocked={blocked_count}"
             )
             print(f"分析文件：{bank_analysis_path}")
             checkpoint("bank_llm_complete", artifacts={"templateAnalysis": str(bank_analysis_path.resolve())}, counters={"analysisCount": len(analyzed), "analysisBlockedCount": blocked_count})
@@ -801,6 +812,12 @@ def main() -> int:
     purchase_map_report = _empty_map_report()
     if pipeline_source_key in {"sales", "all"}:
         sales_map_report = build_sales_map(income_path, sales_map_path, sales_map_report_path)
+        sales_map_report = add_sales_pdf_fallback_candidates(
+            sales_map_report,
+            input_dir / "sales",
+            sales_map_path,
+            sales_map_report_path,
+        )
     if pipeline_source_key in {"purchase", "all"}:
         purchase_map_report = build_purchase_map(
             usage_path, purchase_map_path, purchase_map_report_path
@@ -973,6 +990,30 @@ def main() -> int:
             loaded_analysis = json.loads(analysis_path.read_text(encoding="utf-8"))
             if not isinstance(loaded_analysis, dict):
                 raise OcrPipelineError(f"Qwen分析文件不是JSON对象：{analysis_path}")
+            refreshed_ocr_fields = 0
+            for code, analysis in loaded_analysis.items():
+                if not isinstance(analysis, dict):
+                    continue
+                current_ocr_path = receipts_ocr_dir / str(code) / "ocr.json"
+                if not current_ocr_path.is_file():
+                    continue
+                try:
+                    current_ocr = json.loads(current_ocr_path.read_text(encoding="utf-8-sig"))
+                except (OSError, json.JSONDecodeError):
+                    continue
+                current_fields = current_ocr.get("fields")
+                if isinstance(current_fields, dict):
+                    analysis["ocrFields"] = dict(current_fields)
+                    refreshed_ocr_fields += 1
+            if refreshed_ocr_fields:
+                analysis_path.write_text(
+                    json.dumps(loaded_analysis, ensure_ascii=False, indent=2),
+                    encoding="utf-8",
+                )
+                logger.info(
+                    "已用当前精确OCR刷新既有Qwen分析审计字段：%s 张",
+                    refreshed_ocr_fields,
+                )
             missing_analysis = sorted(allowed_ocr_codes - set(loaded_analysis))
             blocked_analysis = sorted(
                 code for code in allowed_ocr_codes
@@ -1083,6 +1124,40 @@ def main() -> int:
             ocr_artifacts = [artifact for artifact in ocr_artifacts if artifact.invoice_code in allowed_ocr_codes]
             print(f"[异常分流] OCR未通过 {len(ocr_exception_codes)} 张，已写入：{workflow_exception_path}")
 
+        if pipeline_source_key in {"sales", "all"}:
+            fallback_result = finalize_sales_ocr_fallbacks(
+                sales_map_report,
+                receipts_ocr_dir,
+                configured_company,
+                month,
+                sales_map_path,
+                sales_map_report_path,
+            )
+            fallback_blocked_codes = {
+                str(row.get("documentId") or "") for row in fallback_result["blocked"]
+            }
+            replace_stage_exceptions(
+                workflow_exception_path,
+                pipeline_source_key,
+                "sales_ocr_fallback",
+                fallback_result["blocked"],
+            )
+            if fallback_blocked_codes:
+                allowed_ocr_codes.difference_update(fallback_blocked_codes)
+                ocr_artifacts = [
+                    artifact for artifact in ocr_artifacts
+                    if artifact.invoice_code in allowed_ocr_codes
+                ]
+                print(
+                    f"[异常分流] 收入成本表外销售发票校验未通过 "
+                    f"{len(fallback_blocked_codes)} 张，已写入：{workflow_exception_path}"
+                )
+            if fallback_result["ready"]:
+                logger.info(
+                    "收入成本表外销售发票通过精确OCR校验：%s 张",
+                    len(fallback_result["ready"]),
+                )
+
         if analysis_stage in {"llm", "all"}:
             checkpoint("llm")
             try:
@@ -1188,6 +1263,37 @@ def main() -> int:
     if account_source == "live":
         api_config = AppConfig.from_json(app_config_path, ROOT)
         account_api = KdzwyApi(replace(api_config, expected_company=expected_company))
+        template_entry_defaults: list[dict[str, Any]] = []
+        seen_template_subjects: set[tuple[str, str]] = set()
+        if template_catalog is not None:
+            for record in template_catalog.records:
+                if record.get("enabled") is not True:
+                    continue
+                relative_template = Path(str(record.get("path") or ""))
+                if pipeline_source_key != "all" and (
+                    not relative_template.parts or relative_template.parts[0] != pipeline_source_key
+                ):
+                    continue
+                template = template_catalog.load_template(record)
+                for template_entry in template.get("entries", []):
+                    if not isinstance(template_entry, dict):
+                        continue
+                    selector = template_entry.get("accountSelector")
+                    if not isinstance(selector, dict):
+                        continue
+                    number = str(selector.get("number") or "").strip()
+                    name = str(selector.get("name") or "").strip()
+                    identity = (number, name)
+                    if not (number or name) or identity in seen_template_subjects:
+                        continue
+                    seen_template_subjects.add(identity)
+                    template_entry_defaults.append({
+                        "line_no": len(template_entry_defaults) + 1,
+                        "dc": template_entry.get("dc", 1),
+                        "account_number": number,
+                        "account_name": name,
+                    })
+        settings["entry_defaults"] = template_entry_defaults
         resolved = resolve_defaults(account_api, settings)
         settings["voucher_defaults"] = resolved["voucher_defaults"]
         settings["entry_defaults"] = resolved["entry_defaults"]

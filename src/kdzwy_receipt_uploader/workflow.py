@@ -225,6 +225,8 @@ def find_receipts(input_dir: Path, snapshot: dict[tuple[str, str], dict[str, Any
             raw = json.loads(path.read_text(encoding="utf-8"))
             if isinstance(raw, dict) and raw.get("draft") is True:
                 continue
+            if isinstance(raw, dict) and raw.get("uploaded") is True:
+                continue
             valid.append((path, load_receipt(path, snapshot, pdf_map)))
         except ReceiptError as exc:
             invalid.append({"file": str(path), "error": str(exc)})

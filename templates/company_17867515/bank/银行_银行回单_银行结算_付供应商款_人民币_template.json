@@ -57,7 +57,7 @@
     ],
     "expectedAccounts": [
       "2202",
-      "100201"
+      "source.bankAccountNumber"
     ],
     "priority": 290,
     "defaultForSource": true,
@@ -95,8 +95,8 @@
     {
       "dc": -1,
       "accountSelector": {
-        "number": "100201",
-        "name": "银行存款_上海银行"
+        "numberFrom": "source.bankAccountNumber",
+        "name": "银行存款（由project.json动态注入）"
       },
       "amountFrom": "source.amount",
       "amountForFrom": "source.amount"
@@ -106,8 +106,8 @@
   "historicalEvidence": {
     "count": 138,
     "accountPatterns": [
-      "220201/100201",
-      "220201/100204"
+      "220201/{bankAccountNumber}",
+      "220201/{bankAccountNumber}"
     ],
     "verifiedBusinessPatterns": [
       "支付已挂账通讯费：借应付账款，贷银行存款",

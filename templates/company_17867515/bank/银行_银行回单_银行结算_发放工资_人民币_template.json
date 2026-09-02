@@ -36,7 +36,7 @@
     ],
     "expectedAccounts": [
       "221101",
-      "100201"
+      "source.bankAccountNumber"
     ],
     "priority": 280
   },
@@ -59,8 +59,8 @@
     {
       "dc": -1,
       "accountSelector": {
-        "number": "100201",
-        "name": "银行存款_上海银行"
+        "numberFrom": "source.bankAccountNumber",
+        "name": "银行存款（由project.json动态注入）"
       },
       "amountFrom": "source.amount",
       "amountForFrom": "source.amount"
@@ -70,7 +70,7 @@
   "historicalEvidence": {
     "count": 10,
     "accountPatterns": [
-      "221101/100201"
+      "221101/{bankAccountNumber}"
     ]
   }
 }

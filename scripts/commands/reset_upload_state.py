@@ -37,6 +37,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="清除指定公司、指定月份的本地上传断点状态")
     parser.add_argument("company_config_name", help="config/companies 下的配置文件名，可省略.json")
     parser.add_argument("month", help="会计月份，严格使用 YYYY-MM")
+    parser.add_argument("--source", choices=(*SOURCES, "all"), default="all", help="只清除指定业务；默认清除全部业务")
     return parser.parse_args()
 
 
@@ -50,11 +51,11 @@ def read_json(path: Path) -> dict[str, Any]:
     return value
 
 
-def clear_receipt_markers(receipt_root: Path) -> tuple[set[str], int, int]:
+def clear_receipt_markers(receipt_root: Path, sources: tuple[str, ...]) -> tuple[set[str], int, int]:
     receipt_ids: set[str] = set()
     scanned = 0
     changed = 0
-    for source in SOURCES:
+    for source in sources:
         for path in sorted((receipt_root / source).glob("receipt_*/receipt.json")):
             payload = read_json(path)
             receipt_id = str(payload.get("receiptId", "")).strip()
@@ -63,7 +64,8 @@ def clear_receipt_markers(receipt_root: Path) -> tuple[set[str], int, int]:
             scanned += 1
             had_marker = payload.pop("uploaded", None) is not None
             had_upload = payload.pop("upload", None) is not None
-            if had_marker or had_upload:
+            had_upload_result = payload.pop("uploadResult", None) is not None
+            if had_marker or had_upload or had_upload_result:
                 write_json(path, payload)
                 changed += 1
     return receipt_ids, scanned, changed
@@ -127,7 +129,8 @@ def main() -> int:
     workspace_root = ROOT / workspace_relative_path(login_account, accountbook.key, dataset, month)
     receipt_root = workspace_root / "generated" / "receipts"
     audit_path = workspace_root / "logs" / "run.jsonl"
-    receipt_ids, scanned, changed = clear_receipt_markers(receipt_root)
+    selected_sources = SOURCES if args.source == "all" else (args.source,)
+    receipt_ids, scanned, changed = clear_receipt_markers(receipt_root, selected_sources)
     backup_path, removed = reset_audit(receipt_ids, audit_path)
 
     print(json.dumps({
@@ -137,6 +140,7 @@ def main() -> int:
         "target_company_name": accountbook.name,
         "source_company_key": dataset,
         "month": month,
+        "source": args.source,
         "login_account": login_account,
         "workspace_root": str(workspace_root),
         "receipt_root": str(receipt_root),
@@ -144,7 +148,7 @@ def main() -> int:
         "cleared_receipt_markers": changed,
         "removed_audit_records": removed,
         "audit_backup": str(backup_path) if backup_path else "",
-        "message": "本地上传状态已清除；下次confirm将从远端当前凭证号重新开始。",
+        "message": f"{args.source} 本地上传状态已清除；下次confirm将从远端当前凭证号重新开始。",
     }, ensure_ascii=False, indent=2))
     return 0
 

@@ -15,7 +15,7 @@ from .config import AppConfig
 from .map_lookup import InvoicePdfMap
 from .models import ApiError, ReceiptError
 from .paths import ProjectPaths
-from .workflow import find_receipts, preview, process_one
+from .workflow import archive, find_receipts, preview, process_one
 from .responsibility_chain import run_selected_sources_safe
 from .source_profile import source_from_folder_name, normalize_source_key
 from .simple_logging import configure_pipeline_logger
@@ -26,6 +26,24 @@ from .exception_ledger import append_exception, blocking_document_ids, replace_s
 def audit(paths: ProjectPaths, result: dict[str, Any]) -> None:
     with (paths.logs / "run.jsonl").open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(result, ensure_ascii=False, default=str) + "\n")
+
+
+def _write_upload_checkpoint(path: Path, result: dict[str, Any]) -> None:
+    payload = json.loads(path.read_text(encoding="utf-8-sig"))
+    if not isinstance(payload, dict):
+        raise OSError(f"receipt 不是 JSON 对象：{path}")
+    payload["uploaded"] = True
+    payload["uploadResult"] = {
+        "status": str(result.get("status") or "submitted_and_verified"),
+        "voucherId": str(result.get("voucherId") or ""),
+        "voucherNo": str(result.get("voucherNo") or ""),
+        "attachmentStatus": str(result.get("attachmentStatus") or ""),
+        "attachmentFileIds": list(result.get("attachmentFileIds") or []),
+        "completedAt": str(result.get("completedAt") or datetime.now(timezone.utc).isoformat()),
+    }
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temporary.replace(path)
 
 
 def receipt_source(path: Path, receipt: Any) -> str:

@@ -14,6 +14,7 @@ class BankReceiptSplitError(RuntimeError):
 
 
 _FAST_OCR_ENGINE: Any | None = None
+_FILENAME_OCR_DPIS = (150, 300, 400, 500)
 _BLANK_SLICE_MAX_INK_RATIO = 0.001
 _FILENAME_INDEX_LABELS = (
     ("交易流水号", "transaction_serial"),
@@ -93,26 +94,38 @@ def _recognize_filename_index(
     )
     if native_index:
         return native_index, "pdf-text-fast", native_source, False
-    pixmap = page.get_pixmap(matrix=fitz.Matrix(150 / 72, 150 / 72), alpha=False)
-    result, _ = _get_fast_ocr_engine()(pixmap.tobytes("png"))
-    lines: list[tuple[float, float, str]] = []
-    for row in result or []:
-        box, text, score = row
-        if float(score) < 0.35 or not text:
-            continue
-        x = min(float(point[0]) for point in box)
-        y = min(float(point[1]) for point in box)
-        lines.append((y, x, str(text).strip()))
-    ocr_text = "\n".join(item[2] for item in sorted(lines))
-    filename_index, index_source = _extract_filename_index(
-        ocr_text, configured_length, configured_prefix
-    )
+    combined_ocr_texts: list[str] = []
+    first_pixmap: fitz.Pixmap | None = None
+    for dpi in _FILENAME_OCR_DPIS:
+        pixmap = page.get_pixmap(matrix=fitz.Matrix(dpi / 72, dpi / 72), alpha=False)
+        if first_pixmap is None:
+            first_pixmap = pixmap
+        result, _ = _get_fast_ocr_engine()(pixmap.tobytes("png"))
+        lines: list[tuple[float, float, str]] = []
+        for row in result or []:
+            box, text, score = row
+            if float(score) < 0.35 or not text:
+                continue
+            x = min(float(point[0]) for point in box)
+            y = min(float(point[1]) for point in box)
+            lines.append((y, x, str(text).strip()))
+        ocr_text = "\n".join(item[2] for item in sorted(lines))
+        if ocr_text.strip():
+            combined_ocr_texts.append(ocr_text)
+        combined_text = "\n".join(combined_ocr_texts)
+        filename_index, index_source = _extract_filename_index(
+            combined_text, configured_length, configured_prefix
+        )
+        if filename_index:
+            return filename_index, f"rapidocr-{dpi}dpi", index_source, False
+    ocr_text = "\n".join(combined_ocr_texts)
     blank_slice = (
         not native_text.strip()
         and not ocr_text.strip()
-        and _visible_ink_ratio(pixmap) <= _BLANK_SLICE_MAX_INK_RATIO
+        and first_pixmap is not None
+        and _visible_ink_ratio(first_pixmap) <= _BLANK_SLICE_MAX_INK_RATIO
     )
-    return filename_index, "rapidocr-150dpi-fast", index_source, blank_slice
+    return "", "rapidocr-multipass-no-index", "bank_exception", blank_slice
 
 
 def _fingerprint(
@@ -129,7 +142,7 @@ def _fingerprint(
         "partsPerPage": parts_per_page,
         "filenameIndexLength": filename_index_length,
         "filenameIndexPrefix": filename_index_prefix,
-        "namingVersion": 7,
+        "namingVersion": 8,
     }
 
 

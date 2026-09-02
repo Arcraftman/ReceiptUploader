@@ -33,7 +33,7 @@
       "归还股东借款"
     ],
     "expectedAccounts": [
-      "100201",
+      "source.bankAccountNumber",
       "224105"
     ],
     "priority": 290
@@ -48,8 +48,8 @@
     {
       "dc": 1,
       "accountSelector": {
-        "number": "100201",
-        "name": "银行存款_上海银行"
+        "numberFrom": "source.bankAccountNumber",
+        "name": "银行存款（由project.json动态注入）"
       },
       "amountFrom": "source.totalAmount",
       "amountForFrom": "source.totalAmount"
@@ -68,7 +68,7 @@
   "historicalEvidence": {
     "count": 3,
     "accountPatterns": [
-      "100201/224105"
+      "{bankAccountNumber}/224105"
     ]
   }
 }

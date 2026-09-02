@@ -35,8 +35,8 @@
     ],
     "excludeKeywords": [],
     "expectedAccounts": [
-      "1122",
-      "5001",
+      "112201",
+      "500101",
       "22210106"
     ],
     "priority": 300,
@@ -62,8 +62,8 @@
     {
       "dc": 1,
       "accountSelector": {
-        "number": "1122",
-        "name": "应收账款"
+        "number": "112201",
+        "name": "应收账款_人民币户"
       },
       "amountFrom": "sales_map.totalAmount",
       "amountForFrom": "sales_map.totalAmount",
@@ -76,8 +76,8 @@
     {
       "dc": -1,
       "accountSelector": {
-        "number": "5001",
-        "name": "主营业务收入"
+        "number": "500101",
+        "name": "主营业务收入_国内业务收入"
       },
       "amountFrom": "sales_map.amount",
       "amountForFrom": "sales_map.amount"

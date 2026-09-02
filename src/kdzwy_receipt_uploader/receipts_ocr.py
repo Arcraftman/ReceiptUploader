@@ -7,6 +7,10 @@ a concrete four-level template.
 """
 from __future__ import annotations
 
+import unicodedata
+from decimal import Decimal, InvalidOperation
+from typing import Sequence
+
 import copy
 import json
 import inspect
@@ -37,7 +41,8 @@ class OcrPipelineError(ValueError):
 
 
 _OCR_ENGINE: Any | None = None
-_OCR_CACHE_VERSION = 6
+_OCR_CACHE_VERSION = 11
+_OCR_RENDER_DPIS = (300, 400, 500)
 _ANALYSIS_MEMORY_LOCK = threading.Lock()
 
 
@@ -60,8 +65,9 @@ def _source_fingerprint(pdf_path: Path) -> dict[str, Any]:
         "modifiedNs": stat.st_mtime_ns,
         "ocrEngine": "rapidocr-onnxruntime",
         "ocrEngineVersion": engine_version,
-        "nativePdfTextFirst": False,
-        "renderDpi": 300,
+        "nativePdfTextIncluded": True,
+        "renderDpis": list(_OCR_RENDER_DPIS),
+        "selection": "critical-field-completeness",
         "minimumScore": 0.35,
     }
 
@@ -88,28 +94,257 @@ def discover_pdf_files(month_directory: Path, folder_patterns: Iterable[str] = (
     return [pdf for pdf in pdfs if pdf_invoice_number(pdf) in allowed_invoice_codes]
 
 
+def _merge_ocr_candidates(candidates: list[tuple[str, str]]) -> str:
+    """Merge unique lines from native text and OCR passes without hiding provenance."""
+    merged: list[str] = []
+    seen: set[str] = set()
+    for text, _ in candidates:
+        for raw_line in text.splitlines():
+            line = raw_line.strip()
+            key = re.sub(r"\s+", "", line).lower()
+            if line and key and key not in seen:
+                seen.add(key)
+                merged.append(line)
+    return "\n".join(merged).strip()
+
+
+def _detect_invoice_document_kind(text: str) -> str:
+    compact = re.sub(r"\s+", "", text or "")
+    if "航空运输电子客票" in compact or ("航班号" in compact and "民航发展基金" in compact):
+        return "air_ticket"
+    if "铁路电子客票" in compact or ("电子客票号" in compact and "车次" in compact):
+        return "railway_ticket"
+    return "vat_invoice"
+
+
+def _ocr_candidate_quality(text: str, expected_invoice_code: str) -> tuple[int, int, int, float, int]:
+    fields = extract_invoice_fields(text)
+    invoice_number = re.sub(r"\D", "", str(fields.get("invoiceNumber") or ""))
+    exact_invoice = int(bool(expected_invoice_code) and invoice_number == expected_invoice_code)
+    document_kind = str(fields.get("documentKind") or "vat_invoice")
+    if document_kind == "railway_ticket":
+        required = (
+            "invoiceNumber",
+            "issueDate",
+            "buyer",
+            "totalAmountWithTax",
+            "travelDate",
+            "trainNumber",
+            "seatClass",
+        )
+    elif document_kind == "air_ticket":
+        required = (
+            "invoiceNumber",
+            "issueDate",
+            "buyer",
+            "seller",
+            "totalAmountWithTax",
+            "travelDate",
+            "flightNumber",
+            "passengerName",
+        )
+    else:
+        required = ("invoiceNumber", "issueDate", "buyer", "seller", "totalAmountWithTax", "taxRate")
+    present = sum(1 for name in required if str(fields.get(name) or "").strip())
+    confidence = fields.get("fieldConfidence")
+    confidence_total = (
+        sum(float(confidence.get(name, 0) or 0) for name in required)
+        if isinstance(confidence, Mapping)
+        else 0.0
+    )
+    return exact_invoice, int(bool(fields.get("criticalFieldsReady"))), present, confidence_total, min(len(text), 20000)
+
+
+def _ocr_candidate_complete(text: str, expected_invoice_code: str) -> bool:
+    fields = extract_invoice_fields(text)
+    invoice_number = re.sub(r"\D", "", str(fields.get("invoiceNumber") or ""))
+    return invoice_number == expected_invoice_code and bool(fields.get("criticalFieldsReady"))
+
+
 def _default_ocr(pdf_path: Path) -> tuple[str, str]:
-    """Render every PDF page and run image OCR in accuracy-first mode."""
+    """Use native PDF text plus adaptive multi-DPI OCR in accuracy-first mode."""
     try:
         import pymupdf  # type: ignore
         with pymupdf.open(str(pdf_path)) as document:
             engine = _get_ocr_engine()
-            lines: list[tuple[float, float, str]] = []
-            for page in document:
-                pixmap = page.get_pixmap(matrix=pymupdf.Matrix(300 / 72, 300 / 72), alpha=False)
-                result, _ = engine(pixmap.tobytes("png"))
-                for row in result or []:
-                    box, text, score = row
-                    if float(score) >= 0.35 and text:
-                        x = min(float(point[0]) for point in box)
-                        y = min(float(point[1]) for point in box)
-                        lines.append((y, x, str(text).strip()))
-            text = "\n".join(item[2] for item in sorted(lines)).strip()
-            if text:
-                return text, "rapidocr-onnxruntime"
+            expected_invoice_code = pdf_invoice_number(pdf_path)
+            candidates: list[tuple[str, str]] = []
+
+            native_parts = [page.get_text("text", sort=True).strip() for page in document]
+            native_text = "\n".join(part for part in native_parts if part).strip()
+            if native_text:
+                candidates.append((native_text, "pymupdf-native-text"))
+
+            for dpi in _OCR_RENDER_DPIS:
+                lines: list[tuple[int, float, float, str]] = []
+                for page_index, page in enumerate(document):
+                    pixmap = page.get_pixmap(
+                        matrix=pymupdf.Matrix(dpi / 72, dpi / 72), alpha=False
+                    )
+                    result, _ = engine(pixmap.tobytes("png"))
+                    for row in result or []:
+                        box, text, score = row
+                        if float(score) >= 0.35 and text:
+                            x = min(float(point[0]) for point in box)
+                            y = min(float(point[1]) for point in box)
+                            lines.append((page_index, y, x, str(text).strip()))
+                ocr_text = "\n".join(item[3] for item in sorted(lines)).strip()
+                if ocr_text:
+                    candidates.append((ocr_text, f"rapidocr-onnxruntime-{dpi}dpi"))
+
+                merged_text = _merge_ocr_candidates(candidates)
+                if merged_text:
+                    merged_label = "+".join(label for _, label in candidates)
+                    scored = candidates + [(merged_text, f"merged:{merged_label}")]
+                    best_text, best_engine = max(
+                        scored,
+                        key=lambda item: _ocr_candidate_quality(item[0], expected_invoice_code),
+                    )
+                    if _ocr_candidate_complete(best_text, expected_invoice_code):
+                        return best_text, best_engine
+
+            if candidates:
+                merged_text = _merge_ocr_candidates(candidates)
+                merged_label = "+".join(label for _, label in candidates)
+                scored = candidates + [(merged_text, f"merged:{merged_label}")]
+                return max(
+                    scored,
+                    key=lambda item: _ocr_candidate_quality(item[0], expected_invoice_code),
+                )
     except Exception as exc:
         return "", f"ocr_error:{type(exc).__name__}"
     return "", "ocr_unavailable"
+
+
+def _enrich_transport_ticket_fields(fields: dict[str, Any], text: str) -> dict[str, Any]:
+    document_kind = _detect_invoice_document_kind(text)
+    fields["documentKind"] = document_kind
+    fields["criticalFieldProfile"] = document_kind
+    if document_kind == "vat_invoice":
+        return fields
+
+    normalized = unicodedata.normalize("NFKC", text or "")
+    lines = [re.sub(r"\s+", "", line) for line in normalized.splitlines() if line.strip()]
+    compact = "\n".join(lines)
+    confidence = dict(fields.get("fieldConfidence") or {})
+
+    def set_field(name: str, value: str, score: float = 0.98) -> None:
+        value = str(value or "").strip()
+        if not value:
+            return
+        fields[name] = value
+        confidence[name] = max(float(confidence.get(name, 0) or 0), score)
+
+    def first_group(patterns: Sequence[str], source: str = compact) -> str:
+        for pattern in patterns:
+            match = re.search(pattern, source, flags=re.IGNORECASE)
+            if match:
+                return str(match.group(1)).strip()
+        return ""
+
+    passenger_name = ""
+    for line in lines:
+        match = re.match(r"^([\u4e00-\u9fff·]{2,8})(?:\d|\*|＊){6,}", line)
+        if match:
+            passenger_name = match.group(1)
+            break
+
+    if document_kind == "railway_ticket":
+        travel_date = first_group([
+            r"(20\d{2}年\d{1,2}月\d{1,2}日)(?:\d{1,2}:\d{2})?开",
+            r"乘车日期[:：]?(20\d{2}[-年]\d{1,2}[-月]\d{1,2}日?)",
+        ])
+        train_number = first_group([r"(?<![A-Z0-9])([GDCZTKSY]\d{1,4})(?!\d)"])
+        seat_class = first_group([r"(商务座|特等座|一等座|二等座|软卧|硬卧|软座|硬座|无座)"])
+        ticket_amount = first_group([r"票价[:：]?[¥￥]?([0-9][0-9,]*(?:\.\d{1,2})?)"])
+        route = re.search(
+            r"([\u4e00-\u9fff]{1,12}站)(?:\s*)([GDCZTKSY]\d{1,4})(?:\s*)([\u4e00-\u9fff]{1,12}站)",
+            re.sub(r"\s+", "", normalized),
+            flags=re.IGNORECASE,
+        )
+        if route:
+            set_field("origin", route.group(1))
+            set_field("destination", route.group(3))
+            train_number = train_number or route.group(2)
+        set_field("travelDate", travel_date)
+        set_field("trainNumber", train_number)
+        set_field("seatClass", seat_class)
+        set_field("passengerName", passenger_name)
+        set_field("ticketAmount", ticket_amount)
+        if ticket_amount and not str(fields.get("totalAmountWithTax") or "").strip():
+            set_field("totalAmountWithTax", ticket_amount)
+            fields["totalAmountWithTaxMethod"] = "railway_ticket_fare"
+
+        required = (
+            "invoiceNumber",
+            "issueDate",
+            "buyer",
+            "totalAmountWithTax",
+            "travelDate",
+            "trainNumber",
+            "seatClass",
+        )
+    else:
+        issue_date = first_group([r"填开日期[:：]?(20\d{2}[-年]\d{1,2}[-月]\d{1,2}日?)"])
+        if issue_date:
+            set_field("issueDate", issue_date)
+
+        seller = first_group([
+            r"填开单位[:：]?(.+?)(?:填开日期|销售网点|$)",
+            r"承运人[:：]?([\u4e00-\u9fff（）()]{4,40})",
+        ])
+        set_field("seller", seller)
+
+        flight_number = first_group([r"(?<![A-Z0-9])([A-Z0-9]{2}\d{3,4})(?!\d)"])
+        date_values = re.findall(r"20\d{2}年\d{1,2}月\d{1,2}日", compact)
+        normalized_issue_date = str(fields.get("issueDate") or "").replace("-", "年", 1).replace("-", "月", 1)
+        if normalized_issue_date and not normalized_issue_date.endswith("日"):
+            normalized_issue_date += "日"
+        travel_date = next((value for value in date_values if value != normalized_issue_date), "")
+
+        cny_amounts = []
+        for value in re.findall(r"CNY\s*([0-9][0-9,]*(?:\.\d{1,2})?)", compact, flags=re.IGNORECASE):
+            try:
+                cny_amounts.append((Decimal(value.replace(",", "")), value.replace(",", "")))
+            except InvalidOperation:
+                continue
+        ticket_amount = max(cny_amounts, default=(Decimal("0"), ""))[1]
+        tax_rate = first_group([r"(?<![\d.])(13|9|6|5|3|1)[%％](?!\d)"])
+        if tax_rate:
+            set_field("taxRate", f"{tax_rate}%")
+            fields["taxRateMethod"] = "air_ticket_tax_rate"
+
+        origin = first_group([r"(?:^|\n)自[:：]?([A-Z]{3}|[\u4e00-\u9fff]{2,12})(?:\n|$)"])
+        destination = first_group([r"(?:^|\n)至[:：]?([A-Z]{3}|[\u4e00-\u9fff]{2,12})(?:\n|$)"])
+        set_field("travelDate", travel_date)
+        set_field("flightNumber", flight_number)
+        set_field("passengerName", passenger_name)
+        set_field("origin", origin)
+        set_field("destination", destination)
+        set_field("ticketAmount", ticket_amount)
+        if ticket_amount:
+            set_field("totalAmountWithTax", ticket_amount)
+            fields["totalAmountWithTaxMethod"] = "air_ticket_cny_total"
+
+        required = (
+            "invoiceNumber",
+            "issueDate",
+            "buyer",
+            "seller",
+            "totalAmountWithTax",
+            "travelDate",
+            "flightNumber",
+            "passengerName",
+        )
+
+    fields["fieldConfidence"] = confidence
+    fields["criticalFieldsReady"] = all(
+        str(fields.get(name) or "").strip() and float(confidence.get(name, 0) or 0) >= 0.85
+        for name in required
+    )
+    fields["criticalFieldsRequired"] = list(required)
+    fields["criticalFieldsMissing"] = [name for name in required if not str(fields.get(name) or "").strip()]
+    return fields
 
 
 def extract_invoice_fields(text: str) -> dict[str, Any]:
@@ -134,11 +369,11 @@ def extract_invoice_fields(text: str) -> dict[str, Any]:
     invoice_number = first_match([r"发票号码[:：]?([0-9]{8,24})", r"发票号[:：]?([0-9]{8,24})"])
     issue_date = first_match([r"开票日期[:：]?([0-9]{4}年[0-9]{1,2}月[0-9]{1,2}日)", r"开票日期[:：]?([0-9]{4}[-/][0-9]{1,2}[-/][0-9]{1,2})"])
     total_amount = first_match([
-        r"[（(]小写[）)][:：]?[¥￥]?([0-9,]+(?:[.．][0-9]{1,2})?)",
-        r"价税合计[（(]?小写[）)]?[:：]?[¥￥]?([0-9,]+(?:[.．][0-9]{1,2})?)",
-        r"价税合计[:：]?[¥￥]?([0-9,]+(?:[.．][0-9]+)?)",
+        r"[（(]小写[）)][:：]?[¥￥]?([-－−]?[0-9,]+(?:[.．][0-9]{1,2})?)",
+        r"价税合计[（(]?小写[）)]?[:：]?[¥￥]?([-－−]?[0-9,]+(?:[.．][0-9]{1,2})?)",
+        r"价税合计[:：]?[¥￥]?([-－−]?[0-9,]+(?:[.．][0-9]+)?)",
     ])
-    total_amount = total_amount.replace("．", ".") if total_amount else ""
+    total_amount = total_amount.replace("．", ".").replace("－", "-").replace("−", "-") if total_amount else ""
     adjacent_total_evidence = ""
     if not total_amount:
         # A common OCR layout emits the gross amount first, then emits
@@ -158,10 +393,16 @@ def extract_invoice_fields(text: str) -> dict[str, Any]:
                 if 0 <= index < len(lines)
             ]
             for nearby_index in nearby_indexes:
-                match = re.search(r"[¥￥]\s*([0-9,]+(?:[.．][0-9]{1,2})?)", lines[nearby_index])
+                match = re.search(r"[¥￥]\s*([-－−]?[0-9,]+(?:[.．][0-9]{1,2})?)", lines[nearby_index])
                 if not match:
                     continue
-                total_amount = match.group(1).replace(",", "").replace("．", ".")
+                total_amount = (
+                    match.group(1)
+                    .replace(",", "")
+                    .replace("．", ".")
+                    .replace("－", "-")
+                    .replace("−", "-")
+                )
                 adjacent_total_evidence = f"{lines[nearby_index]} | {lines[label_index]}"
                 break
             if total_amount:
@@ -172,6 +413,22 @@ def extract_invoice_fields(text: str) -> dict[str, Any]:
         r"([0-9]+(?:[.．][0-9]+)?[%％])",
     ])
     tax_rate = tax_rate.replace("．", ".").replace("％", "%") if tax_rate else ""
+    if tax_rate:
+        try:
+            if Decimal(tax_rate.rstrip("%")) > Decimal("100"):
+                tax_rate = ""
+        except InvalidOperation:
+            tax_rate = ""
+    if not tax_rate:
+        tax_rate = next(
+            (
+                match.group(1).replace("％", "%")
+                for line in lines
+                for match in [re.fullmatch(r"\s*([0-9]{1,2}(?:[.．][0-9]+)?[%％])\s*", line)]
+                if match
+            ),
+            "",
+        )
     if not tax_rate:
         tax_rate = next((label for label in ("免税", "不征税", "零税率") if label in "\n".join(lines)), "")
     tax_rate_method = "explicit_ocr_text" if tax_rate else ""
@@ -284,7 +541,7 @@ def extract_invoice_fields(text: str) -> dict[str, Any]:
         "taxRate": 0.95 if tax_rate_method == "amount_equation" else (0.85 if tax_rate else 0.0),
     }
     fields["criticalFieldsReady"] = all(fields["fieldConfidence"][key] >= 0.85 for key in ("invoiceNumber", "buyer", "seller", "totalAmountWithTax"))
-    return fields
+    return _enrich_transport_ticket_fields(fields, text)
 
 
 def apply_folder_party_rule(fields: Mapping[str, Any], source_folder: str, config_company: str) -> dict[str, Any]:
@@ -798,6 +1055,53 @@ def enforce_template_explanation(
         if not isinstance(extracted_fields, dict):
             extracted_fields = {}
             decision["extractedFields"] = extracted_fields
+        transaction_amount = map_values.get("transactionAmount")
+        statement_amount = map_values.get("statementAmount")
+        amount_source = str(map_values.get("amountSource") or "").strip()
+        if (
+            transaction_amount in (None, "")
+            or statement_amount in (None, "")
+            or not amount_source
+            or map_values.get("amountValidated") is not True
+        ):
+            raise OcrPipelineError(
+                f"银行映射缺少已验证 transactionAmount：invoice={artifact.invoice_code}"
+            )
+        try:
+            normalized_transaction_amount = Decimal(str(transaction_amount)).quantize(
+                Decimal("0.01")
+            )
+            normalized_statement_amount = Decimal(str(statement_amount)).quantize(
+                Decimal("0.01")
+            )
+        except (ArithmeticError, TypeError, ValueError) as exc:
+            raise OcrPipelineError(
+                f"银行映射 transactionAmount 无效：invoice={artifact.invoice_code}"
+            ) from exc
+        if normalized_transaction_amount <= 0 or normalized_transaction_amount != normalized_statement_amount:
+            raise OcrPipelineError(
+                f"银行映射金额未通过一致性校验：invoice={artifact.invoice_code}"
+            )
+        ocr_amount = extracted_fields.get("totalAmountWithTax")
+        amount_validated = True
+        if ocr_amount not in (None, ""):
+            try:
+                normalized_ocr_amount = Decimal(str(ocr_amount)).quantize(Decimal("0.01"))
+            except (ArithmeticError, TypeError, ValueError) as exc:
+                raise OcrPipelineError(
+                    f"银行 OCR 金额无效：invoice={artifact.invoice_code}"
+                ) from exc
+            amount_validated = normalized_ocr_amount == normalized_transaction_amount
+            if not amount_validated:
+                raise OcrPipelineError(
+                    f"银行 OCR 金额与流水金额不一致：invoice={artifact.invoice_code}，"
+                    f"ocr={normalized_ocr_amount}，statement={normalized_transaction_amount}"
+                )
+        extracted_fields["transactionAmount"] = float(normalized_transaction_amount)
+        extracted_fields["statementAmount"] = float(normalized_statement_amount)
+        extracted_fields["ocrAmount"] = ocr_amount if ocr_amount not in (None, "") else None
+        extracted_fields["amountSource"] = amount_source
+        extracted_fields["amountValidated"] = amount_validated
         extracted_fields["transactionDate"] = bank_transaction_date
         if str(map_values.get("flowDirection") or "") == "inflow":
             for value in map_values.get("invoiceNumbers") or []:
@@ -847,9 +1151,20 @@ def enforce_template_explanation(
         if not isinstance(selector, Mapping):
             raise OcrPipelineError(f"模板分录缺少accountSelector：{relative_path} entries[{index}]")
         account_number = str(selector.get("number") or "").strip()
+        account_number_from = str(selector.get("numberFrom") or "").strip()
         is_bank_deposit_entry = (
-            source_key == "bank" and "银行存款" in str(selector.get("name") or "")
+            source_key == "bank"
+            and account_number_from == "source.bankAccountNumber"
         )
+        if (
+            source_key == "bank"
+            and "银行存款" in str(selector.get("name") or "")
+            and not is_bank_deposit_entry
+        ):
+            raise OcrPipelineError(
+                "银行存款分录必须使用动态科目来源 "
+                f"numberFrom=source.bankAccountNumber：{relative_path} entries[{index}]"
+            )
         if is_bank_deposit_entry:
             bank_deposit_entry_count += 1
             account_number = bank_account_number
@@ -1755,6 +2070,13 @@ def analyze_ocr_and_choose_template(artifact: OcrArtifact, template_root: Path, 
                 not configured_directions
                 or actual_direction in configured_directions
             )
+        )
+        extracted_fields = decision.get("extractedFields")
+        validation["amountRule"] = bool(
+            isinstance(extracted_fields, Mapping)
+            and extracted_fields.get("amountValidated") is True
+            and extracted_fields.get("transactionAmount") not in (None, "")
+            and extracted_fields.get("amountSource")
         )
     from .final_template_sample import validate_filled_entries
     sample_errors = validate_filled_entries(decision, final_template_context or {}) if final_template_context and exception_ready is not False else list(decision.get("exceptionValidationErrors") or [])

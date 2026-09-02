@@ -71,6 +71,17 @@ def generate_receipts(month_directory: Path, config: MonthConfig, output_directo
             continue
         receipt_dir = output_directory / f"receipt_{invoice_code}"
         receipt_path = receipt_dir / "receipt.json"
+        upload_checkpoint: dict[str, Any] = {}
+        if receipt_path.is_file():
+            try:
+                existing_payload = json.loads(receipt_path.read_text(encoding="utf-8-sig"))
+                if isinstance(existing_payload, dict) and existing_payload.get("uploaded") is True:
+                    upload_checkpoint = {
+                        "uploaded": True,
+                        "uploadResult": dict(existing_payload.get("uploadResult") or {}),
+                    }
+            except (OSError, json.JSONDecodeError, TypeError, ValueError):
+                upload_checkpoint = {}
         if receipt_path.exists() and not overwrite:
             skipped.append({"invoiceCode": invoice_code, "receipt": str(receipt_path.resolve()), "reason": "已存在，未覆盖"})
             continue
@@ -98,7 +109,9 @@ def generate_receipts(month_directory: Path, config: MonthConfig, output_directo
         entries = []
         filled_entries = business_values.get("ocrAnalysis", {}).get("filledEntries", []) if isinstance(business_values.get("ocrAnalysis"), dict) else []
         authoritative_template_entries = template_rendered.get("entries", []) if isinstance(template_rendered.get("entries"), list) else []
-        source_entries = filled_entries or authoritative_template_entries or list(entry_defaults or [])
+        # Company templates are authoritative for subjects and amount sources.
+        # LLM-filled entries are only a fallback when no template entries exist.
+        source_entries = authoritative_template_entries or filled_entries or list(entry_defaults or [])
         subject_by_number = {
             str(item.get("account_number")): item
             for item in (entry_defaults or [])
@@ -171,6 +184,7 @@ def generate_receipts(month_directory: Path, config: MonthConfig, output_directo
                 "entries": entries
             }
         }
+        payload.update(upload_checkpoint)
         receipt_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         generated.append({"invoiceCode": invoice_code, "receipt": str(receipt_path.resolve()), "pdfCandidates": [str(path) for path in pdfs[invoice_code]]})
     report = {

@@ -19,7 +19,8 @@ class BankReceiptOcrError(RuntimeError):
 
 
 _OCR_ENGINE: Any | None = None
-_OCR_CACHE_VERSION = 1
+_OCR_CACHE_VERSION = 2
+_OCR_RENDER_DPIS = (300, 400, 500)
 
 
 def _get_ocr_engine() -> Any:
@@ -41,34 +42,84 @@ def _source_fingerprint(pdf_path: Path) -> dict[str, Any]:
         "size": stat.st_size,
         "modifiedNs": stat.st_mtime_ns,
         "ocrCacheVersion": _OCR_CACHE_VERSION,
-        "nativePdfTextFirst": True,
+        "nativePdfTextIncluded": True,
         "ocrEngine": "rapidocr-onnxruntime",
         "ocrEngineVersion": engine_version,
-        "renderDpi": 300,
+        "renderDpis": list(_OCR_RENDER_DPIS),
+        "selection": "bank-field-completeness",
         "minimumScore": 0.35,
     }
 
 
+def _merge_candidates(candidates: list[tuple[str, str]]) -> str:
+    merged: list[str] = []
+    seen: set[str] = set()
+    for text, _ in candidates:
+        for raw_line in text.splitlines():
+            line = raw_line.strip()
+            key = "".join(line.lower().split())
+            if line and key and key not in seen:
+                seen.add(key)
+                merged.append(line)
+    return "\n".join(merged).strip()
+
+
+def _bank_text_quality(text: str, expected_index: str) -> tuple[int, int, int, int, int]:
+    compact = "".join(str(text or "").split()).lower()
+    index_hit = int(bool(expected_index) and expected_index.lower() in compact)
+    date_hit = int(bool(__import__("re").search(r"20\d{2}[年./-]?\d{1,2}[月./-]?\d{1,2}", compact)))
+    amount_hit = int(bool(__import__("re").search(r"(?:人民币|金额|小写|借方|贷方|收入|支出|转入|转出)?[￥¥]?\d[\d,]*\.\d{2}", compact)))
+    labels = (
+        "付款人", "收款人", "付款方", "收款方", "对方户名", "交易对手",
+        "交易金额", "用途", "摘要", "借方金额", "贷方金额",
+    )
+    label_count = sum(1 for label in labels if label in compact)
+    return index_hit, date_hit + amount_hit, label_count, len(text.splitlines()), min(len(text), 30000)
+
+
+def _bank_text_complete(text: str, expected_index: str) -> bool:
+    index_hit, date_amount, label_count, _, _ = _bank_text_quality(text, expected_index)
+    return index_hit == 1 and date_amount == 2 and label_count >= 2
+
+
 def _extract_text(pdf_path: Path) -> tuple[str, str]:
     with pymupdf.open(pdf_path) as document:
-        native_text = "\n".join((page.get_text("text") or "").strip() for page in document).strip()
+        expected_index = pdf_path.stem
+        candidates: list[tuple[str, str]] = []
+        native_text = "\n".join(
+            (page.get_text("text", sort=True) or "").strip() for page in document
+        ).strip()
         if native_text:
-            return native_text, "pymupdf-native-text"
+            candidates.append((native_text, "pymupdf-native-text"))
         engine = _get_ocr_engine()
-        lines: list[tuple[int, float, float, str]] = []
-        for page_index, page in enumerate(document):
-            pixmap = page.get_pixmap(
-                matrix=pymupdf.Matrix(300 / 72, 300 / 72), alpha=False
-            )
-            result, _ = engine(pixmap.tobytes("png"))
-            for row in result or []:
-                box, text, score = row
-                if float(score) < 0.35 or not text:
-                    continue
-                x = min(float(point[0]) for point in box)
-                y = min(float(point[1]) for point in box)
-                lines.append((page_index, y, x, str(text).strip()))
-        return "\n".join(item[3] for item in sorted(lines)).strip(), "rapidocr-onnxruntime"
+        for dpi in _OCR_RENDER_DPIS:
+            lines: list[tuple[int, float, float, str]] = []
+            for page_index, page in enumerate(document):
+                pixmap = page.get_pixmap(
+                    matrix=pymupdf.Matrix(dpi / 72, dpi / 72), alpha=False
+                )
+                result, _ = engine(pixmap.tobytes("png"))
+                for row in result or []:
+                    box, text, score = row
+                    if float(score) < 0.35 or not text:
+                        continue
+                    x = min(float(point[0]) for point in box)
+                    y = min(float(point[1]) for point in box)
+                    lines.append((page_index, y, x, str(text).strip()))
+            ocr_text = "\n".join(item[3] for item in sorted(lines)).strip()
+            if ocr_text:
+                candidates.append((ocr_text, f"rapidocr-onnxruntime-{dpi}dpi"))
+            merged_text = _merge_candidates(candidates)
+            if merged_text:
+                scored = candidates + [(merged_text, "merged-bank-ocr")]
+                best = max(scored, key=lambda item: _bank_text_quality(item[0], expected_index))
+                if _bank_text_complete(best[0], expected_index):
+                    return best
+        if not candidates:
+            return "", "ocr_unavailable"
+        merged_text = _merge_candidates(candidates)
+        scored = candidates + [(merged_text, "merged-bank-ocr")]
+        return max(scored, key=lambda item: _bank_text_quality(item[0], expected_index))
 
 
 def _safe_resolve_inside(path: Path, parent: Path, label: str) -> Path:

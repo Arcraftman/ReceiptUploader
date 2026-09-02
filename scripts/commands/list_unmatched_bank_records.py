@@ -76,7 +76,7 @@ def main() -> int:
     }
     for row in rows:
         statement = row.get("statement") if isinstance(row.get("statement"), dict) else {}
-        amount = row.get("ourCreditAmount") or row.get("ourDebitAmount") or "-"
+        amount = row.get("transactionAmount") or "-"
         print(
             f"  - {row.get('index') or '-'} | {row['bankKey']} | "
             f"{reason_names.get(str(row.get('markerReason') or ''), '排除')} | "

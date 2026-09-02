@@ -37,6 +37,14 @@ def _analysis_is_corroborated(analysis: Mapping[str, Any], voucher: Mapping[str,
     entries = voucher.get("entries", []) if isinstance(voucher.get("entries"), list) else []
     debit = sum(float(item.get("amount", 0) or 0) for item in entries if isinstance(item, Mapping) and item.get("dc") == 1)
     credit = sum(float(item.get("amount", 0) or 0) for item in entries if isinstance(item, Mapping) and item.get("dc") == -1)
+    transaction_amount = _first_money_value(extracted, "transactionAmount")
+    if transaction_amount is not None:
+        return (
+            extracted.get("amountValidated") is True
+            and bool(extracted.get("amountSource"))
+            and _money_equal(debit, credit)
+            and _money_equal(transaction_amount, debit)
+        )
     extracted_total = _first_money_value(extracted, "totalAmountWithTax", "totalAmount")
     extracted_amount = _first_money_value(extracted, "amountWithoutTax", "amount")
     extracted_tax = _first_money_value(extracted, "taxAmount")

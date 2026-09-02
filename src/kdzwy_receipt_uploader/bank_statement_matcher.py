@@ -203,6 +203,14 @@ def _flow_fields(debit_raw: Any, credit_raw: Any) -> dict[str, Any]:
         our_debit = None
         our_credit = None
         direction_error = "银行借方与贷方必须恰好一方包含非零金额"
+    transaction_amount = our_debit if our_debit is not None else our_credit
+    amount_source = (
+        "bank_statement.ourDebitAmount"
+        if our_debit is not None
+        else "bank_statement.ourCreditAmount"
+        if our_credit is not None
+        else ""
+    )
     return {
         "flowDirection": direction,
         "bankDebitRaw": _json_value(debit_raw),
@@ -211,6 +219,10 @@ def _flow_fields(debit_raw: Any, credit_raw: Any) -> dict[str, Any]:
         "bankCreditAmount": _amount_text(bank_credit),
         "ourDebitAmount": _amount_text(our_debit),
         "ourCreditAmount": _amount_text(our_credit),
+        "transactionAmount": _amount_text(transaction_amount),
+        "statementAmount": _amount_text(transaction_amount),
+        "amountSource": amount_source,
+        "amountValidated": transaction_amount is not None and not direction_error,
         "directionError": direction_error,
         "invoiceNumbers": (
             extract_invoice_like_numbers(debit_raw) if direction == "inflow" else []
@@ -533,6 +545,10 @@ def match_bank_statements(
                 "bankCreditAmount": statement["bankCreditAmount"],
                 "ourDebitAmount": statement["ourDebitAmount"],
                 "ourCreditAmount": statement["ourCreditAmount"],
+                "transactionAmount": statement["transactionAmount"],
+                "statementAmount": statement["statementAmount"],
+                "amountSource": statement["amountSource"],
+                "amountValidated": statement["amountValidated"],
                 "invoiceNumbers": statement["invoiceNumbers"],
                 "statement": statement["statement"],
                 "receipt": receipt_candidates[0]["receipt"],
