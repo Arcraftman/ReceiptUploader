@@ -331,8 +331,39 @@ class KdzwyApi:
         labels = {1: "客户", 2: "职员", 3: "项目", 4: "存货", 5: "供应商", 6: "部门"}
         result: dict[str, dict[str, Any]] = {}
         for class_id in class_ids:
-            data = self.get_items_v1(class_id, page_size=page_size)
-            result[labels.get(class_id, str(class_id))] = {"itemClassId": class_id, "items": list(data.get("rows", [])), "records": data.get("records", 0), "totalPage": data.get("totalPage", 0)}
+            items: list[dict[str, Any]] = []
+            page = 1
+            records = 0
+            total_page = 0
+            while True:
+                data = self.get_items_v1(class_id, page=page, page_size=page_size)
+                rows = [dict(row) for row in data.get("rows", []) if isinstance(row, dict)]
+                items.extend(rows)
+                try:
+                    records = int(data.get("records") or records or 0)
+                except (TypeError, ValueError):
+                    records = records or 0
+                try:
+                    total_page = int(data.get("totalPage") or total_page or 0)
+                except (TypeError, ValueError):
+                    total_page = total_page or 0
+
+                if not rows:
+                    break
+                if total_page and page >= total_page:
+                    break
+                if not total_page and records and len(items) >= records:
+                    break
+                if not total_page and not records and len(rows) < page_size:
+                    break
+                page += 1
+
+            result[labels.get(class_id, str(class_id))] = {
+                "itemClassId": class_id,
+                "items": items,
+                "records": records or len(items),
+                "totalPage": total_page or page,
+            }
         return result
 
     def get_voucher_settings(self) -> dict[str, Any]:
@@ -371,7 +402,13 @@ class KdzwyApi:
         dbid = self.dbid or self.get_dynamic_system_params().get("DBID")
         endpoint = f"/jdy-fi-rpt/{quote(str(dbid))}/v1/invoice/discern"
         boundary = "----KdzwyReceiptUploader" + uuid.uuid4().hex
-        filename = file.path.name.replace('"', "")
+        # The remote file service keeps uploaded names even after the related
+        # voucher is deleted. Give every transport upload a unique name while
+        # preserving the local source file and PDF extension, so a safe retry
+        # cannot be rejected as "文件名已存在".
+        safe_stem = file.path.stem.replace('"', "")
+        safe_suffix = file.path.suffix.replace('"', "") or ".pdf"
+        filename = f"{safe_stem}_{uuid.uuid4().hex[:12]}{safe_suffix}"
         parts = [
             f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{filename}\"\r\nContent-Type: application/pdf\r\n\r\n".encode(),
             file.path.read_bytes(),

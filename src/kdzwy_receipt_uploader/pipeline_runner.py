@@ -516,7 +516,10 @@ def main() -> int:
                         'bank.preload_items 只支持 false、"once" 或 "auto"'
                     )
                 bank_preload_state_path = bank_map_path.parent / "item_preload.state.json"
-                bank_role_evidence = collect_source_item_names(month_dir, config)
+                # The configured source workbooks live under the month's input
+                # directory. Reading from month_dir silently produced empty role
+                # evidence and prevented bank counterparties from being created.
+                bank_role_evidence = collect_source_item_names(input_dir, config)
                 bank_preload_fingerprint = {
                     "target": expected_company,
                     "mapSize": bank_map_path.stat().st_size,
@@ -547,16 +550,32 @@ def main() -> int:
                         role_evidence=bank_role_evidence,
                     )
                     bank_preload_report = {
-                        "source": "source Excel customer/supplier columns plus live target catalogs; flowDirection excluded",
+                        "status": (
+                            "success"
+                            if not bank_preload.unresolved
+                            else "incomplete_with_unresolved_counterparties"
+                        ),
+                        "source": "source Excel and full live catalogs, with validated bank debit/credit direction for organization names",
                         "sourceColumns": bank_preload.source_columns,
                         "roleEvidence": {
                             str(class_id): sorted(names)
                             for class_id, names in bank_role_evidence.items()
                         },
+                        "resolved": bank_preload.resolved,
+                        "unresolved": bank_preload.unresolved,
                         "created": bank_preload.created,
                         "counts": {
                             str(class_id): len(rows)
                             for class_id, rows in bank_preload.by_class.items()
+                        },
+                        "summary": {
+                            "matchedRecordCount": len(bank_matched),
+                            "roleEvidenceCount": sum(
+                                len(names) for names in bank_role_evidence.values()
+                            ),
+                            "resolvedRecordCount": len(bank_preload.resolved),
+                            "unresolvedRecordCount": len(bank_preload.unresolved),
+                            "createdCount": len(bank_preload.created),
                         },
                     }
                     bank_preload_report_path = bank_map_path.parent / "item_preload.report.json"
@@ -568,8 +587,13 @@ def main() -> int:
                         bank_preload_state_path.write_text(
                             json.dumps(
                                 {
-                                    "status": "success",
+                                    "status": (
+                                        "success"
+                                        if not bank_preload.unresolved
+                                        else "incomplete"
+                                    ),
                                     "fingerprint": bank_preload_fingerprint,
+                                    "unresolvedCount": len(bank_preload.unresolved),
                                 },
                                 ensure_ascii=False,
                                 indent=2,
@@ -581,8 +605,16 @@ def main() -> int:
                         "银行客户/供应商预加载完成："
                         f"客户={len(bank_preload.by_class.get(1, {}))}，"
                         f"供应商={len(bank_preload.by_class.get(5, {}))}，"
-                        f"新增={len(bank_preload.created)}"
+                        f"新增={len(bank_preload.created)}，"
+                        f"未解析={len(bank_preload.unresolved)}"
                     )
+                    if bank_preload.unresolved:
+                        print(
+                            "[警告] 银行预加载未完全结束："
+                            f"{len(bank_preload.unresolved)} 条交易方缺少有效组织名称、金额方向或目录证据；"
+                            "本次不会把空结果记录为成功，后续运行将继续核对。",
+                            file=sys.stderr,
+                        )
                 elif bank_preload_reused:
                     print("银行客户/供应商预加载已完成且 bank_map 未变化，本次复用。")
                 account_data = analysis_api.get_subject_tree(effective=0, expand=True)
@@ -603,7 +635,27 @@ def main() -> int:
                     "currencies": analysis_api.get_currencies(),
                     "itemClasses": analysis_api.get_item_classes(),
                 }
-                artifacts = build_bank_ocr_artifacts(bank_matched)
+                existing_analyzed: dict[str, dict[str, object]] = {}
+                if bank_analysis_path.is_file():
+                    try:
+                        saved_analysis = json.loads(
+                            bank_analysis_path.read_text(encoding="utf-8-sig")
+                        )
+                    except (OSError, json.JSONDecodeError):
+                        saved_analysis = {}
+                    if isinstance(saved_analysis, dict):
+                        existing_analyzed = {
+                            str(key): dict(value)
+                            for key, value in saved_analysis.items()
+                            if key in bank_matched
+                            and isinstance(value, dict)
+                            and value.get("analysisStatus") == "ready_for_review"
+                        }
+                artifacts = [
+                    artifact
+                    for artifact in build_bank_ocr_artifacts(bank_matched)
+                    if artifact.invoice_code not in existing_analyzed
+                ]
                 selector = OpenAICompatibleTemplateSelector.from_settings(settings)
                 worker_count = min(max(1, int(settings.get("llm_workers", 2) or 1)), max(1, len(artifacts)))
 
@@ -625,7 +677,12 @@ def main() -> int:
                         final_template_context=context,
                     )
 
-                analyzed: dict[str, dict[str, object]] = {}
+                analyzed: dict[str, dict[str, object]] = dict(existing_analyzed)
+                if existing_analyzed:
+                    print(
+                        "银行 LLM 复用已通过分析："
+                        f"{len(existing_analyzed)} 张；仅重试未通过记录={len(artifacts)}"
+                    )
                 with ThreadPoolExecutor(max_workers=worker_count) as executor:
                     pending = [(artifact, executor.submit(analyze_bank_artifact, artifact)) for artifact in artifacts]
                     for index, (artifact, future) in enumerate(pending, 1):
@@ -979,9 +1036,77 @@ def main() -> int:
         from kdzwy_receipt_uploader.receipts_ocr import OcrPipelineError, load_ocr_artifacts, run_ocr_stage
 
         configured_company = document_entity_name
-        purchase_allowed_codes = set(map_report.get("map", {})) if pipeline_source_key in {"all", "purchase"} else set()
-        sales_allowed_codes = set(sales_map_report["map"]) if pipeline_source_key in {"all", "sales"} else set()
-        allowed_ocr_codes = purchase_allowed_codes | sales_allowed_codes
+        purchase_mapped_codes = set(map_report.get("map", {})) if pipeline_source_key in {"all", "purchase"} else set()
+        sales_mapped_codes = set(sales_map_report["map"]) if pipeline_source_key in {"all", "sales"} else set()
+        mapped_ocr_codes = purchase_mapped_codes | sales_mapped_codes
+        source_pdf_index, source_invalid_pdfs = discover_source_pdfs(input_dir, pdf_folders)
+        source_pdf_codes = set(source_pdf_index)
+        only_mapped_invoices = bool(settings.get("only_mapped_invoices", False))
+        allowed_ocr_codes = (
+            source_pdf_codes & mapped_ocr_codes
+            if only_mapped_invoices
+            else set(source_pdf_codes)
+        )
+        duplicate_pdf_groups = [
+            {
+                "invoiceCode": code,
+                "pdfs": [str(path) for path in paths],
+            }
+            for code, paths in sorted(source_pdf_index.items())
+            if len(paths) > 1
+        ]
+        raw_pdf_count = sum(len(paths) for paths in source_pdf_index.values()) + len(source_invalid_pdfs)
+        single_pdf_count = sum(1 for paths in source_pdf_index.values() if len(paths) == 1)
+        duplicate_pdf_count = sum(len(paths) for paths in source_pdf_index.values() if len(paths) > 1)
+        pdf_inventory_path = map_path.parent / "pdf_inventory.report.json"
+        pdf_inventory_path.parent.mkdir(parents=True, exist_ok=True)
+        pdf_inventory_path.write_text(
+            json.dumps(
+                {
+                    "version": 1,
+                    "source": pipeline_source_key,
+                    "sourceOfTruth": "input PDF files",
+                    "folders": list(pdf_folders),
+                    "onlyMappedInvoices": only_mapped_invoices,
+                    "summary": {
+                        "rawPdfCount": raw_pdf_count,
+                        "singlePdfCount": single_pdf_count,
+                        "invoiceCodeCount": len(source_pdf_codes),
+                        "duplicateInvoiceCodeCount": len(duplicate_pdf_groups),
+                        "duplicatePdfCount": duplicate_pdf_count,
+                        "invalidPdfCount": len(source_invalid_pdfs),
+                        "mappedPdfInvoiceCodeCount": len(source_pdf_codes & mapped_ocr_codes),
+                        "unmappedPdfInvoiceCodeCount": len(source_pdf_codes - mapped_ocr_codes),
+                        "excelOnlyMappingCount": len(mapped_ocr_codes - source_pdf_codes),
+                        "processingInvoiceCodeCount": len(allowed_ocr_codes),
+                    },
+                    "invalidPdfs": source_invalid_pdfs,
+                    "duplicatePdfs": duplicate_pdf_groups,
+                    "unmappedPdfInvoiceCodes": sorted(source_pdf_codes - mapped_ocr_codes),
+                    "excelOnlyInvoiceCodes": sorted(mapped_ocr_codes - source_pdf_codes),
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        logger.info(
+            "PDF清点：source=%s raw=%s single=%s duplicate_files=%s invalid=%s mapped=%s unmapped=%s processing=%s",
+            pipeline_source_key,
+            raw_pdf_count,
+            single_pdf_count,
+            duplicate_pdf_count,
+            len(source_invalid_pdfs),
+            len(source_pdf_codes & mapped_ocr_codes),
+            len(source_pdf_codes - mapped_ocr_codes),
+            len(allowed_ocr_codes),
+        )
+        print(
+            f"PDF真实数量：{raw_pdf_count}；有效单张：{single_pdf_count}；"
+            f"重复文件：{duplicate_pdf_count}；无效文件：{len(source_invalid_pdfs)}；"
+            f"未匹配Excel：{len(source_pdf_codes - mapped_ocr_codes)}；清点报告：{pdf_inventory_path}"
+        )
         if analysis_stage == "existing":
             checkpoint("analysis_existing")
             analysis_path = receipts_ocr_dir / "template_analysis.json"
@@ -1256,7 +1381,12 @@ def main() -> int:
             print(f"Qwen分析报告：{analysis_report_path}")
         else:
             print("Qwen未执行；下一步请使用 --stage llm。")
-        print(f"有效销售发票：{len(sales_map_report['map'])}，有效进项发票：{len(purchase_map_report['map'])}，合计范围：{len(allowed_ocr_codes)}")
+        print(
+            f"PDF真实发票号：{len(source_pdf_codes)}，"
+            f"Excel已映射：{len(source_pdf_codes & mapped_ocr_codes)}，"
+            f"Excel未映射：{len(source_pdf_codes - mapped_ocr_codes)}，"
+            f"当前通过范围：{len(allowed_ocr_codes)}"
+        )
         checkpoint("analysis_complete", artifacts={"analysisDirectory": str(receipts_ocr_dir.resolve())})
         return 0
     account_source = str(settings.get("accountbook_source", "live"))

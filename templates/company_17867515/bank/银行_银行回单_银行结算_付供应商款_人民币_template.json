@@ -56,7 +56,7 @@
       "内部转账"
     ],
     "expectedAccounts": [
-      "2202",
+      "220201",
       "source.bankAccountNumber"
     ],
     "priority": 290,
@@ -73,7 +73,7 @@
   },
   "summary": {
     "header": "",
-    "body": "付供应商款 {source.counterpartyName}",
+    "body": "付供应商款",
     "separator": " "
   },
   "amountSource": "source",
@@ -81,8 +81,8 @@
     {
       "dc": 1,
       "accountSelector": {
-        "number": "2202",
-        "name": "应付账款"
+        "number": "220201",
+        "name": "应付账款_人民币户"
       },
       "amountFrom": "source.amount",
       "amountForFrom": "source.amount",

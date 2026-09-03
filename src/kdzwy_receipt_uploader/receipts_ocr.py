@@ -785,16 +785,40 @@ def load_ocr_artifacts(output_directory: Path, allowed_invoice_codes: set[str] |
     if not report_path.is_file():
         raise OcrPipelineError(f"Qwen阶段缺少OCR报告，请先运行 --stage ocr：{report_path}")
     report = json.loads(report_path.read_text(encoding="utf-8"))
+    reported_output = Path(str(report.get("outputDirectory") or output_directory))
+
+    def resolve_current_artifact_path(value: object, fallback: Path | None = None) -> Path:
+        configured = Path(str(value or fallback or ""))
+        candidates: list[Path] = []
+        if configured.is_absolute():
+            try:
+                candidates.append(output_directory / configured.relative_to(reported_output))
+            except ValueError:
+                pass
+        elif str(configured):
+            candidates.append(output_directory / configured)
+        if fallback is not None:
+            candidates.append(fallback)
+        candidates.append(configured)
+        for candidate in candidates:
+            if candidate.is_file():
+                return candidate
+        return candidates[0]
+
     artifacts: list[OcrArtifact] = []
     for raw_path in report.get("artifacts", []):
-        metadata_path = Path(str(raw_path))
+        metadata_value = raw_path.get("metadata") if isinstance(raw_path, dict) else raw_path
+        metadata_path = resolve_current_artifact_path(metadata_value)
         if not metadata_path.is_file():
             raise OcrPipelineError(f"OCR元数据不存在：{metadata_path}")
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
         invoice_code = str(metadata.get("invoiceCode") or "")
         if allowed_invoice_codes is not None and invoice_code not in allowed_invoice_codes:
             continue
-        text_path = Path(str(metadata.get("ocrText") or metadata_path.with_name("ocr.txt")))
+        text_path = resolve_current_artifact_path(
+            metadata.get("ocrText"),
+            metadata_path.with_name("ocr.txt"),
+        )
         source_pdf = Path(str(metadata.get("sourcePdf") or ""))
         if not invoice_code or not text_path.is_file():
             raise OcrPipelineError(f"OCR产物不完整：{metadata_path}")
@@ -1222,7 +1246,7 @@ def enforce_template_explanation(
                 except (TypeError, ValueError):
                     current_class_id = inherited_class_id
                 item_id = value.get("id")
-                if current_class_id == item_class_id and item_id not in (None, "", 0, "0") and str(value.get("name") or "").strip() == name:
+                if current_class_id == item_class_id and item_id not in (None, "", 0, "0") and _normalize_match_text(value.get("name")) == _normalize_match_text(name):
                     matches[str(item_id)] = dict(value)
                 for child in value.values():
                     visit(child, current_class_id)
@@ -1262,7 +1286,7 @@ def enforce_template_explanation(
             if not counterparty_name:
                 raise OcrPipelineError(f"业务映射缺少交易对方名称：source={source_key}, invoice={artifact.invoice_code}")
             mapped = map_values.get("auxiliaryItem")
-            if not isinstance(mapped, Mapping) or str(mapped.get("name") or "").strip() != counterparty_name or mapped.get("id") in (None, "", 0, "0"):
+            if not isinstance(mapped, Mapping) or _normalize_match_text(mapped.get("name")) != _normalize_match_text(counterparty_name) or mapped.get("id") in (None, "", 0, "0"):
                 mapped, match_count = find_auxiliary(item_class_id, counterparty_name)
                 if mapped is None:
                     reason = f"动态辅助核算目录无法唯一解析：itemClassId={item_class_id}, name={counterparty_name}, matches={match_count}"
@@ -1430,7 +1454,7 @@ def enforce_dynamic_supplier_payables_exception(
                 if (
                     class_id == 5
                     and item_id not in (None, "", 0, "0")
-                    and str(value.get("name") or "").strip() == name
+                    and _normalize_match_text(value.get("name")) == _normalize_match_text(name)
                 ):
                     matches[str(item_id)] = dict(value)
                 for child in value.values():
@@ -1634,7 +1658,7 @@ def _enrich_bank_counterparty_roles(
             if (
                 class_id in {1, 5}
                 and value.get("id") not in (None, "", 0, "0")
-                and str(value.get("name") or "").strip() == counterparty_name
+                and _normalize_match_text(value.get("name")) == _normalize_match_text(counterparty_name)
             ):
                 role = "customer" if class_id == 1 else "supplier"
                 matches[role] = dict(value)
@@ -1645,10 +1669,24 @@ def _enrich_bank_counterparty_roles(
                 visit(child, inherited_class_id)
 
     visit(catalog)
-    roles = sorted(matches)
+    # Bank statement direction is authoritative for the role of this
+    # transaction. The live catalog still supplies the auxiliary object ID,
+    # but it must not reverse or erase a valid direction-derived role. This
+    # also allows one organization to be a customer on an inflow and a
+    # supplier on an outflow.
+    flow_direction = str(values.get("flowDirection") or "").strip().lower()
+    direction_role = {
+        "inflow": "customer",
+        "outflow": "supplier",
+    }.get(flow_direction, "")
+    roles = [direction_role] if direction_role else sorted(matches)
     values["counterpartyRoles"] = roles
     values["counterpartyRoleSource"] = (
-        "dynamic_item_catalog" if matches else "unresolved"
+        "statement_direction"
+        if direction_role
+        else "dynamic_item_catalog"
+        if matches
+        else "unresolved"
     )
     values.pop("auxiliaryItem", None)
     values.pop("supplierName", None)

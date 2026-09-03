@@ -397,6 +397,49 @@ def process_one(receipt: Receipt, api: KdzwyApi) -> dict[str, Any]:
     source["userName"] = user_context.get("userName") or source.get("userName", "")
     source["userNo"] = user_context.get("userNo", "")
     receipt_for_upload = Receipt(receipt.receipt_id, source, receipt.source, receipt.attachment_files, receipt.invoice_codes, receipt.unresolved_invoice_codes)
+    def uploaded_file_id(payload: Any) -> str:
+        pending = [payload]
+        while pending:
+            value = pending.pop()
+            if isinstance(value, dict):
+                file_id = value.get("fileId")
+                if file_id not in (None, "", 0, "0") and value.get("uploadStatus") is not False:
+                    return str(file_id)
+                pending.extend(value.values())
+            elif isinstance(value, list):
+                pending.extend(value)
+        return ""
+
+    # Upload and validate every attachment before saving the voucher. A failed
+    # OCR/upload response can then be retried safely without creating a remote
+    # voucher whose local state is ambiguous.
+    file_ids: list[str] = []
+    if receipt_for_upload.attachment_files:
+        for attachment in receipt_for_upload.attachment_files:
+            retry_delays = (2, 5, 10)
+            for attempt in range(len(retry_delays) + 1):
+                try:
+                    uploaded = api.upload_invoice_pdf_v1(attachment)
+                except ApiError as exc:
+                    message = str(exc)
+                    tunnel_502 = "Tunnel connection failed: 502" in message or "返回 HTTP 502" in message
+                    if not tunnel_502 or attempt >= len(retry_delays):
+                        raise ApiError(
+                            f"附件上传失败，尚未保存凭证：{message}"
+                        ) from exc
+                    time.sleep(retry_delays[attempt])
+                    continue
+                file_id = uploaded_file_id(uploaded)
+                if file_id:
+                    file_ids.append(file_id)
+                    break
+                if attempt >= len(retry_delays):
+                    raise ApiError(
+                        "新版 PDF 上传/识别未返回有效 fileId，已重试且尚未保存凭证："
+                        f"{json.dumps(uploaded, ensure_ascii=False, default=str)[:2000]}"
+                    )
+                time.sleep(retry_delays[attempt])
+
     number = api.get_voucher_number(source["date"], str(source["groupId"]))
     if not number.get("vchNum"):
         raise ApiError("新版取号接口未返回有效凭证号，未调用保存接口")
@@ -405,35 +448,7 @@ def process_one(receipt: Receipt, api: KdzwyApi) -> dict[str, Any]:
     detail = api.get_voucher_v1(voucher_id)
     auxiliary_readback = validate_auxiliary_readback(source["entries"], detail)
     result: dict[str, Any] = {"status": "submitted_and_verified", "apiVersion": "vip4-v1", "receiptId": receipt.receipt_id, "voucherId": voucher_id, "voucherNo": voucher_payload["vch"]["voucherNo"], "voucherReadback": detail, "auxiliaryReadback": auxiliary_readback, "attachmentStatus": "not_requested", "attachmentFileIds": [], "unresolvedInvoiceCodes": receipt.unresolved_invoice_codes, "completedAt": datetime.now(timezone.utc).isoformat()}
-    if receipt_for_upload.attachment_files:
-        file_ids: list[str] = []
-        for attachment in receipt_for_upload.attachment_files:
-            uploaded = None
-            retry_delays = (2, 5, 10)
-            for attempt in range(len(retry_delays) + 1):
-                try:
-                    uploaded = api.upload_invoice_pdf_v1(attachment)
-                    break
-                except ApiError as exc:
-                    message = str(exc)
-                    tunnel_502 = "Tunnel connection failed: 502" in message or "返回 HTTP 502" in message
-                    if not tunnel_502 or attempt >= len(retry_delays):
-                        raise ApiError(
-                            f"凭证已保存但附件上传失败：voucherId={voucher_id}，"
-                            f"voucherNo={voucher_payload['vch']['voucherNo']}；{message}"
-                        ) from exc
-                    time.sleep(retry_delays[attempt])
-            if uploaded is None:
-                raise ApiError(
-                    f"凭证已保存但附件上传无结果：voucherId={voucher_id}，"
-                    f"voucherNo={voucher_payload['vch']['voucherNo']}"
-                )
-            data = uploaded.get("data", [])
-            rows = data if isinstance(data, list) else []
-            file_id = next((str(row.get("fileId")) for row in rows if isinstance(row, dict) and row.get("fileId") and row.get("uploadStatus") is not False), "")
-            if not file_id:
-                raise ApiError("新版 PDF 上传/识别未返回有效 fileId；凭证已保存，不重试保存")
-            file_ids.append(file_id)
+    if file_ids:
         bound = api.bind_voucher_files_v1(voucher_id, file_ids)
         api.data("新版附件绑定", bound)
         detail_after_bind = api.get_voucher_v1(voucher_id)

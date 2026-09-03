@@ -81,6 +81,22 @@ def verify_bank_receipts(
         if root.get("draft") is not False:
             invalid.append({**item, "error": "draft 必须明确为 true 或 false"})
             continue
+        voucher = root.get("voucher") if isinstance(root.get("voucher"), dict) else {}
+        summary = str(voucher.get("summary") or "")
+        if len(summary) > 255:
+            invalid.append({**item, "error": "凭证摘要超过255字符"})
+            continue
+        overlong_lines = [
+            index
+            for index, entry in enumerate(voucher.get("entries") or [], 1)
+            if isinstance(entry, dict)
+            and len(str(entry.get("explanation") or "")) > 255
+        ]
+        if overlong_lines:
+            invalid.append(
+                {**item, "error": f"分录摘要超过255字符：第{overlong_lines}行"}
+            )
+            continue
         try:
             load_receipt(path, {})
         except ReceiptError as exc:

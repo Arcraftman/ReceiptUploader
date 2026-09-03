@@ -14,6 +14,21 @@ class BankFinalReceiptError(RuntimeError):
     pass
 
 
+MAX_EXPLANATION_LENGTH = 255
+
+
+def _bounded_explanation(value: Any, required_suffix: str = "") -> str:
+    text = str(value or "").strip()
+    if len(text) <= MAX_EXPLANATION_LENGTH:
+        return text
+    suffix = required_suffix if required_suffix and text.endswith(required_suffix) else ""
+    if not suffix:
+        return text[:MAX_EXPLANATION_LENGTH].rstrip()
+    body = text[: -len(suffix)].rstrip()
+    body_limit = MAX_EXPLANATION_LENGTH - len(suffix)
+    return body[:body_limit].rstrip() + suffix
+
+
 def record_key(bank_key: str, index: str) -> str:
     return f"{bank_key}__{index}"
 
@@ -178,6 +193,15 @@ def _entries_from_analysis(analysis: Mapping[str, Any], amount: Any) -> list[dic
             entry.setdefault("cur", "RMB")
             entry.setdefault("rate", "1")
             entry.setdefault("explanation", str(analysis.get("explanation") or ""))
+            transaction_date = str(analysis.get("bankTransactionDate") or "").strip()
+            required_suffix = (
+                f" {transaction_date}"
+                if transaction_date and "银行存款" in str(entry.get("accountName") or "")
+                else ""
+            )
+            entry["explanation"] = _bounded_explanation(
+                entry.get("explanation"), required_suffix
+            )
             auxiliary = entry.pop("auxiliary", None)
             if isinstance(auxiliary, Mapping) and auxiliary.get("id") not in (None, ""):
                 prefix = {1: "customer", 5: "supplier", 3: "emp", 4: "project", 2: "inventory", 6: "dept"}.get(int(auxiliary.get("itemClassId") or 0))
@@ -340,15 +364,19 @@ def generate_bank_final_receipts(
             receipt = record.get("receipt") if isinstance(record.get("receipt"), Mapping) else {}
             pdf_path = str(receipt.get("pdf") or "")
             entries = _entries_from_analysis(current_analysis or {}, amount)
+            transaction_date = _date_from_analysis(current_analysis or {})
             payload = {
                 "schemaVersion": "1.0",
                 "draft": True,
                 "receiptId": receipt_id,
                 "voucher": {
-                    "date": _date_from_analysis(current_analysis or {}),
+                    "date": transaction_date,
                     "groupId": str(voucher_defaults.get("group_id") or ""),
                     "groupName": str(voucher_defaults.get("group_name") or "记"),
-                    "summary": str((current_analysis or {}).get("explanation") or ""),
+                    "summary": _bounded_explanation(
+                        (current_analysis or {}).get("explanation"),
+                        f" {transaction_date}" if transaction_date else "",
+                    ),
                     "attachments": 1 if pdf_path else 0,
                     "attachmentFiles": ([{"path": pdf_path}] if pdf_path else []),
                     "invoiceCodes": [],

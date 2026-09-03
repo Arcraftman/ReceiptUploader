@@ -104,28 +104,38 @@ def run_confirm_sequential(
                 print("等待 3 秒后提交下一张，降低连续请求压力...")
                 time.sleep(3.0)
         except (ApiError, ReceiptError, ValueError, OSError) as exc:
+            error_message = str(exc)
+            failed_before_save = (
+                "尚未保存凭证" in error_message
+                or "未调用保存接口" in error_message
+            )
             result = {
-                "status": "failed_or_ambiguous",
+                "status": (
+                    "failed_before_save"
+                    if failed_before_save
+                    else "failed_or_ambiguous"
+                ),
                 "receiptId": receipt.receipt_id,
                 "file": str(path),
-                "error": str(exc),
+                "error": error_message,
                 "completedAt": datetime.now(timezone.utc).isoformat(),
                 "stoppedBeforeNext": True,
             }
             audit(paths, result)
-            append_exception(
-                exception_ledger_path,
-                source,
-                "upload",
-                str((receipt.invoice_codes or [receipt.receipt_id])[0]),
-                "upload_failed_or_ambiguous",
-                str(exc),
-                {"receiptId": receipt.receipt_id, "file": str(path)},
-            )
-            try:
-                archive(path, paths.failed, receipt, result)
-            except OSError as archive_error:
-                audit(paths, {**result, "archiveStatus": "failed", "archiveError": str(archive_error)})
+            if not failed_before_save:
+                append_exception(
+                    exception_ledger_path,
+                    source,
+                    "upload",
+                    str((receipt.invoice_codes or [receipt.receipt_id])[0]),
+                    "upload_failed_or_ambiguous",
+                    error_message,
+                    {"receiptId": receipt.receipt_id, "file": str(path)},
+                )
+                try:
+                    archive(path, paths.failed, receipt, result)
+                except OSError as archive_error:
+                    audit(paths, {**result, "archiveStatus": "failed", "archiveError": str(archive_error)})
             print(f"处理失败，已停止后续上传且不自动重试：{receipt.receipt_id} -> {exc}", file=sys.stderr)
             return True, completed
     return False, completed
@@ -215,8 +225,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"未找到指定 receiptId：{args.receipt_id}", file=sys.stderr)
             return 2
     if args.test_upload:
-        if source in {"bank", "misc", "all"}:
-            print("测试上传已阻断：bank/misc 业务规则尚未完成；请先使用 --source sales 或 --source purchase。", file=sys.stderr)
+        if source in {"misc", "all"}:
+            print("测试上传已阻断：misc 业务规则尚未完成；请先使用 --source sales、purchase 或 bank。", file=sys.stderr)
             return 3
         valid = select_random_receipts(valid, source, args.random_count, args.random_seed)
         print(f"测试上传样本：{[receipt.receipt_id for _, receipt in valid]}，seed={args.random_seed}")
@@ -243,9 +253,9 @@ def main(argv: list[str] | None = None) -> int:
             "details": item,
         } for item in invalid),
     )
-    if args.confirm and source in {"bank", "misc", "all"}:
-        print("真实上传已阻断：bank/misc/all 责任链尚未完成业务规则封装；请先使用 --source sales 或 --source purchase。", file=sys.stderr)
-        logger.error("阻断：bank/misc/all 不允许真实上传")
+    if args.confirm and source in {"misc", "all"}:
+        print("真实上传已阻断：misc/all 责任链尚未完成业务规则封装；请先使用 --source sales、purchase 或 bank。", file=sys.stderr)
+        logger.error("阻断：misc/all 不允许真实上传")
         return 3
     if args.limit > 0:
         logger.info("应用 limit=%s", args.limit)

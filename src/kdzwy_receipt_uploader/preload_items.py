@@ -16,6 +16,8 @@ class PreloadedItems:
     by_class: dict[int, dict[str, dict[str, Any]]] = field(default_factory=dict)
     source_columns: dict[str, list[str]] = field(default_factory=dict)
     created: list[dict[str, Any]] = field(default_factory=list)
+    resolved: list[dict[str, Any]] = field(default_factory=list)
+    unresolved: list[dict[str, Any]] = field(default_factory=list)
 
     def resolve(self, item_class_id: int, name: str) -> dict[str, Any] | None:
         return self.by_class.get(int(item_class_id), {}).get(str(name).strip())
@@ -204,53 +206,166 @@ def preload_bank_counterparties(
     create_missing: bool = True,
     role_evidence: Mapping[int, list[str]] | None = None,
 ) -> PreloadedItems:
-    """Resolve roles from source documents and live catalogs, never bank direction."""
+    """Resolve bank counterparties from evidence or validated debit/credit direction."""
+
+    def normalize_name(value: Any) -> str:
+        translated = str(value or "").strip().translate(
+            str.maketrans({"（": "(", "）": ")", "【": "[", "】": "]", "　": " "})
+        )
+        return "".join(translated.split()).casefold()
+
+    def has_positive_amount(*values: Any) -> bool:
+        for value in values:
+            if value in (None, ""):
+                continue
+            try:
+                if float(str(value).replace(",", "").strip()) > 0:
+                    return True
+            except (TypeError, ValueError):
+                continue
+        return False
+
+    def looks_like_organization(value: str) -> bool:
+        normalized = normalize_name(value)
+        if not normalized:
+            return False
+        non_entity_markers = (
+            "网上电子汇划收入",
+            "电子汇划收入",
+            "公积金",
+            "社保",
+            "税款",
+            "待报解预算收入",
+            "手续费",
+            "工资",
+            "结息",
+            "内部转账",
+        )
+        if any(normalize_name(marker) in normalized for marker in non_entity_markers):
+            return False
+        organization_markers = (
+            "公司",
+            "中心",
+            "商行",
+            "经营部",
+            "事务所",
+            "合伙企业",
+            "银行",
+            "工厂",
+            "合作社",
+            "委员会",
+            "研究院",
+            "学校",
+            "医院",
+        )
+        return any(normalize_name(marker) in normalized for marker in organization_markers)
+
     normalized_evidence = {
         int(class_id): {
-            str(name).strip() for name in names if str(name).strip()
+            normalize_name(name): str(name).strip()
+            for name in names
+            if str(name).strip()
         }
         for class_id, names in (role_evidence or {}).items()
         if int(class_id) in {1, 5}
     }
+    all_catalogs = api.get_all_items_v1(class_ids=(1, 5), page_size=500)
     catalogs: dict[int, dict[str, dict[str, Any]]] = {}
-    for class_id in (1, 5):
-        data = api.get_items_v1(class_id, page_size=500)
-        rows = list(data.get("rows", [])) if isinstance(data, dict) else []
+    normalized_catalogs: dict[int, dict[str, dict[str, Any]]] = {}
+    for class_id, label in ((1, "客户"), (5, "供应商")):
+        data = all_catalogs.get(label, {})
+        rows = list(data.get("items", [])) if isinstance(data, dict) else []
         catalogs[class_id] = {
             str(row["name"]).strip(): dict(row)
             for row in rows
             if isinstance(row, dict) and str(row.get("name", "")).strip()
         }
+        normalized_catalogs[class_id] = {
+            normalize_name(row["name"]): dict(row)
+            for row in rows
+            if isinstance(row, dict) and str(row.get("name", "")).strip()
+        }
 
     wanted: dict[int, set[str]] = {1: set(), 5: set()}
-    for record in records.values():
+    resolved: list[dict[str, Any]] = []
+    unresolved: list[dict[str, Any]] = []
+    for record_key, record in records.items():
         name = str(record.get("counterpartyName") or "").strip()
         config_company = str(record.get("configCompany") or "").strip()
         if not name or (config_company and name == config_company):
             continue
+        normalized = normalize_name(name)
         evidence_classes = [
             class_id
             for class_id in (1, 5)
-            if name in normalized_evidence.get(class_id, set())
+            if normalized in normalized_evidence.get(class_id, {})
         ]
-        if evidence_classes:
-            for class_id in evidence_classes:
-                wanted[class_id].add(name)
-            continue
         existing_classes = [
-            class_id for class_id in (1, 5) if name in catalogs[class_id]
+            class_id
+            for class_id in (1, 5)
+            if normalized in normalized_catalogs[class_id]
         ]
-        if existing_classes:
-            for class_id in existing_classes:
-                wanted[class_id].add(name)
-        # Unknown names remain unresolved. Creating a customer/supplier solely
-        # from cash direction would turn refunds into the wrong auxiliary role.
+        debit_has_amount = has_positive_amount(
+            record.get("bankDebitAmount"), record.get("bankDebitRaw")
+        )
+        credit_has_amount = has_positive_amount(
+            record.get("bankCreditAmount"), record.get("bankCreditRaw")
+        )
+        direction_class = (
+            5
+            if debit_has_amount and not credit_has_amount
+            else 1
+            if credit_has_amount and not debit_has_amount
+            else None
+        )
+        if direction_class is not None and looks_like_organization(name):
+            resolved_classes = [direction_class]
+            resolution_source = "validated_bank_amount_direction"
+        elif evidence_classes:
+            resolved_classes = evidence_classes
+            resolution_source = "source_business_evidence"
+        elif existing_classes:
+            resolved_classes = existing_classes
+            resolution_source = "live_target_catalog"
+        else:
+            unresolved.append(
+                {
+                    "recordKey": str(record_key),
+                    "name": name,
+                    "flowDirection": str(record.get("flowDirection") or ""),
+                    "bankDebitHasAmount": debit_has_amount,
+                    "bankCreditHasAmount": credit_has_amount,
+                    "reason": "no_reliable_organization_role_evidence",
+                }
+            )
+            continue
+
+        resolved_names: list[str] = []
+        for class_id in resolved_classes:
+            existing = normalized_catalogs[class_id].get(normalized)
+            evidence_name = normalized_evidence.get(class_id, {}).get(normalized)
+            canonical_name = str(
+                (existing or {}).get("name") or evidence_name or name
+            ).strip()
+            wanted[class_id].add(canonical_name)
+            resolved_names.append(canonical_name)
+        resolved.append(
+            {
+                "recordKey": str(record_key),
+                "name": name,
+                "resolvedNames": resolved_names,
+                "itemClassIds": resolved_classes,
+                "source": resolution_source,
+            }
+        )
 
     result = PreloadedItems(
         by_class=catalogs,
         source_columns={
             str(class_id): sorted(names) for class_id, names in wanted.items()
-        }
+        },
+        resolved=resolved,
+        unresolved=unresolved,
     )
     for class_id, names in sorted(wanted.items()):
         bucket = result.by_class[class_id]

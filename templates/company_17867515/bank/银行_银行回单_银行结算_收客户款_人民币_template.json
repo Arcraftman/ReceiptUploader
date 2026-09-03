@@ -42,7 +42,7 @@
     ],
     "expectedAccounts": [
       "source.bankAccountNumber",
-      "1122"
+      "112201"
     ],
     "priority": 290,
     "defaultForSource": true,
@@ -56,8 +56,8 @@
     "purposeTextPolicy": "已验证为应收账款回款时，账号服务费、报销、项目款和服务费等付款方用途文字不得将本公司收款重分类为费用。"
   },
   "summary": {
-    "header": "",
-    "body": "收客户款 {source.counterpartyName}",
+    "header": "收客户款",
+    "body": "",
     "separator": " "
   },
   "amountSource": "source",
@@ -74,8 +74,8 @@
     {
       "dc": -1,
       "accountSelector": {
-        "number": "1122",
-        "name": "应收账款"
+        "number": "112201",
+        "name": "应收账款_人民币户"
       },
       "amountFrom": "source.amount",
       "amountForFrom": "source.amount",

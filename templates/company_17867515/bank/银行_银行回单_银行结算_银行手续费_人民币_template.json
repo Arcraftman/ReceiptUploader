@@ -31,7 +31,7 @@
       "直接扣费"
     ],
     "expectedAccounts": [
-      "2202",
+      "220201",
       "source.bankAccountNumber"
     ],
     "priority": 260,
@@ -59,8 +59,8 @@
     {
       "dc": 1,
       "accountSelector": {
-        "number": "2202",
-        "name": "应付账款"
+        "number": "220201",
+        "name": "应付账款_人民币户"
       },
       "amountFrom": "source.amount",
       "amountForFrom": "source.amount",

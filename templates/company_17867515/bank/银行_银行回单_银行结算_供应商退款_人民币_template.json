@@ -35,7 +35,7 @@
     "excludeKeywords": [],
     "expectedAccounts": [
       "source.bankAccountNumber",
-      "2202"
+      "220201"
     ],
     "priority": 950,
     "defaultForSource": true,
@@ -63,8 +63,8 @@
     {
       "dc": -1,
       "accountSelector": {
-        "number": "2202",
-        "name": "应付账款"
+        "number": "220201",
+        "name": "应付账款_人民币户"
       },
       "amountFrom": "source.amount",
       "amountForFrom": "source.amount",

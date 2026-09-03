@@ -89,9 +89,7 @@ class MiscPendingStep(ChainStep):
 
 def build_chain(source: SourceKind) -> ChainStep:
     tail: ChainStep = ValidationStep()
-    if source is SourceKind.BANK:
-        tail = BankPendingStep(tail)
-    elif source is SourceKind.MISC:
+    if source is SourceKind.MISC:
         tail = MiscPendingStep(tail)
     else:
         tail = TemplateStep(tail)
