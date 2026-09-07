@@ -23,9 +23,8 @@ from kdzwy_receipt_uploader.config import AppConfig
 from kdzwy_receipt_uploader.matching import match_month_directory
 from kdzwy_receipt_uploader.user_context import resolve_current_user
 from kdzwy_receipt_uploader.sales_map import (
-    add_sales_pdf_fallback_candidates,
-    build_sales_map,
-    finalize_sales_ocr_fallbacks,
+    build_sales_map_from_pdfs,
+    finalize_sales_pdf_map,
 )
 from kdzwy_receipt_uploader.purchase_map import build_purchase_map
 from kdzwy_receipt_uploader.auxiliary_items import create_auxiliary_item
@@ -49,7 +48,7 @@ from kdzwy_receipt_uploader.preload_items import (
     preload_bank_counterparties,
     preload_items,
 )
-from kdzwy_receipt_uploader.simple_logging import configure_pipeline_logger
+from kdzwy_receipt_uploader.simple_logging import configure_pipeline_logger, install_console_transcript
 from kdzwy_receipt_uploader.bank_receipt_splitter import BankReceiptSplitError, split_configured_bank_pdfs
 from kdzwy_receipt_uploader.bank_receipt_ocr import BankReceiptOcrError, run_bank_receipt_ocr
 from kdzwy_receipt_uploader.bank_statement_matcher import (
@@ -131,8 +130,6 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="从指定的运行配置执行 map、receipt 生成和批量处理")
     parser.add_argument("--run-config", type=Path, required=True, help="运行配置路径；通常由 run_companies.py 动态生成")
     parser.add_argument("--app-config", type=Path, default=ROOT / "config" / "app.json")
-    parser.add_argument("--mode", choices=["prepare", "analysis-only", "dry-run", "confirm"], default=None, help="覆盖配置中的 mode")
-    parser.add_argument("--stage", choices=["ocr", "llm", "existing", "all"], default=None, help="分析阶段：OCR、Qwen、复用已批准分析或显式串行执行")
     parser.add_argument("--limit", type=int, default=0, help="传递给上传阶段的单证限制（仅 confirm 阶段生效）")
     parser.add_argument("--receipt-id", type=str, default="", help="传递给上传阶段的单个 receiptId（仅 confirm 阶段生效）")
     parser.add_argument("--test-upload", action="store_true", help="传递给上传阶段的 test-upload 标记（仅 confirm 阶段生效）")
@@ -163,6 +160,11 @@ def main() -> int:
         "run_pipeline",
         to_console=not args.concise,
     )
+    transcript_path = install_console_transcript(
+        workspace_root / "logs" / pipeline_source_key,
+        "run_pipeline",
+    )
+    logger.info("完整控制台日志：%s", transcript_path)
     paths_config = settings.get("paths", settings)
     month_dir = resolve_config_path(str(paths_config["month_dir"]), ROOT, company, month, pipeline_source_key)
     input_dir = resolve_config_path(str(paths_config["input_dir"]), ROOT, company, month, pipeline_source_key)
@@ -182,15 +184,16 @@ def main() -> int:
     template_catalog = TemplateCatalog.load(template_root) if template_path.name == "index.json" and template_path.is_file() else None
     pdf_folders = resolve_source_folders(pipeline_source, list(settings["pdf_folders"]))
     receipt_dir = resolve_config_path(str(paths_config["receipt_dir"]), ROOT, company, month, pipeline_source_key)
-    mode = args.mode or str(settings.get("mode", "prepare"))
-    analysis_stage = args.stage or str(settings.get("analysis_stage", "ocr"))
+    workflow_stage = str(settings.get("workflow_stage", "ocr"))
+    mode = str(settings.get("mode", "analysis-only"))
+    analysis_stage = str(settings.get("analysis_stage", "ocr"))
     analysis_validation = str(settings.get("analysis_validation", "strict")).strip().lower()
     if analysis_validation not in {"strict", "relaxed", "exceptions"}:
         raise ValueError('analysis_validation 只支持 "strict"、"relaxed" 或 "exceptions"')
-    if mode not in {"prepare", "analysis-only", "dry-run", "confirm"}:
+    if mode not in {"prepare", "analysis-only", "confirm"}:
         print(f"不支持的 mode：{mode}")
         return 2
-    logger.info("开始任务：source_company=%s accountbook=%s document_entity=%s month=%s mode=%s source=%s", company, expected_company, document_entity_name, month, mode, settings.get("source", "all"))
+    logger.info("开始任务：source_company=%s accountbook=%s document_entity=%s month=%s stage=%s source=%s", company, expected_company, document_entity_name, month, workflow_stage, settings.get("source", "all"))
     checkpoint("workspace_ready", artifacts={"runConfig": str(run_config_path.resolve()), "appConfig": str(app_config_path.resolve()), "monthDirectory": str(month_dir.resolve())})
     try:
         config = MonthConfig.from_mapping(company, month, settings.get("input"))
@@ -463,15 +466,6 @@ def main() -> int:
                 f"[警告] 银行运行异常={runtime_exception_count}，已全部归入 "
                 f"bank_exceptions；正常匹配={bank_match_summary['matchedCount']}，继续下一阶段。"
             )
-        if analysis_stage == "ocr":
-            if args.concise:
-                print("[成功] 银行 OCR 与流水匹配完成")
-                print(f"  结果目录：{workspace_root / 'generated'}")
-                print("  未生成 receipt；下一步：analysis-only + llm")
-            else:
-                print("银行 OCR 与流水匹配完成；本阶段不生成 receipt。下一步运行 analysis-only + llm。")
-            return 0
-
         try:
             bank_matched, _bank_unmatched_markers = load_bank_records(
                 bank_map_path, bank_map_report_path
@@ -494,6 +488,72 @@ def main() -> int:
             )
             return 2
         bank_analysis_path = bank_ocr_output / "template_analysis.json"
+
+        if analysis_stage in {"ocr", "existing"}:
+            checkpoint("bank_item_preload")
+            preload_api = None
+            try:
+                preload_config = AppConfig.from_json(app_config_path, ROOT)
+                preload_api = KdzwyApi(replace(preload_config, expected_company=expected_company))
+                preload_api.get_dynamic_system_params()
+                bank_role_evidence = collect_source_item_names(input_dir, config)
+                bank_preload = preload_bank_counterparties(
+                    preload_api,
+                    bank_matched,
+                    create_missing=True,
+                    role_evidence=bank_role_evidence,
+                )
+                bank_preload_report_path = bank_map_path.parent / "item_preload.report.json"
+                bank_preload_report_path.write_text(
+                    json.dumps(
+                        {
+                            "status": "success" if not bank_preload.unresolved else "incomplete_with_unresolved_counterparties",
+                            "mode": "auto",
+                            "sourceColumns": bank_preload.source_columns,
+                            "resolved": bank_preload.resolved,
+                            "unresolved": bank_preload.unresolved,
+                            "created": bank_preload.created,
+                            "summary": {
+                                "matchedRecordCount": len(bank_matched),
+                                "resolvedRecordCount": len(bank_preload.resolved),
+                                "unresolvedRecordCount": len(bank_preload.unresolved),
+                                "createdCount": len(bank_preload.created),
+                            },
+                        },
+                        ensure_ascii=False,
+                        indent=2,
+                    ) + "\n",
+                    encoding="utf-8",
+                )
+                print(
+                    "银行客户/供应商自动核对完成："
+                    f"新增={len(bank_preload.created)}，"
+                    f"已解析={len(bank_preload.resolved)}，"
+                    f"未解析={len(bank_preload.unresolved)}"
+                )
+                checkpoint(
+                    "bank_item_preload_complete",
+                    artifacts={"itemPreloadReport": str(bank_preload_report_path.resolve())},
+                    counters={
+                        "createdCount": len(bank_preload.created),
+                        "unresolvedCount": len(bank_preload.unresolved),
+                    },
+                )
+            except (OSError, ValueError, BankFinalReceiptError) as exc:
+                print(f"银行客户/供应商自动核对失败：{exc}", file=sys.stderr)
+                return 2
+            finally:
+                if preload_api is not None and hasattr(preload_api, "close"):
+                    preload_api.close()
+
+        if analysis_stage == "ocr":
+            if args.concise:
+                print("[成功] 银行 OCR、流水匹配和辅助核算核对完成")
+                print(f"  结果目录：{workspace_root / 'generated'}")
+                print("  未生成 receipt；下一步：stage=llm")
+            else:
+                print("银行 OCR、流水匹配和辅助核算核对完成；本阶段不生成 receipt。下一步运行 stage=llm。")
+            return 0
 
         if analysis_stage in {"llm", "all"}:
             checkpoint("bank_llm")
@@ -720,12 +780,12 @@ def main() -> int:
             )
             print(f"分析文件：{bank_analysis_path}")
             checkpoint("bank_llm_complete", artifacts={"templateAnalysis": str(bank_analysis_path.resolve())}, counters={"analysisCount": len(analyzed), "analysisBlockedCount": blocked_count})
-            if mode == "analysis-only" or analysis_stage != "existing":
-                print("本阶段不生成 receipt；复核分析后设置 mode=prepare、analysis_stage=existing。")
+            if mode == "analysis-only":
+                print("LLM 阶段完成；本阶段不生成 receipt。下一步将 stage 设置为 prepare。")
                 return 0
 
-        if analysis_stage != "existing":
-            print("银行最终 receipt 只能由 analysis_stage=existing 生成。", file=sys.stderr)
+        if analysis_stage not in {"existing", "all"}:
+            print("银行最终 receipt 只能由 stage=prepare、send 或 all 生成。", file=sys.stderr)
             return 2
         try:
             bank_analysis = json.loads(bank_analysis_path.read_text(encoding="utf-8-sig"))
@@ -754,7 +814,7 @@ def main() -> int:
         if mode == "analysis-only":
             print("已批准银行 LLM 分析检查完成；analysis-only 不生成 receipt。")
             return 0
-        if mode == "prepare":
+        if mode == "prepare" or analysis_stage == "all":
             try:
                 prepare_config = AppConfig.from_json(app_config_path, ROOT)
                 prepare_api = KdzwyApi(replace(prepare_config, expected_company=expected_company))
@@ -769,6 +829,8 @@ def main() -> int:
                     company,
                     month,
                     voucher_defaults,
+                    draft=False,
+                    overwrite=True,
                 )
             except (BankFinalReceiptError, OSError, ValueError) as exc:
                 print(f"银行最终 receipt 生成失败：{exc}", file=sys.stderr)
@@ -777,14 +839,18 @@ def main() -> int:
                 if "prepare_api" in locals() and hasattr(prepare_api, "close"):
                     prepare_api.close()
             print(
-                f"银行 prepare+existing 完成：匹配记录={generation['summary']['matchedRecordCount']}，"
+                f"银行 receipt 生成完成：匹配记录={generation['summary']['matchedRecordCount']}，"
                 f"有效 receipt={generation['summary']['receiptCount']}，"
                 f"新生成={generation['summary']['generatedCount']}，"
                 f"已存在未覆盖={generation['summary']['reusedCount']}，"
                 f"分析未就绪={generation['summary']['blockedAnalysisCount']}"
             )
-            print("最终 receipt 已生成且保持 draft=true；人工复核完成后改为 false，再运行 verify。")
-            return 0
+            if mode == "prepare":
+                print("待上传 receipt 已生成；下一步将 stage 设置为 send。")
+                return 0
+            if generation["summary"]["blockedAnalysisCount"]:
+                print("stage=all 存在分析异常，已停止正式上传。", file=sys.stderr)
+                return 3
 
         verification = verify_bank_receipts(
             receipt_dir, allowed_record_keys=set(bank_matched)
@@ -797,7 +863,7 @@ def main() -> int:
             f"旧/特殊产物={verification_summary.get('orphanCount', 0)}"
         )
         if verification["status"] != "ready":
-            print("银行最终 receipt 尚未全部通过，禁止进入 dry-run/confirm。", file=sys.stderr)
+            print("银行最终 receipt 尚未全部通过，禁止进入 send/all。", file=sys.stderr)
             return 3
         batch_command = [
             sys.executable,
@@ -816,7 +882,6 @@ def main() -> int:
     map_report = _empty_match_report()
     if pipeline_source_key in {"purchase", "all"}:
         map_report = match_month_directory(input_dir, config, map_path.parent)
-    income_path = input_dir / config.income_cost_filename
     preload_report = None
     preload_result = None
     preload_setting = settings.get("preload_items", False)
@@ -868,9 +933,7 @@ def main() -> int:
     sales_map_report = _empty_map_report()
     purchase_map_report = _empty_map_report()
     if pipeline_source_key in {"sales", "all"}:
-        sales_map_report = build_sales_map(income_path, sales_map_path, sales_map_report_path)
-        sales_map_report = add_sales_pdf_fallback_candidates(
-            sales_map_report,
+        sales_map_report = build_sales_map_from_pdfs(
             input_dir / "sales",
             sales_map_path,
             sales_map_report_path,
@@ -1041,12 +1104,14 @@ def main() -> int:
         mapped_ocr_codes = purchase_mapped_codes | sales_mapped_codes
         source_pdf_index, source_invalid_pdfs = discover_source_pdfs(input_dir, pdf_folders)
         source_pdf_codes = set(source_pdf_index)
-        only_mapped_invoices = bool(settings.get("only_mapped_invoices", False))
-        allowed_ocr_codes = (
-            source_pdf_codes & mapped_ocr_codes
-            if only_mapped_invoices
-            else set(source_pdf_codes)
+        only_mapped_invoices = (
+            False
+            if pipeline_source_key == "sales"
+            else bool(settings.get("only_mapped_invoices", False))
         )
+        allowed_ocr_codes = set(source_pdf_codes)
+        if only_mapped_invoices:
+            allowed_ocr_codes.intersection_update(mapped_ocr_codes)
         duplicate_pdf_groups = [
             {
                 "invoiceCode": code,
@@ -1068,6 +1133,7 @@ def main() -> int:
                     "sourceOfTruth": "input PDF files",
                     "folders": list(pdf_folders),
                     "onlyMappedInvoices": only_mapped_invoices,
+                    "salesScope": "actual_pdfs" if pipeline_source_key == "sales" else None,
                     "summary": {
                         "rawPdfCount": raw_pdf_count,
                         "singlePdfCount": single_pdf_count,
@@ -1102,10 +1168,15 @@ def main() -> int:
             len(source_pdf_codes - mapped_ocr_codes),
             len(allowed_ocr_codes),
         )
+        inventory_scope = (
+            "销售范围：仅实际PDF"
+            if pipeline_source_key == "sales"
+            else f"未匹配Excel：{len(source_pdf_codes - mapped_ocr_codes)}"
+        )
         print(
             f"PDF真实数量：{raw_pdf_count}；有效单张：{single_pdf_count}；"
             f"重复文件：{duplicate_pdf_count}；无效文件：{len(source_invalid_pdfs)}；"
-            f"未匹配Excel：{len(source_pdf_codes - mapped_ocr_codes)}；清点报告：{pdf_inventory_path}"
+            f"{inventory_scope}；清点报告：{pdf_inventory_path}"
         )
         if analysis_stage == "existing":
             checkpoint("analysis_existing")
@@ -1250,7 +1321,7 @@ def main() -> int:
             print(f"[异常分流] OCR未通过 {len(ocr_exception_codes)} 张，已写入：{workflow_exception_path}")
 
         if pipeline_source_key in {"sales", "all"}:
-            fallback_result = finalize_sales_ocr_fallbacks(
+            sales_ocr_result = finalize_sales_pdf_map(
                 sales_map_report,
                 receipts_ocr_dir,
                 configured_company,
@@ -1258,29 +1329,29 @@ def main() -> int:
                 sales_map_path,
                 sales_map_report_path,
             )
-            fallback_blocked_codes = {
-                str(row.get("documentId") or "") for row in fallback_result["blocked"]
+            sales_ocr_blocked_codes = {
+                str(row.get("documentId") or "") for row in sales_ocr_result["blocked"]
             }
             replace_stage_exceptions(
                 workflow_exception_path,
                 pipeline_source_key,
-                "sales_ocr_fallback",
-                fallback_result["blocked"],
+                "sales_pdf_ocr",
+                sales_ocr_result["blocked"],
             )
-            if fallback_blocked_codes:
-                allowed_ocr_codes.difference_update(fallback_blocked_codes)
+            if sales_ocr_blocked_codes:
+                allowed_ocr_codes.difference_update(sales_ocr_blocked_codes)
                 ocr_artifacts = [
                     artifact for artifact in ocr_artifacts
                     if artifact.invoice_code in allowed_ocr_codes
                 ]
                 print(
-                    f"[异常分流] 收入成本表外销售发票校验未通过 "
-                    f"{len(fallback_blocked_codes)} 张，已写入：{workflow_exception_path}"
+                    f"[异常分流] 销售PDF精确OCR校验未通过 "
+                    f"{len(sales_ocr_blocked_codes)} 张，已写入：{workflow_exception_path}"
                 )
-            if fallback_result["ready"]:
+            if sales_ocr_result["ready"]:
                 logger.info(
-                    "收入成本表外销售发票通过精确OCR校验：%s 张",
-                    len(fallback_result["ready"]),
+                    "销售PDF通过精确OCR校验：%s 张",
+                    len(sales_ocr_result["ready"]),
                 )
 
         if analysis_stage in {"llm", "all"}:
@@ -1381,12 +1452,18 @@ def main() -> int:
             print(f"Qwen分析报告：{analysis_report_path}")
         else:
             print("Qwen未执行；下一步请使用 --stage llm。")
-        print(
-            f"PDF真实发票号：{len(source_pdf_codes)}，"
-            f"Excel已映射：{len(source_pdf_codes & mapped_ocr_codes)}，"
-            f"Excel未映射：{len(source_pdf_codes - mapped_ocr_codes)}，"
-            f"当前通过范围：{len(allowed_ocr_codes)}"
-        )
+        if pipeline_source_key == "sales":
+            print(
+                f"销售PDF真实发票号：{len(source_pdf_codes)}，"
+                f"当前通过范围：{len(allowed_ocr_codes)}；未使用收入成本表"
+            )
+        else:
+            print(
+                f"PDF真实发票号：{len(source_pdf_codes)}，"
+                f"Excel已映射：{len(source_pdf_codes & mapped_ocr_codes)}，"
+                f"Excel未映射：{len(source_pdf_codes - mapped_ocr_codes)}，"
+                f"当前通过范围：{len(allowed_ocr_codes)}"
+            )
         checkpoint("analysis_complete", artifacts={"analysisDirectory": str(receipts_ocr_dir.resolve())})
         return 0
     account_source = str(settings.get("accountbook_source", "live"))
@@ -1513,7 +1590,7 @@ def main() -> int:
             dict(sales_map_report["map"]),
             template_config,
             bool(settings.get("only_mapped_invoices", False)),
-            mode == "prepare",
+            False,
             template_catalog=template_catalog,
             purchase_map_values=(dict(purchase_map_report["map"]) if pipeline_source_key in {"all", "purchase"} else {}),
             allowed_invoice_codes=allowed_ocr_codes,
@@ -1593,8 +1670,8 @@ def main() -> int:
     print(f"正式上传前审查报告：{review_path}，状态：{review_report['reviewStatus']}，警告：{review_report['summary']['warningCount']}")
     checkpoint("preupload_review_complete", artifacts={"preuploadReview": str(review_path.resolve())}, counters={"preuploadWarningCount": review_report["summary"]["warningCount"]})
     if mode == "prepare":
-        print("准备阶段完成：receipt 仍是待补业务字段草稿，未进入批量校验或真实提交。")
-        print("补齐 receipt.json 的 date/groupId/summary/userName/entries 后，将对应任务配置的 mode 改为 dry-run。")
+        print("准备阶段完成：已生成待上传 receipt，但没有调用真实上传接口。")
+        print("复核 receipt 后，将对应业务的 stage 改为 send。")
         return 0
     command = [sys.executable, str(ROOT / "scripts" / "commands" / "batch_receipts.py"), "--project-root", str(ROOT), "--runtime-root", str(workspace_root), "--config", str(app_config_path), "--expected-company", expected_company, "--input-dir", str(receipt_dir), "--pdf-map", str(upload_map_path), "--source", pipeline_source_key]
     if mode == "confirm":
@@ -1611,10 +1688,10 @@ def main() -> int:
             command.extend(["--limit", str(args.limit)])
         if args.test_upload:
             command.append("--test-upload")
-    print(f"运行模式：{mode}")
+    print(f"流程阶段：{workflow_stage}")
     print("开始批量处理：" + " ".join(command))
-    checkpoint("upload" if mode == "confirm" else "dry_run")
+    checkpoint("upload")
     logger.info("开始调用 batch_receipts: %s", " ".join(command))
     return_code = subprocess.call(command)
-    checkpoint("upload_complete" if mode == "confirm" and return_code == 0 else "dry_run_complete" if return_code == 0 else "batch_failed", counters={"batchExitCode": return_code})
+    checkpoint("upload_complete" if return_code == 0 else "batch_failed", counters={"batchExitCode": return_code})
     return return_code

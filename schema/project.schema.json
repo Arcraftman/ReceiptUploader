@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Company month project v7",
+  "title": "Company month project v8",
   "type": "object",
   "additionalProperties": false,
   "required": ["version", "month", "dataset", "target", "input", "defaults", "sources"],
   "properties": {
-    "version": {"const": 7},
+    "version": {"const": 8},
     "month": {"type": "string", "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"},
     "dataset": {
       "type": "object",
@@ -30,9 +30,8 @@
     "input": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["income_cost_filename", "usage_filename", "usage_column"],
+      "required": ["usage_filename", "usage_column"],
       "properties": {
-        "income_cost_filename": {"type": "string", "minLength": 1},
         "usage_filename": {"type": "string", "minLength": 1},
         "usage_column": {"type": "string", "minLength": 1}
       }
@@ -66,12 +65,10 @@
     "sourceSettings": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["enabled", "mode", "analysis_stage", "preload_items"],
+      "required": ["enabled", "stage"],
       "properties": {
         "enabled": {"type": "boolean"},
-        "mode": {"enum": ["analysis-only", "prepare", "dry-run", "confirm"]},
-        "analysis_stage": {"enum": ["ocr", "llm", "existing", "all"]},
-        "preload_items": {"enum": [false, "once", "auto"]},
+        "stage": {"enum": ["ocr", "llm", "prepare", "send", "all"]},
         "analysis_validation": {"enum": ["strict", "relaxed"]},
         "ocr_workers": {"type": "integer", "minimum": 1},
         "llm_workers": {"type": "integer", "minimum": 1},
@@ -83,12 +80,10 @@
     "bankSourceSettings": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["enabled", "mode", "analysis_stage", "preload_items", "banks", "exceptions"],
+      "required": ["enabled", "stage", "banks", "exceptions"],
       "properties": {
         "enabled": {"type": "boolean"},
-        "mode": {"enum": ["analysis-only", "prepare", "dry-run", "confirm"]},
-        "analysis_stage": {"enum": ["ocr", "llm", "existing", "all"]},
-        "preload_items": {"enum": [false, "once", "auto"]},
+        "stage": {"enum": ["ocr", "llm", "prepare", "send", "all"]},
         "banks": {"$ref": "#/$defs/banks"},
         "exceptions": {"$ref": "#/$defs/bankExceptions"},
         "analysis_validation": {"enum": ["strict", "relaxed"]},

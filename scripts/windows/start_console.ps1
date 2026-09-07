@@ -166,7 +166,7 @@ function Invoke-MonthSpecification {
         $targetChoice.CompanyKey
     )
     if ($exitCode -ne 0) { throw "月份初始化失败，退出码：$exitCode" }
-    Write-Host '下一步：检查该月 project.json 的 dataset、target、mode、analysis_stage 和 sources，再运行 run_company.bat 公司配置名 月份。' -ForegroundColor Green
+    Write-Host '下一步：检查该月 project.json 的 dataset、target 和 sources.<业务>.stage，再运行 run_company.bat 公司配置名 月份。' -ForegroundColor Green
 }
 
 function Invoke-StatusView {

@@ -224,7 +224,7 @@ class CompanyJob:
     accountbook: str
     dataset: str
     month: str
-    mode: str = "analysis-only"
+    stage: str = "ocr"
     source: str = "all"
     purpose: str = "production"
     allow_cross_entity: bool = False
@@ -234,6 +234,22 @@ class CompanyJob:
     target_company_id: str = ""
     target_company_name: str = ""
     input_config: dict[str, str] = field(default_factory=dict)
+
+
+WORKFLOW_STAGE_PLAN = {
+    "ocr": ("analysis-only", "ocr"),
+    "llm": ("analysis-only", "llm"),
+    "prepare": ("prepare", "existing"),
+    "send": ("confirm", "existing"),
+    "all": ("confirm", "all"),
+}
+
+
+def workflow_stage_plan(stage: str) -> tuple[str, str]:
+    normalized = str(stage or "").strip().lower()
+    if normalized not in WORKFLOW_STAGE_PLAN:
+        raise CompanyRegistryError("stage 只支持 ocr、llm、prepare、send 或 all")
+    return WORKFLOW_STAGE_PLAN[normalized]
 
 
 def _read_object(path: Path) -> dict[str, Any]:
@@ -407,8 +423,8 @@ def load_company_profile(path: Path) -> CompanyProfile:
 def load_company_jobs(path: Path, company: CompanyProfile) -> list[CompanyJob]:
     """Load one company's one-month project.json as the only run configuration."""
     payload = _read_object(path)
-    if payload.get("version") != 7:
-        raise CompanyRegistryError(f"月份配置版本必须为 7：{path}")
+    if payload.get("version") != 8:
+        raise CompanyRegistryError(f"月份配置版本必须为 8：{path}")
     _reject_unknown_fields(
         payload,
         {"version", "month", "dataset", "target", "input", "defaults", "sources"},
@@ -442,11 +458,10 @@ def load_company_jobs(path: Path, company: CompanyProfile) -> list[CompanyJob]:
         raise CompanyRegistryError("project.input 必须是对象")
     _reject_unknown_fields(
         input_config,
-        {"income_cost_filename", "usage_filename", "usage_column"},
+        {"usage_filename", "usage_column"},
         "project.input",
     )
     normalized_input = {
-        "income_cost_filename": _required_text(input_config.get("income_cost_filename"), "project.input.income_cost_filename"),
         "usage_filename": _required_text(input_config.get("usage_filename"), "project.input.usage_filename"),
         "usage_column": _required_text(input_config.get("usage_column"), "project.input.usage_column"),
     }
@@ -471,9 +486,7 @@ def load_company_jobs(path: Path, company: CompanyProfile) -> list[CompanyJob]:
     ) -> dict[str, Any]:
         source_fields = {
             "enabled",
-            "mode",
-            "analysis_stage",
-            "preload_items",
+            "stage",
             *shared_configurable_fields,
         }
         if source == "bank":
@@ -494,23 +507,9 @@ def load_company_jobs(path: Path, company: CompanyProfile) -> list[CompanyJob]:
                 result[key] = copy.deepcopy(defaults[key])
             if key in row:
                 result[key] = copy.deepcopy(row[key])
-        analysis_stage = _required_text(
-            row.get("analysis_stage"), f"{label}.analysis_stage"
-        )
-        if analysis_stage not in {"ocr", "llm", "existing", "all"}:
-            raise CompanyRegistryError(
-                f'{label}.analysis_stage 只支持 "ocr"、"llm"、"existing" 或 "all"'
-            )
-        result["analysis_stage"] = analysis_stage
-        preload_value = row.get("preload_items")
-        if preload_value is True:
-            result["preload_items"] = "once"
-        elif preload_value is False or preload_value is None:
-            result["preload_items"] = False
-        elif str(preload_value).strip().lower() in {"once", "auto"}:
-            result["preload_items"] = str(preload_value).strip().lower()
-        else:
-            raise CompanyRegistryError('preload_items 只支持 false、"once" 或 "auto"')
+        workflow_stage = _required_text(row.get("stage"), f"{label}.stage").lower()
+        workflow_stage_plan(workflow_stage)
+        result["workflow_stage"] = workflow_stage
         if source == "bank":
             if "banks" not in row:
                 raise CompanyRegistryError(
@@ -539,7 +538,7 @@ def load_company_jobs(path: Path, company: CompanyProfile) -> list[CompanyJob]:
         if not isinstance(row, dict):
             raise CompanyRegistryError(f"sources.{source} 必须是对象")
         missing_core = sorted(
-            {"enabled", "mode", "analysis_stage", "preload_items"} - set(row)
+            {"enabled", "stage"} - set(row)
         )
         if missing_core:
             raise CompanyRegistryError(
@@ -552,11 +551,8 @@ def load_company_jobs(path: Path, company: CompanyProfile) -> list[CompanyJob]:
             raise CompanyRegistryError(
                 "sources.bank.enabled=true 时 banks 必须至少配置一家银行"
             )
-        source_mode = _required_text(row.get("mode"), f"sources.{source}.mode")
-        if source_mode not in {"analysis-only", "prepare", "dry-run", "confirm"}:
-            raise CompanyRegistryError(
-                f"sources.{source}.mode 只支持 analysis-only、prepare、dry-run 或 confirm"
-            )
+        workflow_stage = _required_text(row.get("stage"), f"sources.{source}.stage").lower()
+        workflow_stage_plan(workflow_stage)
         overrides = effective_source_settings(row, f"sources.{source}", source)
         if source == "bank" and job_enabled:
             for bank_key, bank_config in overrides["banks"].items():
@@ -575,7 +571,7 @@ def load_company_jobs(path: Path, company: CompanyProfile) -> list[CompanyJob]:
             dataset=dataset_company_key,
             month=month,
             template_company=company.template_company,
-            mode=source_mode,
+            stage=workflow_stage,
             source=source,
             purpose=str(row.get("purpose", defaults.get("purpose", "production"))),
             allow_cross_entity=_strict_bool(
@@ -670,8 +666,7 @@ def load_pipeline_defaults(path: Path) -> dict[str, Any]:
 
 
 def build_job_settings(defaults: dict[str, Any], accountbook: AccountbookProfile, dataset: DatasetProfile, job: CompanyJob) -> dict[str, Any]:
-    if job.mode not in {"analysis-only", "prepare", "dry-run", "confirm"}:
-        raise CompanyRegistryError(f"不支持的运行模式：{job.mode}")
+    internal_mode, analysis_stage = workflow_stage_plan(job.stage)
     if normalize_source_key(job.source) not in {"sales", "purchase", "bank", "misc", "all"}:
         raise CompanyRegistryError(f"不支持的责任链来源：{job.source}")
     settings = deep_merge(defaults, job.overrides)
@@ -686,9 +681,10 @@ def build_job_settings(defaults: dict[str, Any], accountbook: AccountbookProfile
         "paths": copy.deepcopy(DEFAULT_PIPELINE_PATHS),
         "input": copy.deepcopy(job.input_config),
     })
-    analysis_stage = str(settings.get("analysis_stage", "ocr"))
-    if analysis_stage not in {"ocr", "llm", "existing", "all"}:
-        raise CompanyRegistryError(f"不支持的分析阶段：{analysis_stage}")
+    settings["workflow_stage"] = job.stage
+    settings["mode"] = internal_mode
+    settings["analysis_stage"] = analysis_stage
+    settings["preload_items"] = "auto"
     analysis_validation = str(settings.get("analysis_validation", "strict")).strip().lower()
     if analysis_validation not in {"strict", "relaxed", "exceptions"}:
         raise CompanyRegistryError('analysis_validation 只支持 "strict"、"relaxed" 或 "exceptions"')
@@ -722,7 +718,6 @@ def build_job_settings(defaults: dict[str, Any], accountbook: AccountbookProfile
         "workspace_root": workspace_root,
         "source_company_key": dataset.key,
         "month": job.month,
-        "mode": job.mode,
         "source": normalize_source_key(job.source) or job.source,
         "purpose": job.purpose,
         "cross_entity": accountbook.name != dataset.entity_name,

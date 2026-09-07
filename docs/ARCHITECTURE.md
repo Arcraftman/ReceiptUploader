@@ -12,7 +12,7 @@
                    ├── target：明确目标账套
                    ├── input：本月 Excel 文件名与列
                    ├── defaults：四个业务共享的高级默认值
-                   └── sources：四个业务各自精确的 enabled/mode/stage/preload 与直接覆盖
+                   └── sources：四个业务各自精确的 enabled/stage 与直接覆盖
                          └── bank.banks：当月多银行科目、裁剪与流水列的唯一配置源
 
 公司发现 ──> runtime/registry/accountbooks.json v2（自动生成）
@@ -49,7 +49,7 @@ project.json v7 预检
   -> Qwen 结构化模板选择
   -> 动态账套科目和辅助对象解析
   -> receipt 生成与预审
-  -> dry-run 或显式 confirm
+  -> prepare 或显式 send/all
   -> 凭证与附件回读校验
 ```
 
@@ -57,13 +57,13 @@ project.json v7 预检
 
 - `project.json.dataset` 的 key、公司 ID、公司名必须同时匹配资料公司配置。
 - `project.json.target` 的 key、公司 ID、公司名必须同时匹配运行期账套注册表。
-- 每月 source 独立，四个业务都必须精确声明 `enabled/mode/analysis_stage/preload_items`；新月份默认全部关闭，不继承其他月份。
+- 每月 source 独立，四个业务都必须精确声明 `enabled/stage`；新月份默认全部关闭，不继承其他月份。
 - bank 不再使用第二份裁剪配置；每家银行的 `bank_account_number`、`split` 和 `statement_columns` 统一放在 `project.json.sources.bank.banks`。
 - 每家银行的固定科目号会注入模板候选与提示词，并在模板渲染时覆盖历史模板中的银行存款科目；已有分析和最终 receipt 生成前再次强校验。
 - 银行现金流入记录的非金额借方单元格若完全由数字串组成，这些数字会直接替换模板 `explanation_body`；银行存款分录另从 OCR 原文追加交易日期，且已有分析复用与最终 receipt 前都会校验这两项确定性规则。
-- bank 模板先按流水方向硬筛选；唯一候选走确定性选择，多个合法候选才调用精简上下文的 Qwen。显式启用 bank `preload_items` 时，辅助核算对象从 bank map 创建到目标账套。
+- bank 模板先按流水方向硬筛选；唯一候选走确定性选择，多个合法候选才调用精简上下文的 Qwen。辅助核算对象每次固定从 bank map 自动核对并补充到目标账套。
 - bank 的 `configCompany` 固定来自 `dataset.company_name`；银行借方有效金额的对手方固定为供应商，贷方有效金额的对手方固定为客户，Excel 配置列是权威值，OCR/LLM 不得覆盖。
-- bank 遵循“裁剪 → 特殊对象物理分流 → 剩余 OCR/匹配 → LLM → 人工复核 → prepare+existing 最终 receipt → verify/dry-run → confirm”阶段；特殊对象 PDF 保留裁剪原件并复制到专用目录，同时从普通后续输入中排除；OCR、匹配和 LLM 阶段禁止提前生成 receipt。
+- bank 遵循“裁剪 → 特殊对象物理分流 → 剩余 OCR/匹配 → LLM → prepare → send”阶段；`all` 可连续执行完整流程。特殊对象 PDF 保留裁剪原件并复制到专用目录，同时从普通后续输入中排除。
 - 未匹配流水只写入报告并标记为不可进入下游；`unmatched` 命令只负责列出，不会启动任何业务处理。
 - 对手方为保守规则识别出的个人姓名时，在 OCR 调度前按流水索引排除并清除旧 OCR 缓存；只写报告，不进入供应商/客户、匹配、LLM、模板和 receipt。
 - 四类资料目录始终存在，但只有 `enabled=true` 的业务实际运行。

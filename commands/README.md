@@ -8,8 +8,8 @@
 | `discover_companies.bat` | 重新发现全部可访问公司；可同时初始化指定月份 |
 | `login_companies.bat` | 刷新运行期账套注册表中的 HTTP 会话 |
 | `create_company_template.bat` | 为新资料公司创建跨月份共享模板和 v3 公司配置 |
-| `initialize_month.bat` | 创建该公司、该月份的 `project.json` v7 和四类资料目录 |
-| `run_bank.bat` | 只读取当月配置，并按 bank 的 mode/stage 执行 OCR、LLM 或 prepare+existing |
+| `initialize_month.bat` | 创建该公司、该月份的 `project.json` v8 和四类资料目录 |
+| `run_bank.bat` | 只读取当月配置，并按 bank 的统一 stage 执行 |
 | `list_bank_exceptions.bat` | 列出已从普通流程分离的特殊记录、裁剪原件和特殊副本，不执行后续业务 |
 | `list_unmatched_bank.bat` | 只列出未被 exception 接管的普通未匹配记录 |
 | `run_company.bat` | 执行明确的资料公司和月份 |
@@ -31,7 +31,7 @@ verify dataset公司ID YYYY-MM
 
 所有月份敏感命令都必须显式传入 `YYYY-MM`：
 
-`bank` 按当月配置分阶段执行：`analysis-only+ocr` 只做裁剪、特殊对象分流、剩余 OCR/匹配；`analysis-only+llm` 只分析普通匹配；人工复核后 `prepare+existing` 才生成最终 receipt，并全部保持 `draft=true`。补齐后改为 false，再运行 `verify dataset公司ID YYYY-MM`。该入口不执行真实上传。
+统一阶段为 `ocr`、`llm`、`prepare`、`send`、`all`。`prepare` 生成待上传 receipt；`send` 正式上传；`all` 从 OCR 到正式上传一次完成。客户和供应商预加载固定为 auto，每次运行都会核对目标账套。
 
 ```bat
 commands\run_company.bat COMPANY_CONFIG_NAME YYYY-MM

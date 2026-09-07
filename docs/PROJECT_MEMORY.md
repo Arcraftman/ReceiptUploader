@@ -4,15 +4,16 @@
 
 ## 当前配置决策
 
+- `sales` 的业务范围只以当月 `input/sales` 下实际存在的 PDF 为准；`project.json.input` 不再配置 `income_cost_filename`，收入成本表不再参与发票筛选、匹配、数量核对、销售 map 或辅助核算预加载。每张有效命名的销售 PDF 直接进入精确 OCR，客户、日期、金额和税额均由 OCR 证据补入销售 map；OCR 不完整的单据进入异常。
 - 所有业务来源 `sales`、`purchase`、`bank`、`misc` 的正式 OCR 一律使用项目可用的最高精度模式，不得因为单据数量、耗时、缓存或业务类型自动降级。银行裁剪时用于空白检测和稳定命名的快速识别只能作为预处理，不能替代正式 OCR，也不能直接作为 LLM 的最终输入。
 - 税率必须优先使用 OCR 明文；明文缺失时，只能从 OCR 货币金额中以 `不含税金额 + 税额 = 价税合计` 反算，并且唯一命中标准税率、反向分币校验通过后才接受。反算结果必须保存金额证据和 `amount_equation` 方法；多税率、证据冲突或无法唯一证明时进入异常，禁止交给 LLM 猜测。
-- `preload_items: "once"` 表示每个远端缺失档案只创建一次，不表示本地曾成功后永久跳过。每次执行都必须依据实际生成的业务 map 核对当前登录账号、当前目标账套的远端 ItemClass；已有项不修改，只有缺失客户或供应商才创建。禁止把固定 Excel 列、表头或本地状态文件当作远端已完整的依据。
+- `preload_items` 已从 `project.json` 删除，运行时固定为 `auto`。每次执行都必须依据实际生成的业务 map 核对当前登录账号、当前目标账套的远端 ItemClass；已有项不修改，只有缺失客户或供应商才创建。
 - 公司配置文件必须命名为 `company_<company_id>_<真实公司名>.json`，内容使用 version 3。
 - `company_key` 固定为 `company_<company_id>`，不再允许 `xinghai` 等历史别名。
 - 公司配置只保存资料公司身份和一个跨月份共享的 `template_company`。
 - 数据目录由公司配置文件名确定，不再维护独立 dataset 注册表。
 - 每个公司、每个月只有一个 `project.json` v7；它是该月 dataset、目标账套、输入和四个业务精确运行配置的唯一来源。
-- `sales`、`purchase`、`bank`、`misc` 每个都必须显式包含 `enabled`、`mode`、`analysis_stage`、`preload_items`；不再从 `defaults` 继承这四项。
+- `project.json` 版本为 v8。`sales`、`purchase`、`bank`、`misc` 每个只需显式包含 `enabled` 和统一 `stage`；`stage` 只支持 `ocr`、`llm`、`prepare`、`send`、`all`。旧的 `mode`、`analysis_stage`、`preload_items` 不再兼容。
 - `sales`、`purchase`、`bank`、`misc` 四类目录固定自带，但每月执行开关互相独立且默认关闭。
 - 同一公司不同月份的所有运行、报告、确认和状态重置命令都必须明确传入 `YYYY-MM`。
 - 资料公司必须完整写入当月 `project.json.dataset`，并与公司配置身份一致。
@@ -23,10 +24,11 @@
 - 运行期账套注册表 version 2 只保存身份、账号、启用状态和会话路径，不保存流水线覆盖。
 - 全局流水线配置 version 2 只保存 OCR/LLM 并发和模型接口等技术参数。
 - 默认模型为百炼 `qwen3.7-flash`，API Key 只读取 `DASHSCOPE_API_KEY`。
-- `analysis_stage=llm` 和 `analysis_stage=all` 必须对每个有模板候选的 OCR 产物真实调用 LLM；不得因只剩一个候选而本地伪装成 Qwen 分析。
+- `stage=llm` 和 `stage=all` 必须对每个有模板候选的 OCR 产物真实调用 LLM；不得因只剩一个候选而本地伪装成 Qwen 分析。
 - 模板候选为空或 LLM 分析失败时必须写入 `template_analysis.json`，状态为 `blocked/exception_pending`，然后继续下一张。
 - 模板 JSON 是分类规则、历史证据和会计分录的唯一真相源；模板索引只描述扫描布局。
 - 原始资料只读；所有生成物、日志和状态写入目标账套隔离工作区。
+- 全流程日志采用结构化日志与控制台 transcript 双记录。调度日志写入 `runtime/logs`，每个业务的 OCR、LLM、receipt 生成、异常和上传输出写入对应隔离工作区的 `logs/<source>`，每次运行使用独立时间戳文件。
 
 ## 银行回单
 
@@ -41,7 +43,7 @@
 - 每个银行规则必须包含 `parts_per_page`、`filename_index_length`、`filename_index_prefix`；旧的银行键直接映射整数格式不再接受。
 - 单张回单文件名优先使用交易流水号/交易流水/核心流水号，其次回单编号，最后使用独立字母数字索引；所有候选都必须符合该银行配置的长度和起始字母。起始字母大小写敏感，生成文件名保留识别文本中的原始大小写。
 - `generated/maps` 只按实际业务创建：sales 不生成 purchase/xlsx map，purchase 不生成 sales map；bank 生成一套按 bank key 分组的 `bank_map.json`、报告和唯一的特殊对象清单 `bank_exceptions.json`，禁止重复的 per-bank map。
-- bank 生命周期与 sales/purchase 对齐：OCR 阶段依次做全部裁剪、特殊对象物理分流、剩余 OCR 和剩余流水匹配；LLM 阶段只分析普通匹配并生成 `template_analysis.json`；人工复核后仅 `mode=prepare + analysis_stage=existing` 生成最终 receipt。不得在 OCR/match/LLM 阶段提前生成草稿。
+- bank 生命周期与 sales/purchase 对齐：`ocr` 依次做全部裁剪、特殊对象物理分流、剩余 OCR 和剩余流水匹配；`llm` 只分析普通匹配并生成 `template_analysis.json`；`prepare` 生成待上传 receipt；`send` 正式上传；`all` 连续完成全部流程。
 - bank 专用入口只读取和校验当月 `project.json`，不增加银行、不改写开关、不覆盖列值。
 - 每家银行的 `split` 必须恰好包含 `parts_per_page`、`filename_index_length`、`filename_index_prefix`。
 - 每家银行的 `statement_columns` 必须恰好包含 `index_column`、`bank_debit_column`、`bank_credit_column`、`counterparty_name_column`；bank 未启用时可使用 `null`，启用后必须全部填写。
@@ -52,7 +54,7 @@
 - 每张已匹配银行回单必须从 OCR 原文确定交易/记账日期。仅名称包含“银行存款”的唯一分录在基础摘要后追加一个空格和 `YYYY-MM-DD`；其他分录不追加日期。分析文件需保留逐分录摘要，旧分析缺少日期或摘要/body 不一致时不得进入 prepare+existing。
 - 银行模板必须声明 `matchRules.flowDirections`，候选先按 bank map 的确定方向硬筛选，再按目标账套目录解析的 `counterpartyRoles` 筛选。每条普通银行记录都必须调用 Qwen 核对候选，即使候选唯一也不跳过。银行校验固定使用 `documentBlock=银行`、`amountSource=source`、source folder 和资金方向，不再套用发票 OCR 的 folder/map 元数据。
 - 外币标记必须完整匹配，`USB` 不得因 `US$` 规则被误判。本公司内部转账固定保持 blocked。
-- bank 的 `preload_items="once"/"auto"` 会按 bank map 的流入客户、流出供应商在目标账套创建缺少的辅助核算对象；这是显式远端写操作，`false` 时禁止创建并让缺失对象保持 blocked。
+- bank 每次运行固定自动按 bank map 核对目标账套客户和供应商目录，只创建远端缺失的辅助核算对象。
 - 微誉历史凭证中公积金银行付款按公司和个人各 50% 结清；bank source 从总额确定性生成两个字段，分角差额由个人部分承接，禁止模型猜测。
 - 供应商付款不强制要求 `invoiceNumbers`；现金流出且目标账套目录确认对方为供应商时，服务费、培训费、运费、通讯费和水电费等用途仍按借应付账款、贷银行存款结算。`invoiceNumbers` 只作为增强证据。
 - 供应商向本公司退款时使用独立“供应商退款”模板，分录为借银行存款、贷应付账款；不得因为现金流入就强制使用收客户款。微誉已验证对象“上海方顺医疗器械有限公司”纳入该模板的精确交易对象证据。
@@ -63,7 +65,7 @@
 - 微誉的京东、TIPS 和指定人名只需作为名称列入 exceptions，统一不进入普通模板、LLM 或凭证生成；京东专用模板保留给未来单独特殊业务流程，不再由 exceptions 承载分摊配置。
 - 原 PDF 保留不动，拆分结果写入工作区 `generated/bank_receipts/<bank_key>/`。
 - 空白银行切片必须在裁剪阶段直接丢弃，不生成 PDF、不进入 `bank_exception`、不进入 OCR/LLM，仅在裁剪报告中累计 `blankSliceCount`。严格空白条件固定为：没有 PDF 文本、快速 OCR 没有文字且图像有效墨迹比例低于阈值。非空但没有唯一有效命名索引或索引重复的切片才进入 `bank_exception`，不得让银行预处理失败。
-- prepare+existing 生成的最终 receipts 初始全部 `draft=true` 且不得覆盖用户修改；用户补齐后改为 false。verify 只能在此阶段之后执行，并列出剩余 draft 号码、receiptId 和路径；dry-run/真实上传前自动重复同一检查。真实银行上传仍需责任链复核后另行开放。
+- `prepare` 生成结构完整、可提交但尚未上传的 receipt；用户复核后进入 `send`。`all` 生成可提交 receipt 并在全部固定校验通过后连续上传；任何异常仍会阻断或分流。
 
 ## 安全决策
 

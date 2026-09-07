@@ -199,7 +199,6 @@ def match_month_directory(month_directory: Path, config: Any, output_directory: 
     """Use usage-confirmation E as the only receipt-code candidate set."""
     month_directory = month_directory.resolve()
     usage_path = month_directory / config.usage_filename
-    configured_income = month_directory / config.income_cost_filename
     usage_values, invalid_usage = read_xlsx_column(usage_path, config.usage_column) if usage_path.is_file() else ([], [{"xlsx": str(usage_path), "reason": "用途确认信息不存在"}])
     usage_keys = sorted({item["key"] for item in usage_values}, key=lambda value: (Decimal(value), value))
     purchase_candidates, invalid_purchase_xlsx, purchase_sources = read_purchase_folder_xlsx_a(month_directory)
@@ -214,8 +213,6 @@ def match_month_directory(month_directory: Path, config: Any, output_directory: 
         "company": config.company,
         "month": config.month,
         "monthDirectory": str(month_directory),
-        "incomeCostFile": str(configured_income),
-        "incomeCostExcludedFromCandidates": True,
         "usageConfirmFile": str(usage_path),
         "usageConfirmColumn": config.usage_column,
         "usageConfirmKeys": keys,

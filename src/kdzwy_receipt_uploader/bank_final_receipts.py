@@ -325,8 +325,11 @@ def generate_bank_final_receipts(
     company: str,
     month: str,
     voucher_defaults: Mapping[str, Any],
+    *,
+    draft: bool = True,
+    overwrite: bool = False,
 ) -> dict[str, Any]:
-    """Generate final-shape draft receipts only during prepare+existing."""
+    """Generate final-shape upload-ready receipts for prepare or all."""
     output_root.mkdir(parents=True, exist_ok=True)
     generated = 0
     reused = 0
@@ -358,7 +361,7 @@ def generate_bank_final_receipts(
         amount = source_values(record)["transactionAmount"]
         receipt_id = f"bank-{company}-{month}-{key}"
         path = output_root / f"receipt_{key}" / "receipt.json"
-        if path.exists():
+        if path.exists() and not overwrite:
             reused += 1
         else:
             receipt = record.get("receipt") if isinstance(record.get("receipt"), Mapping) else {}
@@ -367,7 +370,7 @@ def generate_bank_final_receipts(
             transaction_date = _date_from_analysis(current_analysis or {})
             payload = {
                 "schemaVersion": "1.0",
-                "draft": True,
+                "draft": draft,
                 "receiptId": receipt_id,
                 "voucher": {
                     "date": transaction_date,
@@ -394,11 +397,11 @@ def generate_bank_final_receipts(
             "receiptId": receipt_id,
             "receipt": str(path.resolve()),
             "analysisStatus": (current_analysis or {}).get("analysisStatus", "blocked"),
-            "draft": True,
+            "draft": draft,
         })
     report = {
         "version": 1,
-        "stage": "prepare_existing",
+        "stage": "prepare" if draft else "all",
         "summary": {
             "matchedRecordCount": len(matched),
             "receiptCount": len(artifacts),

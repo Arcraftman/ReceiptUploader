@@ -27,8 +27,9 @@ from kdzwy_receipt_uploader.company_registry import (  # noqa: E402
     resolve_target_accountbook,
     resolve_project_path,
     validate_accountbook_session,
+    workflow_stage_plan,
 )
-from kdzwy_receipt_uploader.simple_logging import configure_pipeline_logger
+from kdzwy_receipt_uploader.simple_logging import configure_pipeline_logger, install_console_transcript
 from kdzwy_receipt_uploader.pipeline_state import (
     PipelineStateError,
     PipelineStateStore,
@@ -54,21 +55,6 @@ def safe_part(value: str) -> str:
     return "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in value).strip("_") or "job"
 
 
-def validate_mode_stage(mode: str, stage: str) -> None:
-    allowed = {
-        "analysis-only": {"ocr", "llm", "existing", "all"},
-        "prepare": {"llm", "existing", "all"},
-        "dry-run": {"existing"},
-        "confirm": {"existing"},
-    }
-    if stage not in allowed.get(mode, set()):
-        choices = ", ".join(sorted(allowed.get(mode, set()))) or "无"
-        raise CompanyRegistryError(
-            f"[警告] mode={mode} 不能与 analysis_stage={stage} 混用；"
-            f"该模式只允许：{choices}"
-        )
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description="按月份配置串行处理资料公司并写入指定账套")
     parser.add_argument("--accountbooks-config", type=Path, default=ROOT / "runtime" / "registry" / "accountbooks.json")
@@ -78,8 +64,7 @@ def main() -> int:
     parser.add_argument("--accountbook", action="append", default=[], help="只运行指定账套 key，可重复")
     parser.add_argument("--month", action="append", required=True, help="明确指定月份 YYYY-MM，可重复")
     parser.add_argument("--source", choices=["sales", "purchase", "bank", "misc", "all"], default=None, help="只运行指定的已启用业务；all 表示全部已启用业务")
-    parser.add_argument("--mode", choices=["analysis-only", "prepare", "dry-run", "confirm"], default=None)
-    parser.add_argument("--stage", choices=["ocr", "llm", "existing", "all"], default=None, help="临时覆盖本月 project.json 的分析阶段；不兼容的 mode/stage 组合会在预检时停止")
+    parser.add_argument("--stage", choices=["ocr", "llm", "prepare", "send", "all"], default=None, help="临时覆盖本月 project.json 的统一流程阶段")
     parser.add_argument("--plan", action="store_true", help="只检查并显示计划，不执行流水线")
     parser.add_argument("--allow-confirm", action="store_true", help="仅供 confirm_one/confirm_all 安全入口授权真实上传")
     parser.add_argument(
@@ -101,6 +86,8 @@ def main() -> int:
         "run_companies",
         to_console=not args.concise,
     )
+    transcript_path = install_console_transcript(ROOT / "runtime" / "logs", "run_companies")
+    logger.info("完整控制台日志：%s", transcript_path)
     logger.info("start run_companies: jobs=%s accountbooks=%s", args.jobs_config or "config/companies/*.json", args.accountbooks_config)
 
     try:
@@ -149,8 +136,8 @@ def main() -> int:
             continue
         if args.source and args.source != "all" and job.source != args.source:
             continue
-        if args.mode:
-            job = replace(job, mode=args.mode)
+        if args.stage:
+            job = replace(job, stage=args.stage)
         selected.append((accountbook, dataset, job))
     if not selected:
         print("没有启用且匹配筛选条件的任务。", file=sys.stderr)
@@ -182,12 +169,13 @@ def main() -> int:
                 if not prompt_file.is_file() or not prompt_file.read_text(encoding="utf-8").strip():
                     raise CompanyRegistryError(f"模板公司缺少业务提示词：{prompt_file}")
             cross_entity = accountbook.name != dataset.entity_name
-            if job.mode == "confirm" and not args.allow_confirm:
-                raise CompanyRegistryError("confirm 只能通过 confirm_one.bat 或 confirm_all.bat 执行")
+            internal_mode, analysis_stage = workflow_stage_plan(job.stage)
+            if internal_mode == "confirm" and not args.allow_confirm:
+                raise CompanyRegistryError("stage=send/all 只能通过 confirm_one.bat 或 confirm_all.bat 执行")
             if cross_entity and not job.allow_cross_entity:
                 raise CompanyRegistryError("数据法定主体与目标账套不同，但任务未声明 allow_cross_entity=true")
-            if cross_entity and job.mode == "confirm" and not args.allow_cross_entity_confirm:
-                raise CompanyRegistryError("跨主体 confirm 必须显式传入 --allow-cross-entity-confirm")
+            if cross_entity and internal_mode == "confirm" and not args.allow_cross_entity_confirm:
+                raise CompanyRegistryError("跨主体 send/all 必须显式传入 --allow-cross-entity-confirm")
             settings = build_job_settings(defaults, accountbook, dataset, job)
             settings["template_company_key"] = template_company.key
             settings["template_company_name"] = template_company.name
@@ -197,32 +185,19 @@ def main() -> int:
             if not month_dir.is_dir():
                 raise CompanyRegistryError(f"待处理目录不存在：{month_dir}")
             session_path = None
-            # ItemClass preload is an independent company setting. It is not coupled
-            # to mode or analysis_stage.
-            effective_stage = args.stage or str(settings.get("analysis_stage", "ocr"))
-            validate_mode_stage(job.mode, effective_stage)
-            preload_mode = settings.get("preload_items", False)
-            if preload_mode is True or preload_mode == "once":
-                print("[提示] preload_items=once；每次按实际业务映射核对当前目标账套，仅创建远端缺失的客户/供应商。")
-            elif preload_mode == "auto":
-                print("[警告] preload_items=auto；每次都会检查并创建远端不存在的客户/供应商。")
-            preload_needs_session = preload_mode is True or str(preload_mode).strip().lower() in {"once", "auto"}
-            needs_session = (
-                job.mode != "analysis-only"
-                or effective_stage in {"llm", "existing", "all"}
-                or preload_needs_session
-            )
+            print("[提示] 辅助核算预加载固定为 auto；本次会重新核对目标账套并创建缺失客户/供应商。")
+            needs_session = True
             if settings.get("accountbook_source", "live") == "live" and needs_session:
                 session_path = validate_accountbook_session(ROOT, accountbook)
             workspace_root = resolve_project_path(ROOT, str(settings["workspace_root"]))
             runtime_dir = workspace_root / "state" / safe_part(source_key)
             plans.append((accountbook, dataset, job, settings, runtime_dir, session_path))
             relation = "跨主体测试" if cross_entity else "同主体"
-            logger.info("计划任务: source_company=%s target_accountbook=%s month=%s mode=%s source=%s relation=%s", dataset.entity_name, accountbook.name, job.month, job.mode, job.source, relation)
+            logger.info("计划任务: source_company=%s target_accountbook=%s month=%s stage=%s source=%s relation=%s", dataset.entity_name, accountbook.name, job.month, job.stage, job.source, relation)
             if not args.concise:
                 print(
                     f"计划：资料公司={dataset.entity_name} / 目标账套={accountbook.name} / {job.month} / "
-                    f"{job.mode} / stage={effective_stage} / {job.source} / {relation}；模板={template_company.name}({template_company.key})；"
+                    f"stage={job.stage} / {job.source} / {relation}；模板={template_company.name}({template_company.key})；"
                     f"资料={month_dir}；会话={session_path or '快照模式不需要'}"
                 )
         except CompanyRegistryError as exc:
@@ -245,23 +220,23 @@ def main() -> int:
         write_json(app_path, app_payload)
         state_path = runtime_dir / "state.json"
         state = PipelineStateStore(state_path)
-        effective_stage = args.stage or str(settings.get("analysis_stage", "ocr"))
+        workflow_stage = job.stage
         if args.concise:
             print("[任务] 银行" if job.source == "bank" else f"[任务] {job.source}")
             print(f"  资料公司：{dataset.entity_name}")
             print(f"  目标账套：{accountbook.name}")
             print(f"  会计月份：{job.month}")
             if job.source == "bank":
-                print(f"  安全模式：{job.mode}")
-                if effective_stage == "ocr":
+                print(f"  流程阶段：{workflow_stage}")
+                if workflow_stage == "ocr":
                     bank_stage_text = "裁剪 → 特殊对象分流 → 剩余 OCR → 剩余流水匹配"
-                elif effective_stage in {"llm", "all"}:
+                elif workflow_stage in {"llm", "all"}:
                     bank_stage_text = "复用特殊对象分流和普通匹配结果 → LLM 分析"
                 else:
                     bank_stage_text = "复用 LLM 分析 → 生成或检查最终 receipt"
                 print(f"  执行阶段：{bank_stage_text}", flush=True)
             else:
-                print(f"  执行范围：{job.source} / {job.mode} / {effective_stage}", flush=True)
+                print(f"  执行范围：{job.source} / {workflow_stage}", flush=True)
         else:
             print(f"开始第 {index}/{len(plans)} 个任务：{dataset.entity_name} -> {accountbook.name}/{job.month}")
         identity = {
@@ -278,7 +253,7 @@ def main() -> int:
         }
         try:
             with exclusive_job_lock(runtime_dir / "job.lock"):
-                state.begin(identity, mode=job.mode, stage=effective_stage)
+                state.begin(identity, mode=str(settings["mode"]), stage=workflow_stage)
                 completed = subprocess.run([
                     sys.executable,
                     str(ROOT / "scripts" / "commands" / "run_pipeline.py"),
@@ -288,11 +263,11 @@ def main() -> int:
                     *(["--limit", str(args.limit)] if args.limit > 0 else []),
                     *(["--receipt-id", args.receipt_id] if args.receipt_id else []),
                     *(["--test-upload"] if args.test_upload else []),
-                    *(["--stage", args.stage] if args.stage else []),
                     *(["--concise"] if args.concise else []),
                 ], cwd=ROOT, check=False)
                 if completed.returncode == 0:
                     state.update(status="succeeded", exit_code=0, event="run_succeeded")
+                    logger.info("任务成功：%s/%s/%s/%s", dataset.key, accountbook.key, job.month, job.source)
                 else:
                     state.update(status="failed", exit_code=completed.returncode, error=f"pipeline退出码={completed.returncode}", event="run_failed")
         except KeyboardInterrupt:
@@ -309,6 +284,7 @@ def main() -> int:
             return completed.returncode
     if not args.concise:
         print(f"串行任务完成：{len(plans)} 个。")
+    logger.info("全部任务完成：%s 个", len(plans))
     return 0
 
 

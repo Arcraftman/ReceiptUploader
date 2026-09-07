@@ -1,175 +1,101 @@
-"""Build the invoice business map from 收入成本表.xlsx."""
+"""Build the sales business map directly from the actual PDF inventory."""
 from __future__ import annotations
 
 import json
-from collections import defaultdict
-from datetime import date, datetime
-from decimal import Decimal, InvalidOperation
+import re
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 from typing import Any
-
-from .xlsx_cache import load_read_only_workbook
 
 
 class SalesMapError(ValueError):
     pass
 
 
-def _number(value: Any, path: Path, column: str, row: int, errors: list[dict[str, Any]]) -> Decimal:
-    if value in (None, ""):
-        return Decimal("0")
-    try:
-        return Decimal(str(value).replace(",", "").strip())
-    except (InvalidOperation, ValueError):
-        errors.append({"file": str(path), "row": row, "column": column, "value": value, "reason": "金额无法解析"})
-        return Decimal("0")
+def _invoice_code(path: Path) -> str:
+    match = re.search(r"(?<!\d)(\d{20})(?!\d)", path.stem)
+    return match.group(1) if match else ""
 
 
-def _invoice(value: Any) -> str:
-    if value in (None, ""):
+def _filename_customer(path: Path, invoice_code: str) -> str:
+    marker = path.stem.find(invoice_code)
+    if marker < 0:
         return ""
-    text = str(value).strip()
-    if text.endswith(".0") and text[:-2].isdigit():
-        return text[:-2]
-    return text
+    suffix = path.stem[marker + len(invoice_code):].lstrip("_")
+    return re.sub(r"_\d{14}$", "", suffix).strip("_").strip()
 
 
-def _date(value: Any, path: Path, row: int, errors: list[dict[str, Any]]) -> str:
-    if value in (None, ""):
-        return ""
-    parsed: date | None = None
-    if isinstance(value, datetime):
-        parsed = value.date()
-    elif isinstance(value, date):
-        parsed = value
-    else:
-        text = str(value).strip().replace("/", "-")
-        for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
-            try:
-                parsed = datetime.strptime(text, fmt).date()
-                break
-            except ValueError:
-                continue
-    if parsed is None:
-        errors.append({"file": str(path), "row": row, "column": "I", "value": value, "reason": "日期无法解析"})
-        return ""
-    return parsed.isoformat()
-
-
-def build_sales_map(path: Path, output_path: Path | None = None, report_path: Path | None = None) -> dict[str, Any]:
-    path = path.resolve()
-    if not path.is_file() or path.name.startswith("~$"):
-        raise SalesMapError(f"收入成本表不存在或为临时文件：{path}")
-    errors: list[dict[str, Any]] = []
-    rows: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    workbook = load_read_only_workbook(path)
-    try:
-        source_sheets = [sheet for sheet in workbook.worksheets if sheet.title == "信息汇总表"]
-        if not source_sheets:
-            raise SalesMapError("收入成本表中缺少金额明细工作表：信息汇总表")
-        for sheet in source_sheets:
-            for row_number, values in enumerate(sheet.iter_rows(min_col=4, max_col=20, values_only=True), start=1):
-                invoice_code = _invoice(values[0])
-                if not invoice_code or invoice_code in {"发票号码", "发票号", "数电发票号码"}:
-                    continue
-                rows[invoice_code].append({
-                    "amount": _number(values[13], path, "Q", row_number, errors),
-                    "taxAmount": _number(values[15], path, "S", row_number, errors),
-                    "totalAmount": _number(values[16], path, "T", row_number, errors),
-                    "date": _date(values[5], path, row_number, errors),
-                    "itemClass": "客户",
-                    "customName": str(values[4] or "").strip(),
-                })
-    finally:
-        workbook.close()
-
-    result: dict[str, dict[str, Any]] = {}
-    conflicts: list[dict[str, Any]] = []
-    for invoice_code, items in sorted(rows.items()):
-        dates = sorted({item["date"] for item in items if item["date"]})
-        if len(dates) > 1:
-            conflicts.append({"invoiceCode": invoice_code, "dates": dates, "reason": "同一发票号存在多个日期"})
-        custom_names = sorted({str(item.get("customName", "")).strip() for item in items if str(item.get("customName", "")).strip()})
-        result[invoice_code] = {
-            "amount": float(sum(item["amount"] for item in items)),
-            "taxAmount": float(sum(item["taxAmount"] for item in items)),
-            "totalAmount": float(sum(item["totalAmount"] for item in items)),
-            "date": dates[0] if len(dates) == 1 else "",
-            "itemClass": "客户",
-            "customName": custom_names[0] if len(custom_names) == 1 else "",
-            "customNameCandidates": custom_names,
-            "rowCount": len(items),
-        }
-    report = {
-        "source": str(path),
-        "sourceSheet": "信息汇总表",
-        "columns": {"invoiceCode": "D", "itemClass": "H", "customName": "H", "amount": "Q", "taxAmount": "S", "totalAmount": "T", "date": "I"},
-        "summary": {"invoiceCount": len(result), "sourceRowCount": sum(len(items) for items in rows.values()), "dateConflictCount": len(conflicts), "errorCount": len(errors)},
-        "dateConflicts": conflicts,
-        "errors": errors,
-    }
-    if output_path:
-        output_path = output_path.resolve()
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
-    if report_path:
-        report_path = report_path.resolve()
-        report_path.parent.mkdir(parents=True, exist_ok=True)
-        report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    return {"map": result, "report": report}
-
-
-def add_sales_pdf_fallback_candidates(
-    sales_map_report: dict[str, Any],
+def build_sales_map_from_pdfs(
     sales_input_dir: Path,
     output_path: Path,
     report_path: Path,
 ) -> dict[str, Any]:
-    """Add real sales PDFs missing from the income/cost workbook as OCR candidates."""
-    import re
+    """Use every real sales PDF with a valid invoice number as the sales scope."""
+    sales_input_dir = sales_input_dir.resolve()
+    rows: dict[str, dict[str, Any]] = {}
+    invalid: list[dict[str, str]] = []
+    duplicate_codes: dict[str, list[str]] = {}
+    raw_pdf_count = 0
 
-    sales_map = sales_map_report.setdefault("map", {})
-    added: list[str] = []
     if sales_input_dir.is_dir():
         for pdf_path in sorted(sales_input_dir.rglob("*.pdf")):
-            match = re.search(r"(?<!\d)(\d{20})(?!\d)", pdf_path.stem)
-            if not match:
+            raw_pdf_count += 1
+            resolved_pdf = pdf_path.resolve()
+            invoice_code = _invoice_code(pdf_path)
+            if not invoice_code:
+                invalid.append({
+                    "pdf": str(resolved_pdf),
+                    "reason": "PDF文件名中没有唯一的20位发票号码",
+                })
                 continue
-            invoice_code = match.group(1)
-            if invoice_code in sales_map:
+            customer = _filename_customer(pdf_path, invoice_code)
+            if invoice_code in rows:
+                paths = duplicate_codes.setdefault(
+                    invoice_code,
+                    list(rows[invoice_code].get("sourcePdfs") or []),
+                )
+                paths.append(str(resolved_pdf))
+                rows[invoice_code]["sourcePdfs"] = paths
                 continue
-            suffix = pdf_path.stem[match.end():].lstrip("_")
-            suffix = re.sub(r"_\d{14}$", "", suffix).strip("_").strip()
-            sales_map[invoice_code] = {
+            rows[invoice_code] = {
                 "amount": "",
                 "taxAmount": "",
                 "totalAmount": "",
                 "date": "",
                 "itemClass": "客户",
-                "customName": suffix,
-                "customNameCandidates": [suffix] if suffix else [],
+                "customName": customer,
+                "customNameCandidates": [customer] if customer else [],
                 "rowCount": 0,
-                "dataSource": "ocr_fallback_pending",
-                "missingFromIncomeCost": True,
-                "sourcePdf": str(pdf_path.resolve()),
+                "dataSource": "pdf_ocr_pending",
+                "sourcePdf": str(resolved_pdf),
+                "sourcePdfs": [str(resolved_pdf)],
             }
-            added.append(invoice_code)
 
-    report = sales_map_report.setdefault("report", {})
-    summary = report.setdefault("summary", {})
-    summary["incomeCostInvoiceCount"] = len(sales_map) - len(added)
-    summary["ocrFallbackCandidateCount"] = len(added)
-    summary["invoiceCount"] = len(sales_map)
-    if added:
-        report["ocrFallbackCandidates"] = added
+    report = {
+        "source": str(sales_input_dir),
+        "scope": "销售范围只由input/sales下实际存在的PDF决定，不读取收入成本表",
+        "summary": {
+            "rawPdfCount": raw_pdf_count,
+            "invoiceCount": len(rows),
+            "invalidPdfCount": len(invalid),
+            "duplicateInvoiceCodeCount": len(duplicate_codes),
+        },
+        "invalidPdfs": invalid,
+        "duplicateInvoiceCodes": [
+            {"invoiceCode": code, "pdfs": paths}
+            for code, paths in sorted(duplicate_codes.items())
+        ],
+    }
+    output_path = output_path.resolve()
+    report_path = report_path.resolve()
     output_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(json.dumps(sales_map, ensure_ascii=False, indent=2), encoding="utf-8")
+    output_path.write_text(json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8")
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    return sales_map_report
+    return {"map": rows, "report": report}
 
 
-def finalize_sales_ocr_fallbacks(
+def finalize_sales_pdf_map(
     sales_map_report: dict[str, Any],
     ocr_directory: Path,
     configured_company: str,
@@ -177,9 +103,7 @@ def finalize_sales_ocr_fallbacks(
     output_path: Path,
     report_path: Path,
 ) -> dict[str, Any]:
-    """Promote workbook-missing sales PDFs only after strict OCR field validation."""
-    import re
-    from decimal import ROUND_HALF_UP
+    """Fill every PDF-backed sales record only after strict OCR validation."""
 
     def clean_name(value: Any) -> str:
         return re.sub(r"\s+", "", str(value or "")).replace("(", "（").replace(")", "）")
@@ -245,8 +169,6 @@ def finalize_sales_ocr_fallbacks(
     ready: list[str] = []
     blocked: list[dict[str, Any]] = []
     for invoice_code, values in sales_map.items():
-        if values.get("dataSource") not in {"ocr_fallback_pending", "ocr_fallback", "ocr_fallback_blocked"}:
-            continue
         ocr_path = ocr_directory / invoice_code / "ocr.json"
         errors: list[str] = []
         fields: dict[str, Any] = {}
@@ -283,12 +205,12 @@ def finalize_sales_ocr_fallbacks(
         elif (net + tax).quantize(Decimal("0.01")) != gross:
             errors.append("OCR金额加税额不等于价税合计")
         if errors:
-            values["dataSource"] = "ocr_fallback_blocked"
-            values["ocrFallbackStatus"] = "blocked"
-            values["ocrFallbackErrors"] = errors
+            values["dataSource"] = "pdf_ocr_blocked"
+            values["ocrStatus"] = "blocked"
+            values["ocrErrors"] = errors
             blocked.append({
                 "documentId": invoice_code,
-                "errorType": "sales_missing_from_income_cost_ocr_invalid",
+                "errorType": "sales_pdf_ocr_invalid",
                 "message": "；".join(errors),
                 "sourcePdf": str(values.get("sourcePdf") or ""),
             })
@@ -301,9 +223,8 @@ def finalize_sales_ocr_fallbacks(
             "date": invoice_date,
             "customName": buyer,
             "customNameCandidates": [buyer],
-            "dataSource": "ocr_fallback",
-            "missingFromIncomeCost": True,
-            "ocrFallbackStatus": "ready",
+            "dataSource": "pdf_ocr",
+            "ocrStatus": "ready",
             "ocrAmountMethod": amount_method,
             "ocrEvidence": {
                 "invoiceNumber": ocr_invoice,
@@ -314,15 +235,15 @@ def finalize_sales_ocr_fallbacks(
                 "taxRateEvidence": str(fields.get("taxRateEvidence") or ""),
             },
         })
-        values.pop("ocrFallbackErrors", None)
+        values.pop("ocrErrors", None)
         ready.append(invoice_code)
 
     report = sales_map_report.setdefault("report", {})
     summary = report.setdefault("summary", {})
-    summary["ocrFallbackReadyCount"] = len(ready)
-    summary["ocrFallbackBlockedCount"] = len(blocked)
-    report["ocrFallbackReady"] = ready
-    report["ocrFallbackBlocked"] = blocked
+    summary["ocrReadyCount"] = len(ready)
+    summary["ocrBlockedCount"] = len(blocked)
+    report["ocrReady"] = ready
+    report["ocrBlocked"] = blocked
     output_path.write_text(json.dumps(sales_map, ensure_ascii=False, indent=2), encoding="utf-8")
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     return {"ready": ready, "blocked": blocked}

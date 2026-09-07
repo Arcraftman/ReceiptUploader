@@ -26,7 +26,7 @@ def main(argv: list[str] | None = None) -> int:
     if not state_paths:
         print("还没有任务状态。运行一次公司流程后会自动生成。")
         return 0
-    print("目标账套 / 资料公司 / 月份 / 板块 | 模式 / 阶段 | 状态 / 当前步骤 | 最近更新")
+    print("目标账套 / 资料公司 / 月份 / 板块 | 流程阶段 | 状态 / 当前步骤 | 最近更新")
     print("-" * 110)
     failed = 0
     for path in state_paths:
@@ -51,7 +51,7 @@ def main(argv: list[str] | None = None) -> int:
             f"({identity.get('targetCompanyName') or identity.get('accountbookName', '?')}) / "
             f"{identity.get('sourceCompany', '?')}({identity.get('sourceCompanyName', '?')}) / "
             f"{identity.get('month', '?')} / {identity.get('source', '?')} | "
-            f"{state.get('mode', '?')} / {state.get('stage', '?')} | "
+            f"{state.get('stage', '?')} | "
             f"{status} / {state.get('phase', '?')} | {state.get('updatedAt', '?')}"
         )
         if state.get("error"):

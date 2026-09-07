@@ -22,7 +22,7 @@ cd /d D:\receipt-uploader
 commands\start.bat
 ```
 
-启动器会登录主账号、发现并登记全部公司、刷新各公司的 HTTP 会话，然后显示一次精简的可访问公司列表。列表只显示公司 ID 和名称，不展示历史配置、运行状态或当前月份。`month` 只创建月份项目；`bank` 严格按当月 `mode/analysis_stage` 执行银行 OCR、LLM 或 `prepare+existing`。真实上传仍不在菜单开放。
+启动器会登录主账号、发现并登记全部公司、刷新各公司的 HTTP 会话，然后显示一次精简的可访问公司列表。列表只显示公司 ID 和名称，不展示历史配置、运行状态或当前月份。`month` 只创建月份项目；四类业务统一按当月 `stage` 执行。
 
 菜单命令：
 
@@ -45,7 +45,7 @@ quit
 month 17867515 2026-08 17867515
 ```
 
-普通用户必须显式指定 dataset 公司、月份和 target 公司；同主体也要把同一个公司 ID 分别写入 dataset 与 target 参数。若 dataset 公司尚无内部模板记录，启动器会读取 `config/template_companies.json` 的 `default_base_template` 准备所需配置。每个月份都会独立生成 `project.json` v7，并固定创建 `sales`、`purchase`、`bank`、`misc` 四类资料目录。dataset、target 和四个业务各自的 `enabled/mode/analysis_stage/preload_items` 只配置在该月 `project.json`；公司 JSON 只保存跨月份共享的模板和资料身份。
+普通用户必须显式指定 dataset 公司、月份和 target 公司；同主体也要把同一个公司 ID 分别写入 dataset 与 target 参数。每个月份都会独立生成 `project.json` v8，并固定创建 `sales`、`purchase`、`bank`、`misc` 四类资料目录。四个业务只配置 `enabled` 和统一 `stage`；辅助核算预加载固定为 auto。
 
 ### 0.2 创建月份后的资料目录
 
@@ -57,7 +57,6 @@ data\inbox\company_<公司ID>_<真实公司名>\<YYYY-MM>\input\
 ├─ purchase\
 ├─ bank\
 ├─ misc\
-├─ 收入成本表.xlsx
 └─ 用途确认信息.xlsx
 ```
 
@@ -66,7 +65,7 @@ data\inbox\company_<公司ID>_<真实公司名>\<YYYY-MM>\input\
 - 银行 PDF 和同名 Excel 放入 `input/bank/`；所有银行规则只配置在当月 `project.json.sources.bank.banks`。
 - 两个 Excel 放在 `input/` 根目录。
 
-### 0.3 从 OCR 到 dry-run 的最短流程
+### 0.3 从 OCR 到正式上传的最短流程
 
 以下示例公司的配置名是 `company_17867515_上海微誉信息技术有限公司`。命令参数使用配置文件名，但不带 `.json`。所有月份敏感命令都必须显式传入 `YYYY-MM`；公司 JSON 本身不再保存月份。
 
@@ -126,7 +125,7 @@ data\inbox\company_<公司ID>_<真实公司名>\<YYYY-MM>\input\
 | `commands\login_companies.bat` | 只刷新已登记公司的 HTTP 会话 | 否 |
 | `commands\initialize_month.bat DATASET_CONFIG YYYY-MM TARGET_COMPANY_ID_OR_KEY` | 创建月份项目并显式记录 dataset 与 target | 否 |
 | `commands\run_bank.bat DATASET_COMPANY_CONFIG_NAME YYYY-MM` | 只运行已启用的 bank；依次完成裁剪、特殊对象分流、剩余 OCR 和剩余流水匹配 | 否 |
-| `commands\run_company.bat DATASET_COMPANY_CONFIG_NAME YYYY-MM` | 用 dataset 公司定位月份项目，再按该月显式 target、mode 和 stage 执行 | 否 |
+| `commands\run_company.bat DATASET_COMPANY_CONFIG_NAME YYYY-MM` | 用 dataset 公司定位月份项目，再按该月显式 target 和 stage 执行 | 否 |
 | `commands\analysis_report.bat COMPANY_CONFIG_NAME YYYY-MM sales` | 生成指定月份的销项复核简表；业务也可为 `purchase`、`bank`、`misc` | 否 |
 | `commands\status.bat` | 查看全部隔离任务状态 | 否 |
 | `commands\confirm_one.bat COMPANY_CONFIG_NAME YYYY-MM` | 明确确认后上传指定月份的一张 | **是** |
@@ -377,7 +376,7 @@ data/inbox/company_<company_id>_<真实公司名>/<YYYY-MM>/project.json
 
 ```json
 {
-  "version": 7,
+  "version": 8,
   "month": "2026-08",
   "dataset": {
     "company_key": "company_17867515",
@@ -395,13 +394,11 @@ data/inbox/company_<company_id>_<真实公司名>/<YYYY-MM>/project.json
     "allow_cross_entity": false
   },
   "sources": {
-    "sales": { "enabled": true, "mode": "analysis-only", "analysis_stage": "ocr", "preload_items": false },
-    "purchase": { "enabled": false, "mode": "analysis-only", "analysis_stage": "ocr", "preload_items": false },
+    "sales": { "enabled": true, "stage": "ocr" },
+    "purchase": { "enabled": false, "stage": "ocr" },
     "bank": {
       "enabled": false,
-      "mode": "analysis-only",
-      "analysis_stage": "ocr",
-      "preload_items": false,
+      "stage": "ocr",
       "banks": {
         "zhaoshangyinhang": {
           "bank_account_number": "100204",
@@ -422,12 +419,12 @@ data/inbox/company_<company_id>_<真实公司名>/<YYYY-MM>/project.json
         "TIPS电子缴税款业务待报解预算收入"
       ]
     },
-    "misc": { "enabled": false, "mode": "analysis-only", "analysis_stage": "ocr", "preload_items": false }
+    "misc": { "enabled": false, "stage": "ocr" }
   }
 }
 ```
 
-新月份不会继承上个月的业务配置。`sales`、`purchase`、`bank`、`misc` 四个 source key 固定存在，每个都必须精确填写 `enabled`、`mode`、`analysis_stage`、`preload_items`；新月份默认全部关闭。公司 JSON 中出现旧的 `month/defaults/sources` 会直接报错，不再兼容。
+新月份不会继承上个月的业务配置。`sales`、`purchase`、`bank`、`misc` 四个 source key 固定存在，每个都必须精确填写 `enabled`、`stage`；新月份默认全部关闭。
 
 ### 关键字段
 
@@ -501,7 +498,6 @@ data/inbox/company_<company_id>_<真实公司名>/<YYYY-MM>/
 │  ├─ purchase/
 │  ├─ bank/
 │  ├─ misc/
-│  ├─ 收入成本表.xlsx
 │  └─ 用途确认信息.xlsx
 └─ （生成物不放在 data；统一进入隔离 workspaces）
 ```
@@ -511,7 +507,7 @@ data/inbox/company_<company_id>_<真实公司名>/<YYYY-MM>/
 ### sales 资料
 
 - 销项发票 PDF 放在 `input/sales/`。
-- `收入成本表.xlsx` 用于生成金额和客户映射。
+- 销售范围只以 `input/sales/` 中实际存在的 PDF 为准，金额和客户信息由精确 OCR 提取。
 - 资料公司必须是发票销售方，购买方作为客户。
 
 ### purchase 资料
@@ -521,7 +517,7 @@ data/inbox/company_<company_id>_<真实公司名>/<YYYY-MM>/
 - 资料公司必须是购买方，销售方作为供应商。
 - 不能只凭 OCR 商品名称猜测采购用途。
 
-当前基础映射阶段会同时读取两张 XLSX，因此建议每个月份目录都保留 `收入成本表.xlsx` 和 `用途确认信息.xlsx`。
+`用途确认信息.xlsx` 仅服务于 purchase；sales 不读取任何收入成本表。
 
 ### bank 资料与唯一配置
 
@@ -549,17 +545,15 @@ input/bank/
 
 ```json
 "sources": {
-  "sales": { "enabled": true, "mode": "analysis-only", "analysis_stage": "ocr", "preload_items": false },
-  "purchase": { "enabled": false, "mode": "analysis-only", "analysis_stage": "ocr", "preload_items": false },
+  "sales": { "enabled": true, "stage": "ocr" },
+  "purchase": { "enabled": false, "stage": "ocr" },
   "bank": {
     "enabled": false,
-    "mode": "analysis-only",
-    "analysis_stage": "ocr",
-    "preload_items": false,
+    "stage": "ocr",
     "banks": {},
     "exceptions": ["TIPS电子缴税款业务待报解预算收入"]
   },
-  "misc": { "enabled": false, "mode": "analysis-only", "analysis_stage": "ocr", "preload_items": false }
+  "misc": { "enabled": false, "stage": "ocr" }
 }
 ```
 

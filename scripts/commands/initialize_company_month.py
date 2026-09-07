@@ -100,12 +100,10 @@ def normalize_source_settings(
     result: dict[str, dict[str, Any]] = {}
     common_allowed = {
         "enabled",
-        "mode",
-        "analysis_stage",
+        "stage",
         "analysis_validation",
         "ocr_workers",
         "llm_workers",
-        "preload_items",
         "purpose",
         "allow_cross_entity",
         "only_mapped_invoices",
@@ -131,9 +129,9 @@ def normalize_source_settings(
         if not isinstance(enabled, bool):
             raise CompanyRegistryError(f"sources.{source}.enabled 必须是 JSON 布尔值 true 或 false")
         settings["enabled"] = enabled
-        settings.setdefault("mode", "analysis-only")
-        settings.setdefault("analysis_stage", "ocr")
-        settings.setdefault("preload_items", False)
+        settings.setdefault("stage", "ocr")
+        if settings["stage"] not in {"ocr", "llm", "prepare", "send", "all"}:
+            raise CompanyRegistryError(f"sources.{source}.stage 只支持 ocr、llm、prepare、send 或 all")
         if source == "bank":
             settings.setdefault("banks", {})
             settings["banks"] = validate_bank_configs(
@@ -187,12 +185,11 @@ def normalize_input_settings(value: object) -> dict[str, str]:
         result = dict(value)
     else:
         raise CompanyRegistryError("project.input 必须是对象")
-    allowed = {"income_cost_filename", "usage_filename", "usage_column"}
+    allowed = {"usage_filename", "usage_column"}
     unsupported = sorted(set(result) - allowed)
     if unsupported:
         raise CompanyRegistryError("project.input 包含不支持的字段：" + ", ".join(unsupported))
     normalized = {
-        "income_cost_filename": str(result.get("income_cost_filename") or "收入成本表.xlsx").strip(),
         "usage_filename": str(result.get("usage_filename") or "用途确认信息.xlsx").strip(),
         "usage_column": str(result.get("usage_column") or "E").strip(),
     }
@@ -277,8 +274,8 @@ def main() -> int:
         project_config_path = month_root / "project.json"
         project_payload = read_object(project_config_path) if project_config_path.is_file() else {}
         if project_payload:
-            if project_payload.get("version") != 7:
-                raise CompanyRegistryError(f"月份配置版本必须为 7：{project_config_path}")
+            if project_payload.get("version") != 8:
+                raise CompanyRegistryError(f"月份配置版本必须为 8：{project_config_path}")
             existing_dataset = project_payload.get("dataset")
             if not isinstance(existing_dataset, dict):
                 raise CompanyRegistryError("已有 v7 月份配置缺少显式 project.dataset")
@@ -298,7 +295,7 @@ def main() -> int:
             source for source in BUILT_IN_SOURCES if source_settings[source]["enabled"]
         ]
         normalized_project = {
-            "version": 7,
+            "version": 8,
             "month": month,
             "dataset": {
                 "company_key": company_key,
@@ -355,7 +352,7 @@ def main() -> int:
             "project_config": str(project_config_path),
             "sources": list(BUILT_IN_SOURCES),
             "execution_enabled_sources": execution_enabled_sources,
-            "next": "dataset 与 target 已显式写入 project.json；把资料放入 input，并在对应 source 中设置 enabled、mode、analysis_stage、preload_items 后运行。",
+            "next": "dataset 与 target 已显式写入 project.json；把资料放入 input，并在对应 source 中设置 enabled、stage 后运行。",
         }, ensure_ascii=False, indent=2))
         return 0
     except (CompanyRegistryError, OSError, json.JSONDecodeError) as exc:

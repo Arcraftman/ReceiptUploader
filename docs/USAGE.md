@@ -100,7 +100,7 @@ data/inbox/company_<id>_<公司名>/<YYYY-MM>/project.json
 
 ```json
 {
-  "version": 7,
+  "version": 8,
   "month": "2026-09",
   "dataset": {
     "company_key": "company_17867515",
@@ -113,7 +113,6 @@ data/inbox/company_<id>_<公司名>/<YYYY-MM>/project.json
     "company_name": "上海微誉信息技术有限公司"
   },
   "input": {
-    "income_cost_filename": "收入成本表.xlsx",
     "usage_filename": "用途确认信息.xlsx",
     "usage_column": "E"
   },
@@ -124,13 +123,11 @@ data/inbox/company_<id>_<公司名>/<YYYY-MM>/project.json
     "only_mapped_invoices": true
   },
   "sources": {
-    "sales": {"enabled": true, "mode": "analysis-only", "analysis_stage": "ocr", "preload_items": false},
-    "purchase": {"enabled": false, "mode": "analysis-only", "analysis_stage": "ocr", "preload_items": false},
+    "sales": {"enabled": true, "stage": "ocr"},
+    "purchase": {"enabled": false, "stage": "ocr"},
     "bank": {
       "enabled": false,
-      "mode": "analysis-only",
-      "analysis_stage": "ocr",
-      "preload_items": false,
+      "stage": "ocr",
       "banks": {
         "zhaoshangyinhang": {
           "bank_account_number": "100204",
@@ -148,7 +145,7 @@ data/inbox/company_<id>_<公司名>/<YYYY-MM>/project.json
         }
       }
     },
-    "misc": {"enabled": false, "mode": "analysis-only", "analysis_stage": "ocr", "preload_items": false}
+    "misc": {"enabled": false, "stage": "ocr"}
   }
 }
 ```
@@ -159,7 +156,7 @@ data/inbox/company_<id>_<公司名>/<YYYY-MM>/project.json
 - `target`：本月最终写入哪家公司的账套，三个身份字段必须与运行期账套注册表完全一致。
 - `input`：该月 Excel 文件名和用途列。
 - `defaults`：只保存四个业务可共享的高级参数，不再保存业务运行开关。
-- `sources.<业务>`：四个业务都必须精确写全 `enabled`、`mode`、`analysis_stage`、`preload_items`；只有 `enabled=true` 才会执行。
+- `sources.<业务>`：四个业务都必须精确写全 `enabled`、`stage`；只有 `enabled=true` 才会执行。
 - `sources.bank.banks`：当月银行唯一配置源；每个 bank key 同时保存 `bank_account_number`、`split` 和 `statement_columns`。
 - 某个 source 还可直接覆盖 `analysis_validation`、并发数、`purpose`、跨主体许可和 `only_mapped_invoices`；不再使用嵌套 `overrides`。
 
@@ -187,11 +184,15 @@ commands\run_company.bat company_17867515_上海微誉信息技术有限公司 2
 
 常用模式：
 
-| `mode` | 用途 |
+| `stage` | 用途 |
 |---|---|
 | `analysis-only` | 只进行 OCR/模型分析，不生成或上传凭证 |
 | `prepare` | 生成待审核凭证，不上传 |
-| `dry-run` | 校验已有凭证，不上传 |
+| `ocr` | 只运行精确 OCR |
+| `llm` | 复用 OCR 并运行 LLM 模板分析 |
+| `prepare` | 复用分析并生成待上传 receipt |
+| `send` | 正式上传 |
+| `all` | OCR、LLM、receipt、正式上传连续完成 |
 | `confirm` | 真实上传；只允许通过确认 BAT 入口执行 |
 
 分析阶段：
@@ -279,7 +280,7 @@ commands\reset_upload_state.bat company_17867515_上海微誉信息技术有限�
 
 每个银行模板还必须配置 `matchRules.flowDirections`。候选模板先按 Excel 流水确定的 `inflow/outflow` 硬筛选，再判断业务词；收款模板绝不允许处理付款，付款模板也不能处理收款。规则只剩一个候选时直接确定模板，不再调用 Qwen。外币只按完整的 `USD/US$/HKD/EUR` 或中文币种名称识别，`USB` 等普通单词不会再被误判。
 
-bank 的 `preload_items` 现在同样支持 `false`、`"once"`、`"auto"`。设为 `"once"` 或 `"auto"` 时，系统根据 bank map 中固定的方向和对手方名称，在目标账套创建缺少的客户/供应商，再进行模板分析；这是远端写操作。`false` 时只读取现有辅助核算目录，缺少对象的分析会保持 blocked。
+辅助核算预加载固定为 `auto`，每次运行都会根据业务 map 核对当前目标账套，并且只创建缺少的客户或供应商。
 
 `sources.bank.exceptions` 是一个名称数组。每个名称都与 Excel 对手方列完整文本精确匹配；命中后统一与普通业务隔离。裁剪原件始终保留在 `generated/bank_receipts`，特殊 PDF 另复制到 `generated/bank_exceptions/<counterparty>/`；权威清单写入 `generated/maps/bank/bank_exceptions.json`。使用 `exceptions dataset公司ID YYYY-MM` 查看特殊对象、原件和副本；`unmatched` 只列出没有被 exception 接管的普通未匹配记录。
 
@@ -297,7 +298,7 @@ bank 的 `preload_items` 现在同样支持 `false`、`"once"`、`"auto"`。设�
 
 bank 入口只读取和校验当月 `project.json`，不会自动增加银行或改写运行字段。OCR 阶段严格按“全部银行裁剪完成 → `pdf_keywords` 分离特殊 PDF → exception 名称与流水索引补充分离 → OCR 其余单张回单 → 匹配其余流水”执行，只写特殊副本、`generated/ocr/bank` 和 `generated/maps/bank`，不生成 receipt。特殊 PDF 与对应流水不会进入普通 OCR、匹配、LLM 或凭证流程。
 
-然后按 sales/purchase 相同生命周期运行：`analysis-only+llm` 写 `template_analysis.json`；人工复核后以 `prepare+existing` 生成最终 receipt，全部初始为 `draft=true`。补齐后手动改为 `false`，再运行 `verify dataset公司ID YYYY-MM`。verify 只能检查最终 receipts，并在 dry-run/未来真实提交前自动重跑；任何草稿或无效文件都会阻断整批。银行真实上传目前仍保持阻断。
+然后按 sales/purchase 相同生命周期运行：`stage=llm` 写 `template_analysis.json`；`stage=prepare` 生成待上传 receipt；复核后使用 `stage=send` 正式上传，或使用 `stage=all` 连续完成全部流程。
 
 ## 配置边界
 

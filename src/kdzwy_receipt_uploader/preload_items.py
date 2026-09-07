@@ -44,10 +44,8 @@ def _collect_column(path: Path, sheet_name: str, column: str, start_column: int,
 
 def collect_source_item_names(month_dir: Path, config: Any, extra_columns: list[Mapping[str, Any]] | None = None) -> dict[int, list[str]]:
     names: dict[int, set[str]] = {}
-    income_path = month_dir / config.income_cost_filename
     usage_path = month_dir / config.usage_filename
     columns = [
-        {"itemClassId": 1, "path": income_path, "sheet": "信息汇总表", "column": "H", "label": "收入成本表H列"},
         {"itemClassId": 5, "path": usage_path, "sheet": "发票", "column": "J", "label": "用途确认表J列"},
     ]
     columns.extend(extra_columns or [])

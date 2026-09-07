@@ -7,7 +7,6 @@ from typing import Any, Mapping
 
 MONTH_PATTERN = re.compile(r"\d{4}-(0[1-9]|1[0-2])")
 INPUT_KEYS = {
-    "income_cost_filename",
     "usage_filename",
     "usage_column",
 }
@@ -23,7 +22,6 @@ class MonthConfig:
 
     company: str
     month: str
-    income_cost_filename: str = "收入成本表.xlsx"
     usage_filename: str = "用途确认信息.xlsx"
     usage_column: str = "E"
 
@@ -46,7 +44,6 @@ class MonthConfig:
         if unexpected:
             raise MonthConfigError("project.input 包含不支持的字段：" + ", ".join(unexpected))
         fields = {
-            "income_cost_filename": str(value.get("income_cost_filename") or "").strip(),
             "usage_filename": str(value.get("usage_filename") or "").strip(),
             "usage_column": str(value.get("usage_column") or "").strip(),
         }

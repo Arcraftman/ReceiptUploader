@@ -18,7 +18,7 @@ from .paths import ProjectPaths
 from .workflow import archive, find_receipts, preview, process_one
 from .responsibility_chain import run_selected_sources_safe
 from .source_profile import source_from_folder_name, normalize_source_key
-from .simple_logging import configure_pipeline_logger
+from .simple_logging import configure_pipeline_logger, install_console_transcript
 from .bank_receipt_verifier import verify_bank_receipts
 from .exception_ledger import append_exception, blocking_document_ids, replace_stage_exceptions, resolve_document_stage
 
@@ -169,6 +169,8 @@ def main(argv: list[str] | None = None) -> int:
     paths = ProjectPaths.from_root(root, runtime_root)
     paths.ensure()
     logger = configure_pipeline_logger(paths.logs, "batch_receipts")
+    transcript_path = install_console_transcript(paths.logs, "batch_receipts")
+    logger.info("完整控制台日志：%s", transcript_path)
     input_dir = args.input_dir or paths.inbox
     if not input_dir.is_absolute():
         input_dir = root / input_dir

@@ -43,11 +43,9 @@ def main() -> int:
         bank_jobs = [job for job in jobs if job.source == "bank"]
         if len(bank_jobs) != 1:
             raise CompanyRegistryError(f"月份配置中必须恰好有一个 bank 业务：{project_path}")
-        analysis_stage = str(bank_jobs[0].overrides.get("analysis_stage") or "")
-        if analysis_stage != "existing":
+        if bank_jobs[0].stage not in {"prepare", "send", "all"}:
             print(
-                "[未到验证阶段] bank 必须先完成 LLM 分析，再设置 "
-                'mode=prepare、analysis_stage=existing 生成最终 receipt。'
+                "[未到验证阶段] bank 必须先完成 LLM 分析，再将 stage 设置为 prepare。"
             )
             return 1
         accountbooks = load_accountbooks(ROOT / "runtime" / "registry" / "accountbooks.json")
@@ -102,7 +100,7 @@ def main() -> int:
         print("[通过] 所有银行 receipt 均为 draft=false，且字段校验通过。")
         return 0
     if report["status"] == "empty":
-        print("[未通过] 尚未生成最终银行 receipt；请先完成 LLM，再运行 prepare + existing。")
+        print("[未通过] 尚未生成最终银行 receipt；请先完成 LLM，再运行 stage=prepare。")
         return 1
     print("[未通过] 请补齐上述 receipt；完成后手动将 draft 改为 false，再次运行 verify。")
     return 1

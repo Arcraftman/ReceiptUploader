@@ -25,7 +25,7 @@ set "PYTHON_EXE=%PROJECT_ROOT%\.auto\Scripts\python.exe"
 if not exist "%PYTHON_EXE%" set "PYTHON_EXE=python"
 "%PYTHON_EXE%" "%PROJECT_ROOT%\scripts\commands\prepare_company_workspace.py" --config "%COMPANY_CONFIG%" --month "%RUN_MONTH%"
 if errorlevel 1 exit /b %ERRORLEVEL%
-"%PYTHON_EXE%" "%PROJECT_ROOT%\scripts\commands\run_companies.py" --jobs-config "%COMPANY_CONFIG%" --month "%RUN_MONTH%" --mode confirm --limit 1 --allow-confirm --allow-cross-entity-confirm
+"%PYTHON_EXE%" "%PROJECT_ROOT%\scripts\commands\run_companies.py" --jobs-config "%COMPANY_CONFIG%" --month "%RUN_MONTH%" --stage send --limit 1 --allow-confirm --allow-cross-entity-confirm
 set "EXIT_CODE=%ERRORLEVEL%"
 pause
 exit /b %EXIT_CODE%
