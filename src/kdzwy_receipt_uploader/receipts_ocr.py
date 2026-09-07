@@ -1551,7 +1551,7 @@ def compact_analysis_for_storage(decision: Mapping[str, Any]) -> dict[str, Any]:
     """Persist only fields needed by review and later receipt generation."""
     result: dict[str, Any] = {}
     for key in (
-        "templatePath", "templateId", "decisionCode", "decisionName", "selectionMode", "confidence", "reason", "status", "analysisStatus",
+        "templatePath", "templateId", "decisionCode", "decisionName", "selectionMode", "confidence", "reason", "status", "analysisStatus", "remark", "forcedTemplatePath",
         "llmAttempted", "llmProvider", "llmModel", "llmRequestId",
         "explanation_header", "explanation_body", "explanation", "sourceFolder", "configCompany",
         "partyRule", "bankAccountNumber", "bankTransactionDate", "invoiceNumbers", "sourcePdf", "validation",
@@ -1738,6 +1738,7 @@ def _rule_candidates(
         for value in values.get("invoiceNumbers") or []
         if str(value).strip()
     ]
+    forced_template_path = str(values.get("forcedTemplatePath") or "").strip()
     for item in candidate_records:
         rules=item.get("matchRules", {}) if isinstance(item.get("matchRules"), Mapping) else {}
         if not rules and len(candidate_records) == 1:
@@ -1818,6 +1819,9 @@ def _rule_candidates(
         currency = str(item.get("currency") or "")
         if currency == "人民币" and _contains_foreign_currency(artifact.text):
             reasons[str(item.get("path"))]="OCR明确为外币，人民币模板不匹配"
+            continue
+        if forced_template_path and str(item.get("path") or "") == forced_template_path:
+            explicit.append((10**9, 1, int(rules.get("priority", 0) or 0), item))
             continue
         required=[str(x).lower() for x in rules.get("requiredKeywords", [])]
         if required and not all(_keyword_matches(text, keyword) for keyword in required):
@@ -1986,6 +1990,20 @@ def analyze_ocr_and_choose_template(artifact: OcrArtifact, template_root: Path, 
     if not scoped_records:
         raise OcrPipelineError(f"模板范围为空：source={source_key}，目录={template_root / source_key}")
     candidate_records = scoped_records
+    forced_template_path = ""
+    if source_key == "bank":
+        forced_template_path = str(runtime_map_values.get("forcedTemplatePath") or "").strip()
+        if forced_template_path:
+            forced_matches = [
+                item for item in candidate_records
+                if str(item.get("path") or "") == forced_template_path
+            ]
+            if len(forced_matches) != 1:
+                raise OcrPipelineError(
+                    f"备注指定模板不存在或不唯一：remark={runtime_map_values.get('remark')}，"
+                    f"templatePath={forced_template_path}"
+                )
+            candidate_records = forced_matches
     rule_candidates, rejected = _rule_candidates(
         candidate_records,
         artifact,
@@ -2015,24 +2033,42 @@ def analyze_ocr_and_choose_template(artifact: OcrArtifact, template_root: Path, 
             f"bankAccountNumber={required_bank_account_number}。"
             "该值来自 project.json，模板选择、模板渲染和最终分录中的银行存款科目号必须完全一致；禁止模型修改或猜测。"
         )
+        if forced_template_path:
+            business_rules += (
+                "\n# 流水备注强制模板\n"
+                f"remark={runtime_map_values.get('remark')}；templatePath={forced_template_path}。"
+                "该精确映射来自 project.json，禁止选择其他模板。"
+            )
     memory_path = artifact.output_dir.parent / "analysis_memory.json"
     memory = _load_analysis_memory(memory_path)
-    active_selector = selector or OpenAICompatibleTemplateSelector.from_settings({})
-    choose_parameters = inspect.signature(active_selector.choose).parameters
-    if "business_rules" in choose_parameters:
-        choose_kwargs = {
-            "final_template_context": final_template_context,
-            "business_rules": business_rules,
-            "verified_memory": list(memory.get("verifiedDecisions", [])),
+    if forced_template_path:
+        forced_record = rule_candidates[0]
+        decision = {
+            "templatePath": forced_template_path,
+            "templateId": str(forced_record.get("id") or ""),
+            "confidence": 1.0,
+            "reason": f"流水备注精确命中：{runtime_map_values.get('remark')}",
+            "status": "success",
+            "selectionMode": "statement_remark_exact",
+            "llmAttempted": False,
         }
-        if "prompt_path" in choose_parameters:
-            choose_kwargs["prompt_path"] = template_root / "prompts" / "invoice_classifier_prompt.txt"
-        decision = active_selector.choose(
-            artifact.text, rule_candidates, artifact.invoice_code,
-            **choose_kwargs,
-        )
     else:
-        decision = active_selector.choose(artifact.text, rule_candidates, artifact.invoice_code)
+        active_selector = selector or OpenAICompatibleTemplateSelector.from_settings({})
+        choose_parameters = inspect.signature(active_selector.choose).parameters
+        if "business_rules" in choose_parameters:
+            choose_kwargs = {
+                "final_template_context": final_template_context,
+                "business_rules": business_rules,
+                "verified_memory": list(memory.get("verifiedDecisions", [])),
+            }
+            if "prompt_path" in choose_parameters:
+                choose_kwargs["prompt_path"] = template_root / "prompts" / "invoice_classifier_prompt.txt"
+            decision = active_selector.choose(
+                artifact.text, rule_candidates, artifact.invoice_code,
+                **choose_kwargs,
+            )
+        else:
+            decision = active_selector.choose(artifact.text, rule_candidates, artifact.invoice_code)
     allowed_paths = {str(item.get("path", "")) for item in rule_candidates}
     decision.setdefault("status", "success" if decision.get("templatePath") else "pending")
     chosen = str(decision.get("templatePath", ""))
@@ -2065,6 +2101,9 @@ def analyze_ocr_and_choose_template(artifact: OcrArtifact, template_root: Path, 
     decision["templateCandidatesBeforeRules"] = len(candidate_records)
     decision["ruleRejectedCandidates"] = rejected
     decision["ruleFallbackUsed"] = rule_fallback
+    if source_key == "bank":
+        decision["remark"] = str(runtime_map_values.get("remark") or "")
+        decision["forcedTemplatePath"] = forced_template_path
     if chosen_record:
         expected_id = str(chosen_record.get("id") or "")
         returned_id = str(decision.get("templateId") or "")
@@ -2108,6 +2147,10 @@ def analyze_ocr_and_choose_template(artifact: OcrArtifact, template_root: Path, 
                 not configured_directions
                 or actual_direction in configured_directions
             )
+        )
+        validation["remarkTemplateRule"] = (
+            not forced_template_path
+            or str(decision.get("templatePath") or "") == forced_template_path
         )
         extracted_fields = decision.get("extractedFields")
         validation["amountRule"] = bool(

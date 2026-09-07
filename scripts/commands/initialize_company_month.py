@@ -22,6 +22,7 @@ from kdzwy_receipt_uploader.company_registry import (  # noqa: E402
     resolve_company_template,
     normalize_month,
     validate_bank_configs,
+    validate_bank_statement_columns,
     validate_bank_exceptions,
 )
 from kdzwy_receipt_uploader.source_profile import BUILT_IN_SOURCES  # noqa: E402
@@ -105,7 +106,6 @@ def normalize_source_settings(
         "ocr_workers",
         "llm_workers",
         "purpose",
-        "allow_cross_entity",
         "only_mapped_invoices",
     }
     for source in BUILT_IN_SOURCES:
@@ -120,6 +120,9 @@ def normalize_source_settings(
         if source == "bank":
             allowed.add("banks")
             allowed.add("exceptions")
+            allowed.add("statement_columns")
+        if source == "purchase":
+            allowed.add("usage_confirmation_enabled")
         unsupported = sorted(set(settings) - allowed)
         if unsupported:
             raise CompanyRegistryError(
@@ -134,9 +137,16 @@ def normalize_source_settings(
             raise CompanyRegistryError(f"sources.{source}.stage 只支持 ocr、llm、prepare、send 或 all")
         if source == "bank":
             settings.setdefault("banks", {})
-            settings["banks"] = validate_bank_configs(
+            bank_configs = validate_bank_configs(
                 settings["banks"], "sources.bank.banks"
             )
+            settings.setdefault("statement_columns", {})
+            settings["statement_columns"] = validate_bank_statement_columns(
+                settings["statement_columns"],
+                "sources.bank.statement_columns",
+                bank_configs,
+            )
+            settings["banks"] = bank_configs
             if "exceptions" not in settings:
                 defaults = (
                     bank_exception_defaults
@@ -147,6 +157,13 @@ def normalize_source_settings(
             settings["exceptions"] = validate_bank_exceptions(
                 settings["exceptions"], "sources.bank.exceptions"
             )
+        if source == "purchase":
+            usage_confirmation_enabled = settings.get("usage_confirmation_enabled", True)
+            if not isinstance(usage_confirmation_enabled, bool):
+                raise CompanyRegistryError(
+                    "sources.purchase.usage_confirmation_enabled 必须是 JSON 布尔值 true 或 false"
+                )
+            settings["usage_confirmation_enabled"] = usage_confirmation_enabled
         result[source] = settings
     return result
 
@@ -163,7 +180,7 @@ def normalize_month_defaults(value: object) -> dict[str, Any]:
         "ocr_workers",
         "llm_workers",
         "purpose",
-        "allow_cross_entity",
+        "cross_company_upload_enabled",
         "only_mapped_invoices",
     }
     unsupported = sorted(set(result) - allowed)
@@ -173,7 +190,7 @@ def normalize_month_defaults(value: object) -> dict[str, Any]:
         )
     result.setdefault("analysis_validation", "strict")
     result.setdefault("purpose", "production")
-    result.setdefault("allow_cross_entity", False)
+    result.setdefault("cross_company_upload_enabled", False)
     result.setdefault("only_mapped_invoices", False)
     return result
 
@@ -278,7 +295,7 @@ def main() -> int:
                 raise CompanyRegistryError(f"月份配置版本必须为 8：{project_config_path}")
             existing_dataset = project_payload.get("dataset")
             if not isinstance(existing_dataset, dict):
-                raise CompanyRegistryError("已有 v7 月份配置缺少显式 project.dataset")
+                raise CompanyRegistryError("已有 v8 月份配置缺少显式 project.dataset")
             if (
                 str(existing_dataset.get("company_key") or "").strip() != company_key
                 or str(existing_dataset.get("company_id") or "").strip() != company_id
@@ -289,6 +306,9 @@ def main() -> int:
                 )
         target_accountbook = resolve_target_accountbook_selector(accountbooks, args.target_accountbook)
         safe_defaults = normalize_month_defaults(project_payload.get("defaults"))
+        safe_defaults["cross_company_upload_enabled"] = (
+            target_accountbook.key != company_key
+        )
         input_settings = normalize_input_settings(project_payload.get("input"))
         source_settings = normalize_source_settings(project_payload.get("sources"))
         execution_enabled_sources = [
@@ -307,6 +327,9 @@ def main() -> int:
                 "company_id": target_accountbook.company_id,
                 "company_name": target_accountbook.name,
             },
+            "cross_company_upload_enabled": safe_defaults[
+                "cross_company_upload_enabled"
+            ],
             "input": input_settings,
             "defaults": safe_defaults,
             "sources": source_settings,
@@ -352,7 +375,7 @@ def main() -> int:
             "project_config": str(project_config_path),
             "sources": list(BUILT_IN_SOURCES),
             "execution_enabled_sources": execution_enabled_sources,
-            "next": "dataset 与 target 已显式写入 project.json；把资料放入 input，并在对应 source 中设置 enabled、stage 后运行。",
+            "next": "dataset 与 target 已写入 project.json；目标不同时已自动开启 cross_company_upload_enabled。改为 false 后运行目标自动回到 dataset 公司。把资料放入 input，并设置 source enabled、stage 后运行。",
         }, ensure_ascii=False, indent=2))
         return 0
     except (CompanyRegistryError, OSError, json.JSONDecodeError) as exc:

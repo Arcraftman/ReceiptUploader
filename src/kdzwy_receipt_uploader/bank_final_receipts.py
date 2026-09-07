@@ -102,6 +102,9 @@ def source_values(record: Mapping[str, Any]) -> dict[str, Any]:
         "bankAccountNumber": record.get("bankAccountNumber"),
         "statementIndex": record.get("index"),
         "flowDirection": record.get("flowDirection"),
+        "remark": record.get("remark"),
+        "forcedTemplatePath": record.get("forcedTemplatePath"),
+        "templateRouteSource": record.get("templateRouteSource"),
         "bankDebitAmount": record.get("bankDebitAmount"),
         "bankCreditAmount": record.get("bankCreditAmount"),
         "ourDebitAmount": record.get("ourDebitAmount"),
@@ -222,6 +225,12 @@ def validate_bank_analysis_rules(
     record: Mapping[str, Any], analysis: Mapping[str, Any]
 ) -> None:
     normalized = source_values(record)
+    forced_template_path = str(record.get("forcedTemplatePath") or "").strip()
+    if forced_template_path and str(analysis.get("templatePath") or "") != forced_template_path:
+        raise BankFinalReceiptError(
+            f"银行备注指定模板与分析不一致：{record.get('bankKey')} / {record.get('index')}，"
+            f"备注={record.get('remark')}，配置={forced_template_path}，分析={analysis.get('templatePath')}"
+        )
     transaction_amount = Decimal(str(normalized["transactionAmount"]))
     extracted = analysis.get("extractedFields")
     if not isinstance(extracted, Mapping):

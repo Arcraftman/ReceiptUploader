@@ -7,6 +7,7 @@ from src.kdzwy_receipt_uploader.bank_final_receipts import (
     BankFinalReceiptError,
     generate_bank_final_receipts,
     source_values,
+    validate_bank_analysis_rules,
 )
 import pytest
 
@@ -148,4 +149,23 @@ def test_prepare_existing_rejects_wrong_bank_account_number(tmp_path: Path) -> N
             "company_1",
             "2026-07",
             {},
+        )
+
+
+def test_prepare_rejects_analysis_that_ignores_remark_template_route() -> None:
+    record = {
+        "bankKey": "alpha",
+        "index": "A12345",
+        "transactionAmount": "12.30",
+        "statementAmount": "12.30",
+        "amountSource": "bank_statement.ourCreditAmount",
+        "amountValidated": True,
+        "bankAccountNumber": "100201",
+        "remark": "运费",
+        "forcedTemplatePath": "bank/freight_template.json",
+    }
+    with pytest.raises(BankFinalReceiptError, match="备注指定模板与分析不一致"):
+        validate_bank_analysis_rules(
+            record,
+            {"templatePath": "bank/other_template.json"},
         )

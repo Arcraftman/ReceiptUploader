@@ -1,10 +1,11 @@
 # 项目业务决策记忆
 
-更新日期：2026-08-31
+更新日期：2026-09-07
 
 ## 当前配置决策
 
 - `sales` 的业务范围只以当月 `input/sales` 下实际存在的 PDF 为准；`project.json.input` 不再配置 `income_cost_filename`，收入成本表不再参与发票筛选、匹配、数量核对、销售 map 或辅助核算预加载。每张有效命名的销售 PDF 直接进入精确 OCR，客户、日期、金额和税额均由 OCR 证据补入销售 map；OCR 不完整的单据进入异常。
+- purchase 使用 `sources.purchase.usage_confirmation_enabled` 明确纳税人路径，默认 `true`。`true` 表示一般纳税人，必须使用 `用途确认信息.xlsx`；`false` 表示小规模纳税人，不要求该表，采购范围只按 `input/purchase` 实际 PDF，OCR 票面不含税额和税额保留为审计证据，但业务成本/费用按价税合计入账，`taxAmount=0` 且凭证不得生成 `22210101` 进项税分录。
 - 所有业务来源 `sales`、`purchase`、`bank`、`misc` 的正式 OCR 一律使用项目可用的最高精度模式，不得因为单据数量、耗时、缓存或业务类型自动降级。银行裁剪时用于空白检测和稳定命名的快速识别只能作为预处理，不能替代正式 OCR，也不能直接作为 LLM 的最终输入。
 - 税率必须优先使用 OCR 明文；明文缺失时，只能从 OCR 货币金额中以 `不含税金额 + 税额 = 价税合计` 反算，并且唯一命中标准税率、反向分币校验通过后才接受。反算结果必须保存金额证据和 `amount_equation` 方法；多税率、证据冲突或无法唯一证明时进入异常，禁止交给 LLM 猜测。
 - `preload_items` 已从 `project.json` 删除，运行时固定为 `auto`。每次执行都必须依据实际生成的业务 map 核对当前登录账号、当前目标账套的远端 ItemClass；已有项不修改，只有缺失客户或供应商才创建。
@@ -12,12 +13,13 @@
 - `company_key` 固定为 `company_<company_id>`，不再允许 `xinghai` 等历史别名。
 - 公司配置只保存资料公司身份和一个跨月份共享的 `template_company`。
 - 数据目录由公司配置文件名确定，不再维护独立 dataset 注册表。
-- 每个公司、每个月只有一个 `project.json` v7；它是该月 dataset、目标账套、输入和四个业务精确运行配置的唯一来源。
-- `project.json` 版本为 v8。`sales`、`purchase`、`bank`、`misc` 每个只需显式包含 `enabled` 和统一 `stage`；`stage` 只支持 `ocr`、`llm`、`prepare`、`send`、`all`。旧的 `mode`、`analysis_stage`、`preload_items` 不再兼容。
+- 每个公司、每个月只有一个 `project.json` v8；它是该月 dataset、目标账套、输入和四个业务精确运行配置的唯一来源。
+- `project.json` 版本为 v8。`sales`、`purchase`、`bank`、`misc` 每个显式包含 `enabled` 和统一 `stage`；purchase 可另配 `usage_confirmation_enabled`。`stage` 只支持 `ocr`、`llm`、`prepare`、`send`、`all`。旧的 `mode`、`analysis_stage`、`preload_items` 不再兼容。
 - `sales`、`purchase`、`bank`、`misc` 四类目录固定自带，但每月执行开关互相独立且默认关闭。
 - 同一公司不同月份的所有运行、报告、确认和状态重置命令都必须明确传入 `YYYY-MM`。
 - 资料公司必须完整写入当月 `project.json.dataset`，并与公司配置身份一致。
 - 目标账套必须完整写入当月 `project.json.target`，不允许从资料公司或命令历史推断。
+- `defaults.cross_company_upload_enabled` 是目标选择开关。`month B YYYY-MM A` 自动写入 `true`，运行时使用 A；改成 `false` 后忽略原先指定的 A，自动使用 B 自己的账套，等同 `month B YYYY-MM B`。B 公司原月份目录中的 `project.json` 和 `input/` 始终是唯一资料源，不创建 A 的第二份资料目录。旧字段 `allow_cross_entity` 已移除且不兼容。
 - `month` 命令必须同时显式接收 dataset 公司、月份和 target 公司；同主体也不得省略 target。
 - 公司发现只生成 `runtime/registry/accountbooks.json` 和会话，不生成未配置公司的占位 JSON。
 - 新资料公司首次执行 `month` 时，才创建公司配置和独立模板副本。
@@ -32,13 +34,16 @@
 
 ## 银行回单
 
+- `sources.bank.enabled` 是银行业务总开关；`sources.bank.banks.<bank_key>.enabled` 是单家银行开关。运行时只把双重启用的银行带入裁剪、OCR、匹配、辅助核算、模板分析、receipt 和上传；禁用银行不要求当月 PDF/XLSX。
+- 银行流水列配置已从单家银行主体抽离到 `sources.bank.statement_columns.<bank_key>`。它必须与 `banks` 使用相同 bank key，并精确包含流水号、银行借方、银行贷方、对手方名称、备注五列；启用银行五列均必填，禁用银行可为 `null`。
+- 每家银行主体配置 `remark_template_map`。流水备注列去除首尾空格后按完整文本精确匹配；命中时确定性锁定配置的 `bank/..._template.json`，不调用 LLM 选择模板，但仍执行方向、主体、币种、银行科目、动态科目、金额、日期、摘要与借贷平衡校验。备注、强制模板路径和路由来源必须写入 bank map/analysis，旧分析模板不一致时禁止复用。
 - 当月 `project.json.sources.bank.banks` 是银行唯一配置源；不再生成或读取 `bank_split.json`。
 - 银行交易对象身份由现有进销项 Excel 名称列和目标账套客户/供应商目录共同判断；资金方向只决定借贷方向，不得用于创建客户或供应商。
 - 当月 `project.json.sources.bank.exceptions` 是特殊对象名称的唯一配置；所有命中名称统一隔离普通下游。
 - 京东重庆供应链和各种缴税业务统一进入 `bank_exceptions` 单独处理，不保留普通银行模板，不进入常规 LLM、receipt 和自动上传链。
 - `config/bank_exception.defaults.json` 只保存跨公司通用的系统 PDF 关键词规则。
 - 对手方证据不足或客户、供应商证据冲突时必须进入异常处理，不允许按银行流入、流出猜测身份。
-- 多银行数量不写死；每个 bank key 对应同名 `<bank_key>.pdf` 和 `<bank_key>.xlsx`，并同时包含 `bank_account_number`、`split` 与 `statement_columns`。
+- 多银行数量不写死；每个 bank key 对应同名 `<bank_key>.pdf` 和 `<bank_key>.xlsx`。银行主体包含 `enabled`、`bank_account_number`、`split`、`remark_template_map`，列定义放在独立的 `sources.bank.statement_columns`。
 - 银行键名必须小写，原始 PDF 命名为 `<bank_key>.pdf`。
 - 每个银行规则必须包含 `parts_per_page`、`filename_index_length`、`filename_index_prefix`；旧的银行键直接映射整数格式不再接受。
 - 单张回单文件名优先使用交易流水号/交易流水/核心流水号，其次回单编号，最后使用独立字母数字索引；所有候选都必须符合该银行配置的长度和起始字母。起始字母大小写敏感，生成文件名保留识别文本中的原始大小写。
@@ -46,7 +51,7 @@
 - bank 生命周期与 sales/purchase 对齐：`ocr` 依次做全部裁剪、特殊对象物理分流、剩余 OCR 和剩余流水匹配；`llm` 只分析普通匹配并生成 `template_analysis.json`；`prepare` 生成待上传 receipt；`send` 正式上传；`all` 连续完成全部流程。
 - bank 专用入口只读取和校验当月 `project.json`，不增加银行、不改写开关、不覆盖列值。
 - 每家银行的 `split` 必须恰好包含 `parts_per_page`、`filename_index_length`、`filename_index_prefix`。
-- 每家银行的 `statement_columns` 必须恰好包含 `index_column`、`bank_debit_column`、`bank_credit_column`、`counterparty_name_column`；bank 未启用时可使用 `null`，启用后必须全部填写。
+- 每家银行的独立列配置必须恰好包含 `index_column`、`bank_debit_column`、`bank_credit_column`、`counterparty_name_column`、`remark_column`；单家银行未启用时可使用 `null`，启用后必须全部填写。
 - `configCompany` 永远固定为月份项目中的 `dataset.company_name`。银行借方有有效金额 = 我方贷方/现金流出，银行贷方有有效金额 = 我方借方/现金流入；方向是硬约束。按方向产生的客户/供应商只能作为初始提示，最终 `counterpartyRoles` 必须由当前目标账套的客户和供应商目录解析；同一名称允许同时具有客户和供应商身份。
 - 每家银行必须配置目标账套中的固定 `bank_account_number`。模板选择上下文、固定提示词、模板渲染、已有分析复用和最终 receipt 必须使用同一科目号；银行模板必须恰好有一条名称包含“银行存款”的分录，运行时用配置科目替换模板历史样例中的银行科目。任何缺失或不一致都阻断。
 - 模板科目以科目编号为准；目标账套中同一编号显示的科目名称或明细名称不同，不作为阻断条件。银行存款分录仍必须使用显式 `bank_account_number`。

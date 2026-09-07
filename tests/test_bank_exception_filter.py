@@ -95,7 +95,9 @@ def test_special_pdfs_are_copied_and_excluded_before_ordinary_pipeline(
                 "bank_debit_column": "F",
                 "bank_credit_column": "G",
                 "counterparty_name_column": "H",
+                "remark_column": "I",
             },
+            "remark_template_map": {},
         }
     }
     exceptions = [

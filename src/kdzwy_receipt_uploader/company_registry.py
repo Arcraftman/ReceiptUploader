@@ -42,6 +42,7 @@ def _validate_bank_statement_column_set(value: object, label: str) -> dict[str, 
         "bank_debit_column",
         "bank_credit_column",
         "counterparty_name_column",
+        "remark_column",
     }
     actual_columns = set(value)
     if actual_columns != required_columns:
@@ -53,7 +54,7 @@ def _validate_bank_statement_column_set(value: object, label: str) -> dict[str, 
         if extra:
             details.append("多出 " + ", ".join(extra))
         raise CompanyRegistryError(
-            f"{label} 必须精确包含四个列配置：{'；'.join(details)}"
+            f"{label} 必须精确包含五个列配置：{'；'.join(details)}"
         )
     normalized: dict[str, str | None] = {}
     for column_key in (
@@ -61,6 +62,7 @@ def _validate_bank_statement_column_set(value: object, label: str) -> dict[str, 
         "bank_debit_column",
         "bank_credit_column",
         "counterparty_name_column",
+        "remark_column",
     ):
         column_value = value[column_key]
         if column_value is None:
@@ -71,6 +73,32 @@ def _validate_bank_statement_column_set(value: object, label: str) -> dict[str, 
             raise CompanyRegistryError(
                 f"{label}.{column_key} 必须是非空文本或 null"
             )
+    return normalized
+
+
+def _validate_remark_template_map(value: object, label: str) -> dict[str, str]:
+    if not isinstance(value, dict):
+        raise CompanyRegistryError(f"{label} 必须是备注精确值到模板路径的对象")
+    normalized: dict[str, str] = {}
+    for raw_remark, raw_path in value.items():
+        if not isinstance(raw_remark, str) or not raw_remark.strip():
+            raise CompanyRegistryError(f"{label} 的备注键必须是非空文本")
+        if raw_remark != raw_remark.strip():
+            raise CompanyRegistryError(f"{label} 的备注键前后不能有空格：{raw_remark!r}")
+        if not isinstance(raw_path, str) or not raw_path.strip():
+            raise CompanyRegistryError(f"{label}.{raw_remark} 的模板路径必须是非空文本")
+        path = Path(raw_path.strip())
+        if (
+            path.is_absolute()
+            or ".." in path.parts
+            or not path.parts
+            or path.parts[0] != "bank"
+            or not path.as_posix().endswith("_template.json")
+        ):
+            raise CompanyRegistryError(
+                f"{label}.{raw_remark} 必须是 bank/ 下以 _template.json 结尾的相对模板路径"
+            )
+        normalized[raw_remark] = path.as_posix()
     return normalized
 
 
@@ -88,17 +116,21 @@ def validate_bank_configs(value: object, label: str) -> dict[str, dict[str, Any]
             raise CompanyRegistryError(f"{label}.{bank_key} 必须是对象")
         _reject_unknown_fields(
             raw_bank_config,
-            {"bank_account_number", "split", "statement_columns"},
+            {"enabled", "bank_account_number", "split", "remark_template_map"},
             f"{label}.{bank_key}",
         )
         if set(raw_bank_config) != {
+            "enabled",
             "bank_account_number",
             "split",
-            "statement_columns",
+            "remark_template_map",
         }:
             raise CompanyRegistryError(
-                f"{label}.{bank_key} 必须同时包含 bank_account_number、split 和 statement_columns"
+                f"{label}.{bank_key} 必须同时包含 enabled、bank_account_number、split 和 remark_template_map"
             )
+        enabled = raw_bank_config["enabled"]
+        if not isinstance(enabled, bool):
+            raise CompanyRegistryError(f"{label}.{bank_key}.enabled 必须是 JSON 布尔值 true 或 false")
         bank_account_number = raw_bank_config["bank_account_number"]
         if not isinstance(bank_account_number, str) or not re.fullmatch(
             r"[0-9]+", bank_account_number.strip()
@@ -138,17 +170,44 @@ def validate_bank_configs(value: object, label: str) -> dict[str, dict[str, Any]
                 f"{label}.{bank_key}.split.filename_index_prefix 不能长于 filename_index_length"
             )
         normalized[bank_key] = {
+            "enabled": enabled,
             "bank_account_number": bank_account_number.strip(),
             "split": {
                 "parts_per_page": parts_per_page,
                 "filename_index_length": index_length,
                 "filename_index_prefix": index_prefix,
             },
-            "statement_columns": _validate_bank_statement_column_set(
-                raw_bank_config["statement_columns"],
-                f"{label}.{bank_key}.statement_columns",
+            "remark_template_map": _validate_remark_template_map(
+                raw_bank_config["remark_template_map"],
+                f"{label}.{bank_key}.remark_template_map",
             ),
         }
+    return normalized
+
+
+def validate_bank_statement_columns(
+    value: object,
+    label: str,
+    bank_configs: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, str | None]]:
+    if not isinstance(value, dict):
+        raise CompanyRegistryError(f"{label} 必须是按 bank key 配置的对象")
+    if set(value) != set(bank_configs):
+        missing = sorted(set(bank_configs) - set(value))
+        extra = sorted(set(value) - set(bank_configs))
+        raise CompanyRegistryError(
+            f"{label} 必须与 banks 使用完全相同的 bank key；缺少={missing}，多出={extra}"
+        )
+    normalized: dict[str, dict[str, str | None]] = {}
+    for bank_key, bank_config in bank_configs.items():
+        columns = _validate_bank_statement_column_set(value[bank_key], f"{label}.{bank_key}")
+        if bank_config["enabled"]:
+            missing_columns = [key for key, column in columns.items() if column is None]
+            if missing_columns:
+                raise CompanyRegistryError(
+                    f"{label}.{bank_key} 在银行 enabled=true 时必须填写：{', '.join(missing_columns)}"
+                )
+        normalized[bank_key] = columns
     return normalized
 
 
@@ -227,7 +286,7 @@ class CompanyJob:
     stage: str = "ocr"
     source: str = "all"
     purpose: str = "production"
-    allow_cross_entity: bool = False
+    cross_company_upload_enabled: bool = False
     enabled: bool = True
     overrides: dict[str, Any] = field(default_factory=dict)
     template_company: str = ""
@@ -473,13 +532,25 @@ def load_company_jobs(path: Path, company: CompanyProfile) -> list[CompanyJob]:
         "ocr_workers",
         "llm_workers",
         "purpose",
-        "allow_cross_entity",
         "only_mapped_invoices",
     }
-    _reject_unknown_fields(defaults, shared_configurable_fields, "project.defaults")
-    for label in ("allow_cross_entity", "only_mapped_invoices"):
+    default_configurable_fields = {
+        *shared_configurable_fields,
+        "cross_company_upload_enabled",
+    }
+    _reject_unknown_fields(defaults, default_configurable_fields, "project.defaults")
+    for label in ("cross_company_upload_enabled", "only_mapped_invoices"):
         if label in defaults:
             _strict_bool(defaults[label], f"project.defaults.{label}", default=False)
+    cross_company_upload_enabled = _strict_bool(
+        defaults.get("cross_company_upload_enabled"),
+        "project.defaults.cross_company_upload_enabled",
+        default=False,
+    )
+    if not cross_company_upload_enabled:
+        target_accountbook = dataset_company_key
+        target_company_id = dataset_company_id
+        target_company_name = dataset_company_name
 
     def effective_source_settings(
         row: dict[str, Any], label: str, source: str
@@ -492,8 +563,11 @@ def load_company_jobs(path: Path, company: CompanyProfile) -> list[CompanyJob]:
         if source == "bank":
             source_fields.add("banks")
             source_fields.add("exceptions")
+            source_fields.add("statement_columns")
+        if source == "purchase":
+            source_fields.add("usage_confirmation_enabled")
         _reject_unknown_fields(row, source_fields, label)
-        for boolean_key in ("allow_cross_entity", "only_mapped_invoices"):
+        for boolean_key in ("only_mapped_invoices",):
             if boolean_key in row:
                 _strict_bool(row[boolean_key], f"{label}.{boolean_key}", default=False)
         result: dict[str, Any] = {}
@@ -510,6 +584,12 @@ def load_company_jobs(path: Path, company: CompanyProfile) -> list[CompanyJob]:
         workflow_stage = _required_text(row.get("stage"), f"{label}.stage").lower()
         workflow_stage_plan(workflow_stage)
         result["workflow_stage"] = workflow_stage
+        if source == "purchase":
+            result["usage_confirmation_enabled"] = _strict_bool(
+                row.get("usage_confirmation_enabled"),
+                f"{label}.usage_confirmation_enabled",
+                default=True,
+            )
         if source == "bank":
             if "banks" not in row:
                 raise CompanyRegistryError(
@@ -519,9 +599,23 @@ def load_company_jobs(path: Path, company: CompanyProfile) -> list[CompanyJob]:
                 raise CompanyRegistryError(
                     "sources.bank 缺少特殊对象名称配置 exceptions"
                 )
-            result["banks"] = validate_bank_configs(
+            if "statement_columns" not in row:
+                raise CompanyRegistryError(
+                    "sources.bank 缺少独立银行流水列配置 statement_columns"
+                )
+            bank_configs = validate_bank_configs(
                 row["banks"], "sources.bank.banks"
             )
+            statement_columns = validate_bank_statement_columns(
+                row["statement_columns"],
+                "sources.bank.statement_columns",
+                bank_configs,
+            )
+            result["banks"] = {
+                bank_key: {**bank_config, "statement_columns": statement_columns[bank_key]}
+                for bank_key, bank_config in bank_configs.items()
+            }
+            result["statement_columns"] = statement_columns
             result["exceptions"] = validate_bank_exceptions(
                 row["exceptions"], "sources.bank.exceptions"
             )
@@ -547,25 +641,16 @@ def load_company_jobs(path: Path, company: CompanyProfile) -> list[CompanyJob]:
         job_enabled = row["enabled"]
         if not isinstance(job_enabled, bool):
             raise CompanyRegistryError(f"sources.{source}.enabled 必须是 JSON 布尔值 true 或 false")
-        if source == "bank" and job_enabled and not row.get("banks"):
+        if source == "bank" and job_enabled and not any(
+            isinstance(bank, dict) and bank.get("enabled") is True
+            for bank in (row.get("banks") or {}).values()
+        ):
             raise CompanyRegistryError(
-                "sources.bank.enabled=true 时 banks 必须至少配置一家银行"
+                "sources.bank.enabled=true 时 banks 必须至少启用一家银行"
             )
         workflow_stage = _required_text(row.get("stage"), f"sources.{source}.stage").lower()
         workflow_stage_plan(workflow_stage)
         overrides = effective_source_settings(row, f"sources.{source}", source)
-        if source == "bank" and job_enabled:
-            for bank_key, bank_config in overrides["banks"].items():
-                missing_columns = [
-                    column_key
-                    for column_key, column_value in bank_config["statement_columns"].items()
-                    if column_value is None
-                ]
-                if missing_columns:
-                    raise CompanyRegistryError(
-                        "sources.bank.enabled=true 时 "
-                        f"banks.{bank_key}.statement_columns 必须填写：{', '.join(missing_columns)}"
-                    )
         result.append(CompanyJob(
             accountbook=target_accountbook,
             dataset=dataset_company_key,
@@ -574,11 +659,7 @@ def load_company_jobs(path: Path, company: CompanyProfile) -> list[CompanyJob]:
             stage=workflow_stage,
             source=source,
             purpose=str(row.get("purpose", defaults.get("purpose", "production"))),
-            allow_cross_entity=_strict_bool(
-                row.get("allow_cross_entity", defaults.get("allow_cross_entity")),
-                f"sources.{source}.allow_cross_entity",
-                default=False,
-            ),
+            cross_company_upload_enabled=cross_company_upload_enabled,
             enabled=job_enabled,
             overrides=overrides,
             target_company_id=target_company_id,
@@ -670,6 +751,12 @@ def build_job_settings(defaults: dict[str, Any], accountbook: AccountbookProfile
     if normalize_source_key(job.source) not in {"sales", "purchase", "bank", "misc", "all"}:
         raise CompanyRegistryError(f"不支持的责任链来源：{job.source}")
     settings = deep_merge(defaults, job.overrides)
+    if normalize_source_key(job.source) == "bank" and isinstance(settings.get("banks"), dict):
+        settings["banks"] = {
+            bank_key: bank_config
+            for bank_key, bank_config in settings["banks"].items()
+            if isinstance(bank_config, dict) and bank_config.get("enabled") is True
+        }
     settings.pop("version", None)
     settings.update({
         "accountbook_source": "live",
@@ -720,7 +807,7 @@ def build_job_settings(defaults: dict[str, Any], accountbook: AccountbookProfile
         "month": job.month,
         "source": normalize_source_key(job.source) or job.source,
         "purpose": job.purpose,
-        "cross_entity": accountbook.name != dataset.entity_name,
+        "cross_entity": accountbook.key != dataset.key,
         "session_file": accountbook.session_file,
     })
     return settings

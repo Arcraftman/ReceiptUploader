@@ -52,7 +52,7 @@ def test_workspace_always_contains_all_builtin_sources(tmp_path: Path, monkeypat
             ],
         },
     )
-    write_json(tmp_path / "templates" / "weiyu" / "index.json", {"version": 1, "templates": []})
+    write_json(tmp_path / "templates" / company_key / "index.json", {"version": 1, "templates": []})
     write_json(
         company_config,
         {
@@ -60,14 +60,14 @@ def test_workspace_always_contains_all_builtin_sources(tmp_path: Path, monkeypat
             "company_key": company_key,
             "company_id": company_id,
             "company_name": company_name,
-            "template_company": "weiyu",
+            "template_company": company_key,
         },
     )
     september_project = tmp_path / data_root / "2026-09" / "project.json"
     write_json(
         september_project,
         {
-            "version": 7,
+            "version": 8,
             "month": "2026-09",
             "dataset": {
                 "company_key": company_key,
@@ -80,7 +80,6 @@ def test_workspace_always_contains_all_builtin_sources(tmp_path: Path, monkeypat
                 "company_name": company_name,
             },
             "input": {
-                "income_cost_filename": "收入成本表.xlsx",
                 "usage_filename": "用途确认信息.xlsx",
                 "usage_column": "E",
             },
@@ -88,17 +87,15 @@ def test_workspace_always_contains_all_builtin_sources(tmp_path: Path, monkeypat
                 "analysis_validation": "strict",
             },
             "sources": {
-                "sales": {"enabled": True, "mode": "analysis-only", "analysis_stage": "existing", "preload_items": False},
-                "purchase": {"enabled": False, "mode": "analysis-only", "analysis_stage": "ocr", "preload_items": False},
+                "sales": {"enabled": True, "stage": "prepare"},
+                "purchase": {"enabled": False, "stage": "ocr"},
                 "bank": {
                     "enabled": False,
-                    "mode": "analysis-only",
-                    "analysis_stage": "ocr",
-                    "preload_items": False,
+                    "stage": "ocr",
                     "banks": {},
                     "exceptions": [],
                 },
-                "misc": {"enabled": False, "mode": "analysis-only", "analysis_stage": "ocr", "preload_items": False},
+                "misc": {"enabled": False, "stage": "ocr"},
             },
         },
     )
@@ -124,7 +121,7 @@ def test_workspace_always_contains_all_builtin_sources(tmp_path: Path, monkeypat
     assert not (month_root / "input" / "bank" / "bank_split.json").exists()
 
     project = json.loads((month_root / "project.json").read_text(encoding="utf-8"))
-    assert project["version"] == 7
+    assert project["version"] == 8
     assert project["dataset"] == {
         "company_key": company_key,
         "company_id": company_id,
@@ -133,7 +130,7 @@ def test_workspace_always_contains_all_builtin_sources(tmp_path: Path, monkeypat
     assert project["target"]["accountbook_key"] == company_key
     assert set(project["sources"]) == set(prepare_company_workspace.BUILT_IN_SOURCES)
     assert project["sources"]["sales"]["enabled"] is True
-    assert project["sources"]["sales"]["analysis_stage"] == "existing"
+    assert project["sources"]["sales"]["stage"] == "prepare"
     assert "execution_enabled_sources" not in project
 
     marker = month_root / "input" / "sales" / "existing.pdf"
@@ -156,7 +153,7 @@ def test_workspace_always_contains_all_builtin_sources(tmp_path: Path, monkeypat
     write_json(
         october_project,
         {
-            "version": 7,
+            "version": 8,
             "month": "2026-10",
             "dataset": {
                 "company_key": company_key,
@@ -169,29 +166,26 @@ def test_workspace_always_contains_all_builtin_sources(tmp_path: Path, monkeypat
                 "company_name": "目标账套公司",
             },
             "input": {
-                "income_cost_filename": "收入成本表.xlsx",
                 "usage_filename": "用途确认信息.xlsx",
                 "usage_column": "E",
             },
             "defaults": {"analysis_validation": "strict"},
             "sources": {
-                "sales": {"enabled": False, "mode": "analysis-only", "analysis_stage": "ocr", "preload_items": False},
-                "purchase": {"enabled": True, "mode": "dry-run", "analysis_stage": "existing", "preload_items": False},
+                "sales": {"enabled": False, "stage": "ocr"},
+                "purchase": {"enabled": True, "stage": "prepare"},
                 "bank": {
                     "enabled": False,
-                    "mode": "analysis-only",
-                    "analysis_stage": "ocr",
-                    "preload_items": False,
+                    "stage": "ocr",
                     "banks": {},
                     "exceptions": [],
                 },
-                "misc": {"enabled": False, "mode": "analysis-only", "analysis_stage": "ocr", "preload_items": False},
+                "misc": {"enabled": False, "stage": "ocr"},
             },
         },
     )
     assert prepare_company_workspace.main() == 0
     october = json.loads(october_project.read_text(encoding="utf-8"))
-    assert october["sources"]["purchase"]["mode"] == "dry-run"
+    assert october["sources"]["purchase"]["stage"] == "prepare"
     assert october["sources"]["purchase"]["enabled"] is True
     assert october["target"]["accountbook_key"] == "company_456"
     assert not (

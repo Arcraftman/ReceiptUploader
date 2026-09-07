@@ -20,7 +20,7 @@ def main() -> None:
         receipt_root = root / "workspaces" / "account_1" / "company_17867515" / "2026-08" / "generated" / "receipts" / "sales"
         (input_root / "sales").mkdir(parents=True)
         (input_root / "sales" / "dzfp_1001_customer.pdf").write_bytes(b"%PDF")
-        cfg = MonthConfig.from_mapping("weiyu", "2026-08", {"income_cost_filename": "收入成本表.xlsx", "usage_filename": "用途确认信息.xlsx", "usage_column": "E"})
+        cfg = MonthConfig.from_mapping("weiyu", "2026-08", {"usage_filename": "用途确认信息.xlsx", "usage_column": "E"})
         generate_receipts(
             input_root,
             cfg,

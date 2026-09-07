@@ -47,7 +47,7 @@ def test_matches_multiple_banks_and_maps_bank_direction(tmp_path: Path) -> None:
         input_dir / "alpha.xlsx",
         [
             (None, "索引", None, None, None, "银行借方", "银行贷方", "对方名称"),
-            (None, "A12345", None, None, None, 100, "文字", "甲供应商"),
+            (None, "A12345", None, None, None, 100, "文字", "甲供应商", "运费"),
             (None, "A23456", None, None, None, 0, 25, "乙客户"),
             (None, "A34567", None, None, None, 88, 0, "未匹配供应商"),
             (None, "A45678", None, None, None, 66, 0, "张三"),
@@ -76,7 +76,9 @@ def test_matches_multiple_banks_and_maps_bank_direction(tmp_path: Path) -> None:
                 "bank_debit_column": "F",
                 "bank_credit_column": "G",
                 "counterparty_name_column": "H",
+                "remark_column": "I",
             },
+            "remark_template_map": {"运费": "bank/freight_template.json"},
         },
         "beta": {
             "bank_account_number": "100204",
@@ -86,7 +88,9 @@ def test_matches_multiple_banks_and_maps_bank_direction(tmp_path: Path) -> None:
                 "bank_debit_column": "F",
                 "bank_credit_column": "G",
                 "counterparty_name_column": "K",
+                "remark_column": "I",
             },
+            "remark_template_map": {},
         },
     }
     map_path = tmp_path / "maps" / "bank_map.json"
@@ -125,6 +129,9 @@ def test_matches_multiple_banks_and_maps_bank_direction(tmp_path: Path) -> None:
     assert outflow["counterpartyName"] == "甲供应商"
     assert outflow["counterpartyType"] == "supplier"
     assert outflow["supplierName"] == "甲供应商"
+    assert outflow["remark"] == "运费"
+    assert outflow["forcedTemplatePath"] == "bank/freight_template.json"
+    assert outflow["templateRouteSource"] == "statement_remark_exact"
     inflow = result["banks"]["alpha"]["entries"]["A23456"]
     assert inflow["flowDirection"] == "inflow"
     assert inflow["ourDebitAmount"] == "25.00"
@@ -175,7 +182,9 @@ def test_configured_exception_is_removed_before_person_and_normal_matching(tmp_p
                 "bank_debit_column": "F",
                 "bank_credit_column": "G",
                 "counterparty_name_column": "H",
+                "remark_column": "I",
             },
+            "remark_template_map": {},
         }
     }
     report = match_bank_statements(
@@ -226,7 +235,9 @@ def test_rejects_missing_statement_column_configuration(tmp_path: Path) -> None:
                 "bank_debit_column": None,
                 "bank_credit_column": "G",
                 "counterparty_name_column": "H",
+                "remark_column": "I",
             },
+            "remark_template_map": {},
         }
     }
     with pytest.raises(BankStatementMatchError, match="bank_debit_column 尚未配置"):
@@ -259,7 +270,9 @@ def test_duplicate_statement_index_is_partial(tmp_path: Path) -> None:
                 "bank_debit_column": "F",
                 "bank_credit_column": "G",
                 "counterparty_name_column": "H",
+                "remark_column": "I",
             },
+            "remark_template_map": {},
         }
     }
     report = match_bank_statements(

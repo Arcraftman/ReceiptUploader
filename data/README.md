@@ -6,8 +6,7 @@
 
 ```text
 data/inbox/company_<company_id>_<真实公司名>/<YYYY-MM>/
-├─ project.json                 # 本月 mode、analysis_stage、sources 等唯一运行配置
-├─ month.conf
+├─ project.json                 # v8 本月 dataset、target、defaults、sources 唯一运行配置
 └─ input/
    ├─ sales/
    ├─ purchase/

@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "default_base_template": "company_17867515",
+  "template_companies": [
+    {
+      "key": "company_17867515",
+      "name": "上海微誉信息技术有限公司",
+      "directory": "company_17867515",
+      "enabled": true
+    }
+  ]
+}

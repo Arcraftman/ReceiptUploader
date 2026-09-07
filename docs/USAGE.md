@@ -119,31 +119,37 @@ data/inbox/company_<id>_<公司名>/<YYYY-MM>/project.json
   "defaults": {
     "analysis_validation": "strict",
     "purpose": "production",
-    "allow_cross_entity": false,
+    "cross_company_upload_enabled": false,
     "only_mapped_invoices": true
   },
   "sources": {
     "sales": {"enabled": true, "stage": "ocr"},
-    "purchase": {"enabled": false, "stage": "ocr"},
+    "purchase": {"enabled": false, "stage": "ocr", "usage_confirmation_enabled": true},
     "bank": {
       "enabled": false,
       "stage": "ocr",
       "banks": {
         "zhaoshangyinhang": {
+          "enabled": false,
           "bank_account_number": "100204",
           "split": {
             "parts_per_page": 3,
             "filename_index_length": 15,
             "filename_index_prefix": "C"
           },
-          "statement_columns": {
-            "index_column": null,
-            "bank_debit_column": null,
-            "bank_credit_column": null,
-            "counterparty_name_column": null
-          }
+          "remark_template_map": {}
         }
-      }
+      },
+      "statement_columns": {
+        "zhaoshangyinhang": {
+          "index_column": null,
+          "bank_debit_column": null,
+          "bank_credit_column": null,
+          "counterparty_name_column": null,
+          "remark_column": null
+        }
+      },
+      "exceptions": ["TIPS电子缴税款业务待报解预算收入"]
     },
     "misc": {"enabled": false, "stage": "ocr"}
   }
@@ -154,10 +160,13 @@ data/inbox/company_<id>_<公司名>/<YYYY-MM>/project.json
 
 - `dataset`：本月资料来自哪家公司，三个身份字段必须与资料公司配置完全一致。
 - `target`：本月最终写入哪家公司的账套，三个身份字段必须与运行期账套注册表完全一致。
-- `input`：该月 Excel 文件名和用途列。
+- `input`：用途确认启用时使用的 Excel 文件名和用途列。
 - `defaults`：只保存四个业务可共享的高级参数，不再保存业务运行开关。
 - `sources.<业务>`：四个业务都必须精确写全 `enabled`、`stage`；只有 `enabled=true` 才会执行。
-- `sources.bank.banks`：当月银行唯一配置源；每个 bank key 同时保存 `bank_account_number`、`split` 和 `statement_columns`。
+- `defaults.cross_company_upload_enabled`：输入 `month B YYYY-MM A` 时自动设为 `true`，使用 B 的资料并上传到显式 target A；手工改成 `false` 后，运行目标自动回到 B 自己的账套，效果等同于 `month B YYYY-MM B`。两种情况都只使用 B 的这一份 `project.json` 和 `input/`，不会复制第二份输入资料。
+- `sources.purchase.usage_confirmation_enabled`：默认 `true`；设为 `false` 表示小规模纳税人，不要求 `用途确认信息.xlsx`，purchase 直接以实际 PDF 为范围并把价税合计计入成本/费用。
+- `sources.bank.banks`：每个 bank key 保存单银行 `enabled`、`bank_account_number`、`split` 和 `remark_template_map`。
+- `sources.bank.statement_columns`：与 `banks` 使用完全相同的 bank key，分别保存各银行 XLSX 的五列位置。
 - 某个 source 还可直接覆盖 `analysis_validation`、并发数、`purpose`、跨主体许可和 `only_mapped_invoices`；不再使用嵌套 `overrides`。
 
 四个资料目录始终自带：
@@ -237,28 +246,40 @@ commands\reset_upload_state.bat company_17867515_上海微誉信息技术有限�
 
 ## 银行回单拆分
 
-当月所有银行配置只写在 `project.json.sources.bank.banks`。不再生成、读取或同步 `bank_split.json`。每个 bank key 同时决定配置分组和输入文件名：
+当月银行主体与列配置只写在 `project.json.sources.bank`。不再生成、读取或同步 `bank_split.json`。每个 bank key 同时决定配置分组和输入文件名：
 
 ```json
-"banks": {
-  "zhaoshangyinhang": {
-    "bank_account_number": "100204",
-    "split": {
-      "parts_per_page": 3,
-      "filename_index_length": 15,
-      "filename_index_prefix": "C"
-    },
-    "statement_columns": {
+"bank": {
+  "enabled": true,
+  "stage": "ocr",
+  "banks": {
+    "zhaoshangyinhang": {
+      "enabled": true,
+      "bank_account_number": "100204",
+      "split": {
+        "parts_per_page": 3,
+        "filename_index_length": 15,
+        "filename_index_prefix": "C"
+      },
+      "remark_template_map": {
+        "货款": "bank/银行_银行回单_银行结算_付供应商款_人民币_template.json"
+      }
+    }
+  },
+  "statement_columns": {
+    "zhaoshangyinhang": {
       "index_column": "J",
       "bank_debit_column": "F",
       "bank_credit_column": "G",
-      "counterparty_name_column": "K"
+      "counterparty_name_column": "K",
+      "remark_column": "I"
     }
-  }
+  },
+  "exceptions": []
 }
 ```
 
-银行数量没有写死；每增加一家银行，用户在 `banks` 中增加一个完整对象。`<bank_key>.pdf` 用于裁剪，`<bank_key>.xlsx` 留给流水匹配。`split` 中的三项均必填，前缀大小写敏感。`statement_columns` 必须恰好包含四项：
+银行数量没有写死；每增加一家银行，必须同时在 `banks` 和 `statement_columns` 增加同名 key。`<bank_key>.pdf` 用于裁剪，`<bank_key>.xlsx` 留给流水匹配。`split` 中的三项均必填，前缀大小写敏感。列配置必须恰好包含五项：
 
 | 配置项 | 含义 |
 |---|---|
@@ -267,8 +288,10 @@ commands\reset_upload_state.bat company_17867515_上海微誉信息技术有限�
 | `bank_debit_column` | 银行借方列；有金额时是我方贷方，即现金流出 |
 | `bank_credit_column` | 银行贷方列；有金额时是我方借方，即现金流入 |
 | `counterparty_name_column` | 对手方名称列；现金流出固定作为供应商，现金流入固定作为客户 |
+| `remark_column` | 备注/摘要列；完整文本用于精确模板路由 |
+| `remark_template_map` | 备注完整文本到 `bank/..._template.json` 的映射；未命中时走普通规则 |
 
-银行借贷两列中只有一方是有效金额，另一方可以是 0、空值或文字。`bank` 启用时四列不允许为 `null`；未填写会在任务预检阶段停止。`configCompany` 固定等于本月 `dataset.company_name`；对手方名称和供应商/客户角色由流水表及上述方向规则决定，OCR 和模型不得覆盖。
+银行借贷两列中只有一方是有效金额，另一方可以是 0、空值或文字。单家银行 `enabled=true` 时五列不允许为 `null`；禁用银行可保留 `null` 且不要求 PDF/XLSX。备注映射按去除首尾空格后的完整文本精确匹配；命中后不调用模型选择模板，但全部固定会计校验仍执行。`configCompany` 固定等于本月 `dataset.company_name`；对手方名称和供应商/客户角色由流水表及上述方向规则决定，OCR 和模型不得覆盖。
 
 现金流入时，如果 `bank_credit_column` 是有效金额，并且同一行的 `bank_debit_column` 完全由一串或多串数字组成（数字之间只能有空格、换行或常用分隔符，不能含普通文字），系统会按原顺序保存这些数字，并让它们直接成为 `explanation_body`。这条规则是替换，不会与模板原有 body 拼接；只要单元格中含有普通文字就不触发。
 

@@ -20,7 +20,7 @@ def main() -> None:
         receipt_root = root / "workspaces" / "account_1" / "company_17867515" / "2026-08" / "generated" / "receipts" / "sales"
         (input_root / "sales").mkdir(parents=True)
         (input_root / "sales" / "dzfp_1001_demo.pdf").write_bytes(b"%PDF")
-        cfg = MonthConfig.from_mapping("demo", "2026-08", {"income_cost_filename": "收入成本表.xlsx", "usage_filename": "用途确认信息.xlsx", "usage_column": "E"})
+        cfg = MonthConfig.from_mapping("demo", "2026-08", {"usage_filename": "用途确认信息.xlsx", "usage_column": "E"})
         report = generate_receipts(
             input_root, cfg, receipt_root, overwrite=True, folder_patterns=["sales"],
             voucher_defaults={"group_id": "g", "group_name": "记", "user_name": "u", "itemClass": "供应商", "businessType": "采购商品", "settlementMethod": "往来结算"},

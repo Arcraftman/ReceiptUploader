@@ -130,6 +130,10 @@ def test_bank_template_uses_configured_bank_account_number() -> None:
             {
                 "businessMapValues": {
                     "amount": "12.30",
+                    "transactionAmount": "12.30",
+                    "statementAmount": "12.30",
+                    "amountSource": "bank_statement.ourDebitAmount",
+                    "amountValidated": True,
                     "bankAccountNumber": "100204",
                     "flowDirection": "inflow",
                     "invoiceNumbers": [
@@ -140,11 +144,7 @@ def test_bank_template_uses_configured_bank_account_number() -> None:
                 "dynamicAccountCatalog": {
                     "accounts": [
                         {"id": "a", "number": "2202", "fullName": "应付账款"},
-                        {
-                            "id": "b",
-                            "number": "100204",
-                            "fullName": "银行存款_招商银行",
-                        },
+                        {"id": "b", "number": "100204", "fullName": "银行存款_招商银行"},
                     ]
                 },
                 "dynamicItemClassCatalog": {"classes": []},
@@ -152,20 +152,97 @@ def test_bank_template_uses_configured_bank_account_number() -> None:
         )
         assert decision["bankAccountNumber"] == "100204"
         assert decision["bankTransactionDate"] == "2026-07-21"
-        assert decision["explanation_body"] == (
-            "26312000004664982496 26312000004646763391"
-        )
-        assert decision["filledEntries"][0]["explanation"] == (
-            "26312000004664982496 26312000004646763391"
-        )
+        assert decision["explanation_body"] == "26312000004664982496 26312000004646763391"
+        assert decision["filledEntries"][0]["explanation"] == "26312000004664982496 26312000004646763391"
         assert decision["filledEntries"][1]["accountNumber"] == "100204"
         assert decision["filledEntries"][1]["accountName"] == "银行存款_招商银行"
-        assert decision["filledEntries"][1]["explanation"] == (
-            "26312000004664982496 26312000004646763391 2026-07-21"
-        )
+        assert decision["filledEntries"][1]["explanation"] == "26312000004664982496 26312000004646763391 2026-07-21"
         decision["sourceFolder"] = "bank"
         compact = compact_analysis_for_storage(decision)
         assert compact["filledEntries"][1]["explanation"].endswith(" 2026-07-21")
+
+
+def test_bank_remark_exact_route_skips_selector_and_forces_template() -> None:
+    class FailIfCalledSelector:
+        def choose(self, *_args, **_kwargs):
+            raise AssertionError("备注精确命中时不应调用模型选择模板")
+
+    with TemporaryDirectory() as directory:
+        root = Path(directory)
+        (root / "index.json").write_text(
+            json.dumps({"version": "5.0", "templatePattern": "*_template.json"}),
+            encoding="utf-8",
+        )
+        template = root / "bank" / "freight_template.json"
+        template.parent.mkdir(parents=True)
+        template.write_text(json.dumps({
+            "id": "bank-freight",
+            "name": "支付运费",
+            "enabled": True,
+            "documentBlock": "银行",
+            "documentType": "银行回单",
+            "settlementMethod": "银行支付",
+            "businessType": "运费",
+            "currency": "人民币",
+            "amountSource": "source",
+            "when": {},
+            "matchRules": {
+                "sourceFolders": ["bank"],
+                "flowDirections": ["outflow"],
+                "requiredKeywords": ["OCR中故意不存在的关键词"],
+            },
+            "summary": {"header": "", "body": "支付运费", "separator": " "},
+            "entries": [
+                {"dc": 1, "accountSelector": {"number": "6603", "name": "财务费用"}, "amountFrom": "source.amount"},
+                {"dc": -1, "accountSelector": {"numberFrom": "source.bankAccountNumber", "name": "银行存款_上海银行"}, "amountFrom": "source.amount"},
+            ],
+        }, ensure_ascii=False), encoding="utf-8")
+        prompts = root / "prompts"
+        prompts.mkdir()
+        (prompts / "bank.md").write_text("银行规则", encoding="utf-8")
+        metadata = root / "ocr.json"
+        metadata.write_text(json.dumps({"fields": {}}), encoding="utf-8")
+        text_path = root / "ocr.txt"
+        text_path.write_text("记账日期：2026-07-21", encoding="utf-8")
+        artifact = OcrArtifact(
+            invoice_code="alpha__A12345",
+            source_pdf=root / "A12345.pdf",
+            source_folder="bank",
+            source_side="bank",
+            output_dir=root,
+            text_path=text_path,
+            metadata_path=metadata,
+            text=text_path.read_text(encoding="utf-8"),
+            engine="test",
+            status="success",
+        )
+        decision = analyze_ocr_and_choose_template(
+            artifact,
+            root,
+            selector=FailIfCalledSelector(),
+            final_template_context={
+                "businessMapValues": {
+                    "amount": "12.30",
+                    "transactionAmount": "12.30",
+                    "statementAmount": "12.30",
+                    "amountSource": "bank_statement.ourCreditAmount",
+                    "amountValidated": True,
+                    "bankAccountNumber": "100201",
+                    "flowDirection": "outflow",
+                    "remark": "运费",
+                    "forcedTemplatePath": "bank/freight_template.json",
+                },
+                "dynamicAccountCatalog": {"accounts": [
+                    {"id": "expense", "number": "6603", "fullName": "财务费用"},
+                    {"id": "bank", "number": "100201", "fullName": "银行存款_上海银行"},
+                ]},
+                "dynamicItemClassCatalog": {"classes": []},
+            },
+        )
+        assert decision["analysisStatus"] == "ready_for_review"
+        assert decision["templatePath"] == "bank/freight_template.json"
+        assert decision["selectionMode"] == "statement_remark_exact"
+        assert decision["llmAttempted"] is False
 
 
 def test_extract_bank_transaction_date_prefers_labelled_transaction_date() -> None:

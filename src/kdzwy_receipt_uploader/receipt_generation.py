@@ -119,6 +119,15 @@ def generate_receipts(month_directory: Path, config: MonthConfig, output_directo
         }
         for source_index, item in enumerate(source_entries):
             entry = dict(item)
+            small_scale_purchase = business_values.get("inputTaxDeductible") is False
+            raw_selector = entry.get("accountSelector")
+            raw_account_number = (
+                str(raw_selector.get("number") or "")
+                if isinstance(raw_selector, dict)
+                else str(entry.get("accountNumber") or entry.get("account_number") or "")
+            )
+            if small_scale_purchase and raw_account_number == "22210101":
+                continue
             # Qwen may fill account/amount/explanation, but it cannot add
             # auxiliary accounting to a line where the approved template does
             # not declare it. The live subject capabilities are authoritative.

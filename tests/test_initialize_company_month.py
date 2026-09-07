@@ -23,6 +23,7 @@ from initialize_company_month import (  # noqa: E402
     load_default_bank_exceptions,
     normalize_month,
     normalize_input_settings,
+    normalize_month_defaults,
     normalize_source_settings,
     parse_args,
     resolve_target_accountbook_selector,
@@ -341,29 +342,33 @@ if __name__ == "__main__":
     unittest.main()
 
 
-class InitializeCompanyMonthV7Tests(unittest.TestCase):
+class InitializeCompanyMonthV8Tests(unittest.TestCase):
     def test_new_month_defaults_are_explicit_and_sources_are_disabled(self) -> None:
+        self.assertFalse(
+            normalize_month_defaults(None)["cross_company_upload_enabled"]
+        )
         self.assertEqual(
             normalize_input_settings(None),
-            {"income_cost_filename": "收入成本表.xlsx", "usage_filename": "用途确认信息.xlsx", "usage_column": "E"},
+            {"usage_filename": "用途确认信息.xlsx", "usage_column": "E"},
         )
         sources = normalize_source_settings(None)
         self.assertEqual(set(sources), set(BUILT_IN_SOURCES))
         expected_core = {
             "enabled": False,
-            "mode": "analysis-only",
-            "analysis_stage": "ocr",
-            "preload_items": False,
+            "stage": "ocr",
         }
-        self.assertTrue(all(
-            sources[source] == expected_core
-            for source in ("sales", "purchase", "misc")
-        ))
+        self.assertEqual(sources["sales"], expected_core)
+        self.assertEqual(sources["misc"], expected_core)
+        self.assertEqual(
+            sources["purchase"],
+            {**expected_core, "usage_confirmation_enabled": True},
+        )
         self.assertEqual(
             set(sources["bank"]),
-            {*expected_core, "banks", "exceptions"},
+            {*expected_core, "banks", "statement_columns", "exceptions"},
         )
         self.assertEqual(sources["bank"]["banks"], {})
+        self.assertEqual(sources["bank"]["statement_columns"], {})
         self.assertEqual(
             sources["bank"]["exceptions"],
             load_default_bank_exceptions(),
@@ -378,7 +383,7 @@ class InitializeCompanyMonthV7Tests(unittest.TestCase):
 
         self.assertEqual(sources["bank"]["exceptions"], custom)
 
-    def test_initializer_writes_explicit_v7_dataset_target_and_sources_contract(self) -> None:
+    def test_initializer_writes_explicit_v8_dataset_target_and_sources_contract(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
 
@@ -389,13 +394,21 @@ class InitializeCompanyMonthV7Tests(unittest.TestCase):
             config_name = "company_1_测试公司.json"
             write(root / "config" / "companies" / config_name, {
                 "version": 3, "company_key": "company_1", "company_id": "1",
-                "company_name": "测试公司", "template_company": "weiyu",
+                "company_name": "测试公司", "template_company": "company_1",
             })
             accountbooks = root / "runtime" / "registry" / "accountbooks.json"
-            write(accountbooks, {"version": 2, "accountbooks": [{
-                "key": "company_1", "name": "测试公司", "company_id": "1",
-                "login_account": "account_1", "enabled": True, "session_file": "session.json",
-            }]})
+            write(accountbooks, {"version": 2, "accountbooks": [
+                {
+                    "key": "company_1", "name": "测试公司", "company_id": "1",
+                    "login_account": "account_1", "enabled": True,
+                    "session_file": "session.json",
+                },
+                {
+                    "key": "company_2", "name": "目标公司", "company_id": "2",
+                    "login_account": "account_1", "enabled": True,
+                    "session_file": "target-session.json",
+                },
+            ]})
             write(root / "config" / "template_companies.json", {
                 "version": 2, "default_base_template": "weiyu", "template_companies": [{
                     "key": "weiyu", "name": "微誉", "directory": "weiyu", "enabled": True,
@@ -413,7 +426,7 @@ class InitializeCompanyMonthV7Tests(unittest.TestCase):
                     },
                 },
             )
-            write(root / "templates" / "weiyu" / "index.json", {"version": "5.0"})
+            write(root / "templates" / "company_1" / "index.json", {"version": "5.0"})
             completed = subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
             with (
                 patch.object(month_initializer, "ROOT", root),
@@ -423,17 +436,18 @@ class InitializeCompanyMonthV7Tests(unittest.TestCase):
             ):
                 self.assertEqual(month_initializer.main(), 0)
             project = json.loads((root / "data" / "inbox" / "company_1_测试公司" / "2026-10" / "project.json").read_text(encoding="utf-8"))
-            self.assertEqual(project["version"], 7)
+            self.assertEqual(project["version"], 8)
             self.assertEqual(project["dataset"], {
                 "company_key": "company_1", "company_id": "1", "company_name": "测试公司",
             })
             self.assertEqual(project["target"], {
                 "accountbook_key": "company_1", "company_id": "1", "company_name": "测试公司",
             })
+            self.assertFalse(project["defaults"]["cross_company_upload_enabled"])
             self.assertIn("input", project)
             self.assertTrue(all(
                 set(project["sources"][source]) >= {
-                    "enabled", "mode", "analysis_stage", "preload_items"
+                    "enabled", "stage"
                 }
                 for source in BUILT_IN_SOURCES
             ))
@@ -445,3 +459,28 @@ class InitializeCompanyMonthV7Tests(unittest.TestCase):
                 ),
             )
             self.assertFalse({"company_key", "company_id", "company_name", "company_config", "login_account", "workspace_directory"} & set(project))
+
+            with (
+                patch.object(month_initializer, "ROOT", root),
+                patch.object(month_initializer, "ACCOUNTBOOKS_PATH", accountbooks),
+                patch.object(month_initializer.subprocess, "run", return_value=completed),
+                patch.object(
+                    sys,
+                    "argv",
+                    ["initialize_company_month.py", config_name, "2026-11", "company_2"],
+                ),
+            ):
+                self.assertEqual(month_initializer.main(), 0)
+            cross_project_path = (
+                root / "data" / "inbox" / "company_1_测试公司" / "2026-11" / "project.json"
+            )
+            cross_project = json.loads(cross_project_path.read_text(encoding="utf-8"))
+            self.assertEqual(cross_project["target"], {
+                "accountbook_key": "company_2", "company_id": "2", "company_name": "目标公司",
+            })
+            self.assertTrue(
+                cross_project["defaults"]["cross_company_upload_enabled"]
+            )
+            self.assertFalse(
+                (root / "data" / "inbox" / "company_2" / "2026-11").exists()
+            )

@@ -11,7 +11,11 @@ from openpyxl import Workbook
 PROJECT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT / "src"))
 
-from kdzwy_receipt_uploader.purchase_map import build_purchase_map  # noqa: E402
+from kdzwy_receipt_uploader.purchase_map import (  # noqa: E402
+    build_purchase_map,
+    build_purchase_map_from_pdfs,
+    finalize_purchase_pdf_map,
+)
 
 
 def main() -> None:
@@ -60,6 +64,39 @@ def main() -> None:
             "date": "H",
         }
         assert json.loads(output.read_text(encoding="utf-8"))["26112000002695439356"]["supplierName"] == "供应商A"
+
+        pdf_dir = root / "input" / "purchase"
+        pdf_dir.mkdir(parents=True)
+        invoice_code = "26112000002695439357"
+        pdf = pdf_dir / f"dzfp_{invoice_code}_供应商B_20260818175636.pdf"
+        pdf.write_bytes(b"%PDF-1.4")
+        pdf_output = root / "maps" / "small_scale_purchase_map.json"
+        pdf_report = root / "maps" / "small_scale_purchase_map.report.json"
+        pdf_result = build_purchase_map_from_pdfs(pdf_dir, pdf_output, pdf_report)
+        assert pdf_result["map"][invoice_code]["inputTaxDeductible"] is False
+        assert pdf_result["map"][invoice_code]["supplierName"] == "供应商B"
+
+        ocr_dir = root / "ocr" / invoice_code
+        ocr_dir.mkdir(parents=True)
+        (ocr_dir / "ocr.json").write_text(json.dumps({"fields": {
+            "invoiceNumber": invoice_code,
+            "buyer": "测试公司",
+            "seller": "供应商B",
+            "issueDate": "2026年08月18日",
+            "totalAmountWithTax": "113.00",
+            "taxRate": "13%",
+            "_normalizedText": "供应商B 价税合计（小写）￥113.00 ￥100.00 ￥13.00",
+        }}, ensure_ascii=False), encoding="utf-8")
+        finalized = finalize_purchase_pdf_map(
+            pdf_result, root / "ocr", "测试公司", "2026-08", pdf_output, pdf_report
+        )
+        assert finalized == {"ready": [invoice_code], "blocked": []}
+        values = pdf_result["map"][invoice_code]
+        assert values["amount"] == "113.00"
+        assert values["taxAmount"] == "0.00"
+        assert values["totalAmount"] == "113.00"
+        assert values["invoiceNetAmount"] == "100.00"
+        assert values["invoiceTaxAmount"] == "13.00"
         print("purchase_map 测试通过")
 
 

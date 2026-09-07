@@ -67,11 +67,6 @@ def main() -> int:
     parser.add_argument("--stage", choices=["ocr", "llm", "prepare", "send", "all"], default=None, help="临时覆盖本月 project.json 的统一流程阶段")
     parser.add_argument("--plan", action="store_true", help="只检查并显示计划，不执行流水线")
     parser.add_argument("--allow-confirm", action="store_true", help="仅供 confirm_one/confirm_all 安全入口授权真实上传")
-    parser.add_argument(
-        "--allow-cross-entity-confirm",
-        action="store_true",
-        help="显式允许将法定主体与账套名不同的数据写入目标账套；每次 confirm 都必须传入",
-    )
     parser.add_argument("--limit", type=int, default=0, help="透传给 run_pipeline 的 limit")
     parser.add_argument("--receipt-id", type=str, default="", help="透传给 run_pipeline 的 receipt-id")
     parser.add_argument("--test-upload", action="store_true", help="透传给 run_pipeline 的 test-upload")
@@ -168,14 +163,10 @@ def main() -> int:
                     raise CompanyRegistryError(f"模板公司缺少业务目录：{source_directory}")
                 if not prompt_file.is_file() or not prompt_file.read_text(encoding="utf-8").strip():
                     raise CompanyRegistryError(f"模板公司缺少业务提示词：{prompt_file}")
-            cross_entity = accountbook.name != dataset.entity_name
+            cross_entity = accountbook.key != dataset.key
             internal_mode, analysis_stage = workflow_stage_plan(job.stage)
             if internal_mode == "confirm" and not args.allow_confirm:
                 raise CompanyRegistryError("stage=send/all 只能通过 confirm_one.bat 或 confirm_all.bat 执行")
-            if cross_entity and not job.allow_cross_entity:
-                raise CompanyRegistryError("数据法定主体与目标账套不同，但任务未声明 allow_cross_entity=true")
-            if cross_entity and internal_mode == "confirm" and not args.allow_cross_entity_confirm:
-                raise CompanyRegistryError("跨主体 send/all 必须显式传入 --allow-cross-entity-confirm")
             settings = build_job_settings(defaults, accountbook, dataset, job)
             settings["template_company_key"] = template_company.key
             settings["template_company_name"] = template_company.name
@@ -192,7 +183,7 @@ def main() -> int:
             workspace_root = resolve_project_path(ROOT, str(settings["workspace_root"]))
             runtime_dir = workspace_root / "state" / safe_part(source_key)
             plans.append((accountbook, dataset, job, settings, runtime_dir, session_path))
-            relation = "跨主体测试" if cross_entity else "同主体"
+            relation = "跨主体" if cross_entity else "同主体"
             logger.info("计划任务: source_company=%s target_accountbook=%s month=%s stage=%s source=%s relation=%s", dataset.entity_name, accountbook.name, job.month, job.stage, job.source, relation)
             if not args.concise:
                 print(

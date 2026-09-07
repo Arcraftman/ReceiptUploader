@@ -7,7 +7,6 @@ from kdzwy_receipt_uploader.month_config import MonthConfig, MonthConfigError
 
 def test_month_input_uses_project_mapping() -> None:
     config = MonthConfig.from_mapping("company_17867515", "2026-08", {
-        "income_cost_filename": "收入成本表.xlsx",
         "usage_filename": "用途确认信息.xlsx",
         "usage_column": "E",
     })
@@ -20,6 +19,7 @@ def test_month_input_uses_project_mapping() -> None:
     "company,month,value",
     [
         ("company_17867515", "8月", {}),
+        ("company_17867515", "2026-08", {"income_cost_filename": "收入成本表.xlsx"}),
         ("company_17867515", "2026-08", {"output_dirname": "maps"}),
         ("", "2026-08", {}),
     ],

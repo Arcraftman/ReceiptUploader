@@ -26,7 +26,11 @@ from kdzwy_receipt_uploader.sales_map import (
     build_sales_map_from_pdfs,
     finalize_sales_pdf_map,
 )
-from kdzwy_receipt_uploader.purchase_map import build_purchase_map
+from kdzwy_receipt_uploader.purchase_map import (
+    build_purchase_map,
+    build_purchase_map_from_pdfs,
+    finalize_purchase_pdf_map,
+)
 from kdzwy_receipt_uploader.auxiliary_items import create_auxiliary_item
 from kdzwy_receipt_uploader.item_class import build_auxiliary_expectation, resolve_item_class_id
 from kdzwy_receipt_uploader.item_class_maps import ItemClassMapStore
@@ -710,6 +714,11 @@ def main() -> int:
                             if key in bank_matched
                             and isinstance(value, dict)
                             and value.get("analysisStatus") == "ready_for_review"
+                            and (
+                                not str(bank_matched[key].get("forcedTemplatePath") or "")
+                                or str(value.get("templatePath") or "")
+                                == str(bank_matched[key].get("forcedTemplatePath") or "")
+                            )
                         }
                 artifacts = [
                     artifact
@@ -879,8 +888,9 @@ def main() -> int:
             batch_command.append("--confirm")
         return subprocess.call(batch_command)
     checkpoint("mapping")
+    usage_confirmation_enabled = bool(settings.get("usage_confirmation_enabled", True))
     map_report = _empty_match_report()
-    if pipeline_source_key in {"purchase", "all"}:
+    if pipeline_source_key in {"purchase", "all"} and usage_confirmation_enabled:
         map_report = match_month_directory(input_dir, config, map_path.parent)
     preload_report = None
     preload_result = None
@@ -939,15 +949,48 @@ def main() -> int:
             sales_map_report_path,
         )
     if pipeline_source_key in {"purchase", "all"}:
-        purchase_map_report = build_purchase_map(
-            usage_path, purchase_map_path, purchase_map_report_path
-        )
+        if usage_confirmation_enabled:
+            purchase_map_report = build_purchase_map(
+                usage_path, purchase_map_path, purchase_map_report_path
+            )
+        else:
+            purchase_map_report = build_purchase_map_from_pdfs(
+                input_dir / "purchase", purchase_map_path, purchase_map_report_path
+            )
+            map_report = {
+                "map": {
+                    code: str(values.get("sourcePdf") or "")
+                    for code, values in purchase_map_report["map"].items()
+                },
+                "summary": {
+                    "usageConfirmNumberCount": 0,
+                    "matchedCount": len(purchase_map_report["map"]),
+                    "emptyCount": 0,
+                },
+                "usageConfirmationEnabled": False,
+            }
+            map_path.parent.mkdir(parents=True, exist_ok=True)
+            map_path.write_text(
+                json.dumps(map_report["map"], ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+            map_path.with_name("xlsx_pdf_map.report.json").write_text(
+                json.dumps(
+                    {
+                        **map_report,
+                        "scope": "小规模纳税人：由input/purchase实际PDF直接建立附件映射，不读取XLSX",
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
     if preload_result is not None:
         apply_preloaded_items(sales_map_report["map"], preload_result, 1, "customName", "customerId", "customerNumber")
         apply_preloaded_items(purchase_map_report["map"], preload_result, 5, "supplierName", "supplierId", "supplierNumber")
-    # purchase_map itself contains every numeric row in 用途确认信息; the pipeline
-    # scope is narrower: only usage-confirmed codes with a matched purchase PDF.
-    if pipeline_source_key in {"purchase", "all"}:
+    # The workbook path is narrower than the raw purchase map: only
+    # usage-confirmed codes with a matched purchase PDF remain in scope.
+    if pipeline_source_key in {"purchase", "all"} and usage_confirmation_enabled:
         purchase_map_total_count = len(purchase_map_report["map"])
         purchase_map_report["map"] = {
             code: values for code, values in purchase_map_report["map"].items()
@@ -1354,6 +1397,37 @@ def main() -> int:
                     len(sales_ocr_result["ready"]),
                 )
 
+        if pipeline_source_key in {"purchase", "all"} and not usage_confirmation_enabled:
+            purchase_ocr_result = finalize_purchase_pdf_map(
+                purchase_map_report,
+                receipts_ocr_dir,
+                configured_company,
+                month,
+                purchase_map_path,
+                purchase_map_report_path,
+            )
+            purchase_ocr_blocked_codes = {
+                str(row.get("documentId") or "") for row in purchase_ocr_result["blocked"]
+            }
+            replace_stage_exceptions(
+                workflow_exception_path,
+                pipeline_source_key,
+                "purchase_pdf_ocr",
+                purchase_ocr_result["blocked"],
+            )
+            if purchase_ocr_blocked_codes:
+                allowed_ocr_codes.difference_update(purchase_ocr_blocked_codes)
+                ocr_artifacts = [
+                    artifact for artifact in ocr_artifacts
+                    if artifact.invoice_code in allowed_ocr_codes
+                ]
+                print(
+                    f"[异常分流] 采购PDF精确OCR校验未通过 "
+                    f"{len(purchase_ocr_blocked_codes)} 张，已写入：{workflow_exception_path}"
+                )
+            if purchase_ocr_result["ready"]:
+                logger.info("小规模采购PDF通过精确OCR校验：%s 张", len(purchase_ocr_result["ready"]))
+
         if analysis_stage in {"llm", "all"}:
             checkpoint("llm")
             try:
@@ -1444,6 +1518,11 @@ def main() -> int:
         review_path = resolve_config_path(str(paths_config["preupload_review_file"]), ROOT, company, month, pipeline_source_key)
         if preload_result is not None:
             catalog_note = f"ItemClass已预加载，新增{len(preload_result.created)}个辅助核算对象"
+        elif pipeline_source_key == "purchase" and not usage_confirmation_enabled:
+            print(
+                f"采购PDF真实发票号：{len(source_pdf_codes)}，"
+                f"当前通过范围：{len(allowed_ocr_codes)}；小规模纳税人不使用用途确认信息.xlsx"
+            )
         else:
             catalog_note = "只读读取账套目录" if account_api_for_analysis is not None else "使用本地快照"
         print(f"分析模式完成：stage={analysis_stage}，{catalog_note}，不生成receipt、不保存凭证、不上传附件。")
@@ -1666,7 +1745,10 @@ def main() -> int:
     )
     if pipeline_source_key in {"purchase", "all"}:
         print(f"用途确认发票码：{map_report['summary']['usageConfirmNumberCount']}，匹配 PDF：{map_report['summary']['matchedCount']}，空值：{map_report['summary']['emptyCount']}")
-        print(f"purchase_map：{purchase_map_path}，原始发票数：{purchase_map_report['report']['summary'].get('rawInvoiceCount', purchase_map_report['report']['summary']['invoiceCount'])}，用途确认+PDF筛选后：{purchase_map_report['report']['summary'].get('filteredInvoiceCount', len(purchase_map_report['map']))}，排除：{purchase_map_report['report']['summary'].get('excludedByUsagePdfFilterCount', 0)}，日期冲突：{purchase_map_report['report']['summary']['dateConflictCount']}，供应商冲突：{purchase_map_report['report']['summary']['supplierConflictCount']}")
+        if usage_confirmation_enabled:
+            print(f"purchase_map：{purchase_map_path}，原始发票数：{purchase_map_report['report']['summary'].get('rawInvoiceCount', purchase_map_report['report']['summary']['invoiceCount'])}，用途确认+PDF筛选后：{purchase_map_report['report']['summary'].get('filteredInvoiceCount', len(purchase_map_report['map']))}，排除：{purchase_map_report['report']['summary'].get('excludedByUsagePdfFilterCount', 0)}，日期冲突：{purchase_map_report['report']['summary']['dateConflictCount']}，供应商冲突：{purchase_map_report['report']['summary']['supplierConflictCount']}")
+        else:
+            print(f"purchase_map：{purchase_map_path}，小规模纳税人按实际PDF：{len(purchase_map_report['map'])}，用途确认信息.xlsx：不需要，OCR阻断：{purchase_map_report['report']['summary'].get('ocrBlockedCount', 0)}")
     print(f"正式上传前审查报告：{review_path}，状态：{review_report['reviewStatus']}，警告：{review_report['summary']['warningCount']}")
     checkpoint("preupload_review_complete", artifacts={"preuploadReview": str(review_path.resolve())}, counters={"preuploadWarningCount": review_report["summary"]["warningCount"]})
     if mode == "prepare":

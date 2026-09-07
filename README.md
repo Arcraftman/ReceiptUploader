@@ -45,7 +45,7 @@ quit
 month 17867515 2026-08 17867515
 ```
 
-普通用户必须显式指定 dataset 公司、月份和 target 公司；同主体也要把同一个公司 ID 分别写入 dataset 与 target 参数。每个月份都会独立生成 `project.json` v8，并固定创建 `sales`、`purchase`、`bank`、`misc` 四类资料目录。四个业务只配置 `enabled` 和统一 `stage`；辅助核算预加载固定为 auto。
+普通用户必须显式指定 dataset 公司、月份和 target 公司；同主体也要把同一个公司 ID 分别写入 dataset 与 target 参数。每个月份都会独立生成 `project.json` v8，并固定创建 `sales`、`purchase`、`bank`、`misc` 四类资料目录。四个业务都配置 `enabled` 和统一 `stage`；purchase 另有 `usage_confirmation_enabled`，辅助核算预加载固定为 auto。
 
 ### 0.2 创建月份后的资料目录
 
@@ -57,13 +57,13 @@ data\inbox\company_<公司ID>_<真实公司名>\<YYYY-MM>\input\
 ├─ purchase\
 ├─ bank\
 ├─ misc\
-└─ 用途确认信息.xlsx
+└─ 用途确认信息.xlsx       # 仅 purchase.usage_confirmation_enabled=true 时需要
 ```
 
 - 销项发票放入 `input/sales/`。
 - 进项和费用发票放入 `input/purchase/`。
 - 银行 PDF 和同名 Excel 放入 `input/bank/`；所有银行规则只配置在当月 `project.json.sources.bank.banks`。
-- 两个 Excel 放在 `input/` 根目录。
+- `用途确认信息.xlsx` 放在 `input/` 根目录；小规模纳税人将 `sources.purchase.usage_confirmation_enabled` 设为 `false` 后不需要该文件。
 
 ### 0.3 从 OCR 到正式上传的最短流程
 
@@ -72,9 +72,8 @@ data\inbox\company_<公司ID>_<真实公司名>\<YYYY-MM>\input\
 1. 编辑 `data/inbox/company_17867515_上海微誉信息技术有限公司/2026-08/project.json`，在要运行的业务对象（例如 `sources.sales`）中设置：
 
    ```json
-   "mode": "analysis-only",
-   "analysis_stage": "ocr",
-   "preload_items": false
+   "enabled": true,
+   "stage": "ocr"
    ```
 
 2. 执行 OCR：
@@ -91,7 +90,7 @@ data\inbox\company_<公司ID>_<真实公司名>\<YYYY-MM>\input\
 
    当前默认模型是 `qwen3.7-flash`，配置位于 `config/pipeline.defaults.json`。
 
-4. 将本月 `project.json` 中对应业务的 `analysis_stage` 改为 `llm`，再次执行分析：
+4. 将本月 `project.json` 中对应业务的 `stage` 改为 `llm`，再次执行分析：
 
    ```bat
    commands\run_company.bat company_17867515_上海微誉信息技术有限公司 2026-08
@@ -106,11 +105,11 @@ data\inbox\company_<公司ID>_<真实公司名>\<YYYY-MM>\input\
 6. 人工复核通过后，将本月 `project.json` 中对应业务改为：
 
    ```json
-   "mode": "dry-run",
-   "analysis_stage": "existing"
+   "enabled": true,
+   "stage": "prepare"
    ```
 
-7. 执行上传前演练；此命令不会真实上传：
+7. 生成待上传 receipt 并执行上传前校验；此命令不会真实上传：
 
    ```bat
    commands\run_company.bat company_17867515_上海微誉信息技术有限公司 2026-08
@@ -212,7 +211,7 @@ commands\confirm_all.bat company_17867515_上海微誉信息技术有限公司 2
 账套：company_17867515（上海微誉信息技术有限公司）
 ```
 
-资料与目标账套是同一主体。若以后启用跨主体任务，仍必须显式设置 `allow_cross_entity=true`，真实上传时还要通过专用确认 BAT 授权。
+在启动器输入 `month B YYYY-MM A` 时，系统自动把 B 公司月份项目中的 `cross_company_upload_enabled` 设为 `true`，运行目标为 A。若随后把该值改成 `false`，运行器自动改用 B 自己的账套，效果等同于 `month B YYYY-MM B`；项目中原先记录的 A 不再作为有效运行目标。无论开关值如何，始终只使用 B 的这一份资料目录，不为 A 复制资料。
 
 ---
 
@@ -301,7 +300,7 @@ commands\discover_companies.bat
 commands\discover_companies.bat --dataset 17867515 --month 2026-09 --target 17867515
 ```
 
-`--dataset` 和 `--target` 支持精确的 company ID、`company_key`、真实公司全名或标准配置文件名；日常优先使用稳定且无需中文转义的 company ID。其他情况请进入 `commands\start.bat`，使用 `month DATASET_COMPANY_ID YYYY-MM TARGET_COMPANY_ID`。新月份会创建独立 `project.json` v7，显式保存 dataset 和 target，四类 source 默认关闭且不继承其他月份。
+`--dataset` 和 `--target` 支持精确的 company ID、`company_key`、真实公司全名或标准配置文件名；日常优先使用稳定且无需中文转义的 company ID。其他情况请进入 `commands\start.bat`，使用 `month DATASET_COMPANY_ID YYYY-MM TARGET_COMPANY_ID`。新月份会创建独立 `project.json` v8，显式保存 dataset 和 target，四类 source 默认关闭且不继承其他月份。
 
 成功后，每家公司会有独立会话：
 
@@ -339,7 +338,7 @@ commands\discover_companies.bat
 month 18458361 2026-09 20151038
 ```
 
-公司发现阶段生成的内部身份记录会被安全复用。若缺少模板记录，系统根据 `config/template_companies.json` 的 `default_base_template` 准备公司独立模板；当前基础模板配置为 `weiyu`。随后创建指定月份的四类资料目录以及独立的 `project.json` v7。
+公司发现阶段生成的内部身份记录会被安全复用。若缺少模板记录，系统根据 `config/template_companies.json` 的 `default_base_template` 准备公司独立模板；当前基础模板配置为 `company_17867515`。随后创建指定月份的四类资料目录以及独立的 `project.json` v8。
 
 创建完成后会得到：
 
@@ -391,28 +390,33 @@ data/inbox/company_<company_id>_<真实公司名>/<YYYY-MM>/project.json
   "defaults": {
     "analysis_validation": "strict",
     "purpose": "production",
-    "allow_cross_entity": false
+    "cross_company_upload_enabled": false
   },
   "sources": {
     "sales": { "enabled": true, "stage": "ocr" },
-    "purchase": { "enabled": false, "stage": "ocr" },
+    "purchase": { "enabled": false, "stage": "ocr", "usage_confirmation_enabled": true },
     "bank": {
       "enabled": false,
       "stage": "ocr",
       "banks": {
         "zhaoshangyinhang": {
+          "enabled": false,
           "bank_account_number": "100204",
           "split": {
             "parts_per_page": 3,
             "filename_index_length": 15,
             "filename_index_prefix": "C"
           },
-          "statement_columns": {
-            "index_column": null,
-            "bank_debit_column": null,
-            "bank_credit_column": null,
-            "counterparty_name_column": null
-          }
+          "remark_template_map": {}
+        }
+      },
+      "statement_columns": {
+        "zhaoshangyinhang": {
+          "index_column": null,
+          "bank_debit_column": null,
+          "bank_credit_column": null,
+          "counterparty_name_column": null,
+          "remark_column": null
         }
       },
       "exceptions": [
@@ -424,7 +428,7 @@ data/inbox/company_<company_id>_<真实公司名>/<YYYY-MM>/project.json
 }
 ```
 
-新月份不会继承上个月的业务配置。`sales`、`purchase`、`bank`、`misc` 四个 source key 固定存在，每个都必须精确填写 `enabled`、`stage`；新月份默认全部关闭。
+新月份不会继承上个月的业务配置。`sales`、`purchase`、`bank`、`misc` 四个 source key 固定存在，每个都必须精确填写 `enabled`、`stage`；新月份默认全部关闭。purchase 的 `usage_confirmation_enabled` 默认为 `true`。
 
 ### 关键字段
 
@@ -435,46 +439,29 @@ data/inbox/company_<company_id>_<真实公司名>/<YYYY-MM>/project.json
 | 月份 `project.json` | `month` | 本配置所属月份，必须与目录名和命令一致 |
 | 月份 `project.json` | `dataset.company_key/company_id/company_name` | 本月资料来源公司，三项必须与公司配置精确一致 |
 | 月份 `project.json` | `target.accountbook_key/company_id/company_name` | 本月凭证最终写入的目标账套，三项必须与 `accountbooks.json` 精确一致 |
-| 月份 `project.json` | `sources.<业务>.mode` | 该业务本月的安全级别 |
-| 月份 `project.json` | `sources.<业务>.analysis_stage` | 该业务使用 OCR、Qwen 或已有分析 |
-| 月份 `project.json` | `sources.<业务>.preload_items` | 该业务是否检查并创建缺失客户/供应商 |
-| 月份 `project.json` | `sources.bank.banks` | 本月全部银行的裁剪与流水四列配置 |
+| 月份 `project.json` | `sources.<业务>.enabled` | 该业务本月是否进入执行计划 |
+| 月份 `project.json` | `sources.<业务>.stage` | 统一生命周期：`ocr`、`llm`、`prepare`、`send` 或 `all` |
+| 月份 `project.json` | `sources.purchase.usage_confirmation_enabled` | `true`：一般纳税人，必须读取用途确认表；`false`：小规模纳税人，不需要该表，采购范围按实际 PDF |
+| 月份 `project.json` | `sources.bank.banks.<bank>.enabled` | 单家银行是否进入执行；外层 `sources.bank.enabled` 仍是总开关 |
+| 月份 `project.json` | `sources.bank.banks` | 各银行科目、裁剪规则和备注精确值到模板的映射 |
+| 月份 `project.json` | `sources.bank.statement_columns` | 按 bank key 独立保存各 XLSX 的流水号、借方、贷方、对手方和备注五列 |
 | 月份 `project.json` | `sources.bank.exceptions` | 只填写流水表对手方列出现的完整名称；命中项在普通流程前统一隔离 |
 | `config/bank_exception.defaults.json` | 新公司、新月份首次创建时复制的通用银行 exception 默认值；不覆盖已有月份 |
-| 月份 `project.json` | `allow_cross_entity` | 本月是否允许资料主体和目标账套不同 |
-| 月份 `project.json` | `sources` | 本月四类业务各自是否进入执行计划 |
+| 月份 `project.json` | `defaults.cross_company_upload_enabled` | `month B ... A` 自动为 `true` 并使用 A；改为 `false` 后自动使用 B 自己的账套，等同 `month B ... B`；始终不复制资料目录 |
 
 配置文件名用于人工识别，`company_key` 用于程序内部稳定关联；二者不要求相同。运行 BAT 时传入资料公司的配置文件名并省略 `.json`，再显式传入 `YYYY-MM`。运行器据此读取对应月份的 `project.json`，并以其中的 `target` 决定最终账套；不会从命令参数猜目标，也不会回退到其他月份。
 
-### mode 含义
+### stage 含义
 
 | 值 | 行为 |
 |---|---|
-| `analysis-only` | 只处理映射、OCR 或 Qwen，不生成上传凭证 |
-| `prepare` | 读取账套并生成准备数据，不上传 |
-| `dry-run` | 生成正式结构的 receipt 并本地校验，不调用保存接口 |
-| `confirm` | 真实保存凭证和上传附件 |
-
-普通 `run_company.bat` 不接受 mode 参数，并拒绝执行 `confirm`；真实上传只能使用 `confirm_one.bat` 或 `confirm_all.bat`。
-
-### analysis_stage 含义
-
-| 值 | 行为 |
-|---|---|
-| `ocr` | 只做 OCR，不调用 Qwen，不需要账套会话 |
+| `ocr` | 建立业务 map、执行 OCR 和固定校验，不生成 receipt |
 | `llm` | 读取已有 OCR，调用百炼 `qwen3.7-flash`，并读取动态账套科目和 Item |
-| `existing` | 不做 OCR、不调用 Qwen，复用已经人工批准的分析 |
-| `all` | OCR 后立刻执行 Qwen；首次运行不建议使用 |
+| `prepare` | 复用已经人工批准的分析，生成待复核 receipt，不上传 |
+| `send` | 复用已有分析和 receipt，执行正式提交前校验并上传 |
+| `all` | 连续执行 OCR、LLM、receipt 生成和正式上传；仅在整条链路已复核时使用 |
 
-### preload_items 特别说明
-
-| 值 | 行为 |
-|---|---|
-| `false` | 不创建远端客户或供应商，最安全 |
-| `once` | 输入 Excel 变化后检查一次，并创建缺失客户或供应商 |
-| `auto` | 每次都检查并可能创建，日常不建议使用 |
-
-`preload_items=once/auto` 是远端写操作，即使当前是分析流程也可能创建辅助核算对象。第一次 OCR 建议设置为 `false`；确认 Excel 中客户和供应商名称无误后再决定是否启用。
+`preload_items` 不再是月份配置字段。v8 运行时固定按实际业务 map 核对当前目标账套的客户和供应商目录；已有项不修改，只创建缺失项。该步骤可能产生远端辅助核算写入，因此运行前必须确认 dataset、target 和业务 map 正确。
 
 ---
 
@@ -486,23 +473,23 @@ data/inbox/company_<company_id>_<真实公司名>/<YYYY-MM>/project.json
 month 17867515 2026-08 17867515
 ```
 
-菜单月份命令接收 dataset 公司 ID、`YYYY-MM` 和 target 公司 ID，三项缺一不可。系统把两个身份完整写入新月份的 `project.json` v7；四类 source 默认关闭且不继承其他月份。
+菜单月份命令接收 dataset 公司 ID、`YYYY-MM` 和 target 公司 ID，三项缺一不可。系统把两个身份完整写入新月份的 `project.json` v8；四类 source 默认关闭且不继承其他月份。
 
 标准结构：
 
 ```text
 data/inbox/company_<company_id>_<真实公司名>/<YYYY-MM>/
-├─ project.json                   # 本月唯一运行配置：dataset、target、mode、stage、sources
+├─ project.json                   # v8 本月唯一运行配置：dataset、target、defaults、sources
 ├─ input/
 │  ├─ sales/
 │  ├─ purchase/
 │  ├─ bank/
 │  ├─ misc/
-│  └─ 用途确认信息.xlsx
+│  └─ 用途确认信息.xlsx          # purchase 开关为 true 时才需要
 └─ （生成物不放在 data；统一进入隔离 workspaces）
 ```
 
-用户按月份只维护 `project.json` 和 `input/`。同主体生成物位于 `workspaces/<login_account>/<target_accountbook_key>/<YYYY-MM>/generated/`；跨主体资料位于 `workspaces/<login_account>/<target_accountbook_key>/from_<dataset>/<YYYY-MM>/generated/`。
+用户按月份只维护 dataset 公司目录中的一份 `project.json` 和 `input/`。同主体生成物位于 `workspaces/<login_account>/<target_accountbook_key>/<YYYY-MM>/generated/`；跨主体只把运行生成物隔离在 `workspaces/<login_account>/<target_accountbook_key>/from_<dataset>/<YYYY-MM>/generated/`，资料仍从原 dataset 目录读取，不会在 target 公司下复制第二份 `input/`。
 
 ### sales 资料
 
@@ -513,11 +500,12 @@ data/inbox/company_<company_id>_<真实公司名>/<YYYY-MM>/
 ### purchase 资料
 
 - 进项和费用发票 PDF 放在 `input/purchase/`。
-- `用途确认信息.xlsx` 是特殊匹配依据，不能省略。
+- 一般纳税人设置 `sources.purchase.usage_confirmation_enabled=true`，`用途确认信息.xlsx` 是特殊匹配依据，不能省略。
+- 小规模纳税人设置 `sources.purchase.usage_confirmation_enabled=false`，不需要该表；采购范围按实际 PDF，价税合计计入成本/费用，不生成进项税分录。
 - 资料公司必须是购买方，销售方作为供应商。
 - 不能只凭 OCR 商品名称猜测采购用途。
 
-`用途确认信息.xlsx` 仅服务于 purchase；sales 不读取任何收入成本表。
+`用途确认信息.xlsx` 仅服务于启用用途确认的 purchase；sales 不读取任何收入成本表。
 
 ### bank 资料与唯一配置
 
@@ -546,11 +534,12 @@ input/bank/
 ```json
 "sources": {
   "sales": { "enabled": true, "stage": "ocr" },
-  "purchase": { "enabled": false, "stage": "ocr" },
+  "purchase": { "enabled": false, "stage": "ocr", "usage_confirmation_enabled": true },
   "bank": {
     "enabled": false,
     "stage": "ocr",
     "banks": {},
+    "statement_columns": {},
     "exceptions": ["TIPS电子缴税款业务待报解预算收入"]
   },
   "misc": { "enabled": false, "stage": "ocr" }
@@ -562,9 +551,8 @@ input/bank/
 确认 `sources.sales` 中设置：
 
 ```json
-"mode": "analysis-only",
-"analysis_stage": "ocr",
-"preload_items": false
+"enabled": true,
+"stage": "ocr"
 ```
 
 运行：
@@ -597,8 +585,8 @@ workspaces/account_1/company_17867515/2026-08/generated/ocr/sales/
 把 `2026-08/project.json` 的 `sources.sales` 改为：
 
 ```json
-"mode": "analysis-only",
-"analysis_stage": "llm"
+"enabled": true,
+"stage": "llm"
 ```
 
 运行：
@@ -633,13 +621,13 @@ workspaces/account_1/company_17867515/2026-08/generated/ocr/sales/concise_templa
 
 有任何错误就修改模板或提示词，然后重新运行 Qwen。不要带着错误进入 dry-run。
 
-### 第 5 步：执行 dry-run
+### 第 5 步：生成待上传 receipt
 
 把 `2026-08/project.json` 的 `sources.sales` 改为：
 
 ```json
-"mode": "dry-run",
-"analysis_stage": "existing"
+"enabled": true,
+"stage": "prepare"
 ```
 
 运行：
@@ -659,10 +647,11 @@ workspaces/account_1/company_17867515/2026-08/generated/maps/sales/preupload_rev
 
 ### 第 6 步：真实上传一张
 
-`2026-08/project.json` 的 `sources.sales` 必须保持：
+人工复核 receipt 并完成所有上传前校验后，把 `sources.sales` 改为：
 
 ```json
-"analysis_stage": "existing"
+"enabled": true,
+"stage": "send"
 ```
 
 运行：
@@ -701,7 +690,7 @@ purchase 的执行顺序与 sales 一致：
 
 1. 只启用 `purchase`。
 2. 在本月 `project.json` 设置 `analysis-only + ocr`，并运行 `commands\run_company.bat company_17867515_上海微誉信息技术有限公司 2026-08`。
-3. 检查 OCR 和用途确认匹配。
+3. 检查 OCR；`usage_confirmation_enabled=true` 时还要检查用途确认匹配，`false` 时检查实际 PDF 清点。
 4. 设置 `analysis-only + llm` 并再次运行。
 5. 运行 `commands\analysis_report.bat company_17867515_上海微誉信息技术有限公司 2026-08 purchase`。
 6. 人工检查模板、分录、供应商和税额。
@@ -710,8 +699,8 @@ purchase 的执行顺序与 sales 一致：
 purchase 必须额外检查：
 
 - 资料公司是否为购买方。
-- 发票销售方是否与用途确认表中的供应商一致。
-- 发票号是否进入用途确认范围。
+- 开启用途确认时，发票销售方是否与用途确认表中的供应商一致，发票号是否进入用途确认范围。
+- 关闭用途确认时，票面税额是否仅作审计保留、价税合计是否全额计入成本/费用、是否未生成进项税分录。
 - 采购商品与已验证的运杂费、手续费、通讯费、物业水电费分类是否正确。
 - 原材料、固定资产、办公、差旅、维修等当前无已验证固定模板的业务是否正确进入 `blocked`。
 - 专票进项税和普票价税合计取值是否正确。
@@ -728,11 +717,11 @@ purchase 必须额外检查：
 
 ### 第 1 步：准备银行文件和当月配置
 
-将每家银行的同名 `<bank_key>.pdf` 和 `<bank_key>.xlsx` 放入 `input/bank/`，然后在当月 `project.json.sources.bank.banks` 中完整配置每家银行的 `bank_account_number`、`split` 和 `statement_columns`。
+只需为启用的银行放入同名 `<bank_key>.pdf` 和 `<bank_key>.xlsx`。在 `sources.bank.banks` 配置单银行 `enabled`、`bank_account_number`、`split`、`remark_template_map`，在同级 `sources.bank.statement_columns` 配置该 XLSX 的五列位置。
 
 ### 第 2 步：显式启用 bank
 
-当月 `sources.bank` 必须显式设置 `enabled=true`、`mode=analysis-only`、`analysis_stage=ocr`、`preload_items=false`。bank 入口只读取和校验配置，不会修改 `project.json`。
+当月 `sources.bank` 必须显式设置 `enabled=true`、`stage=ocr`，至少一家 `banks.<bank_key>.enabled=true`，并完整保留 `banks`、`statement_columns` 与 `exceptions`。bank 入口只读取和校验配置，不会修改 `project.json`。
 
 ### 第 3 步：运行银行裁剪、特殊对象分流、剩余 OCR 和流水匹配
 
@@ -781,15 +770,15 @@ OCR 阶段固定执行“全部银行裁剪 → 按 PDF 关键词分离特殊回
 
 现金流入时，如贷方列为有效金额、借方列又完全由一串或多串数字组成，系统将这些数字按顺序直接设为 `explanation_body`；不会附加模板原 body，含普通文字时也不会触发。每张已匹配回单的交易/记账日期由 OCR 原文确定，只有“银行存款”分录的摘要末尾追加一个空格和 `YYYY-MM-DD`，对方科目分录保留不带日期的基础摘要。
 
-银行模板使用 `flowDirections` 将收款和付款在模型调用前硬隔离。规则唯一时系统直接选择模板，不消耗 Qwen 调用；只有仍存在多个合法候选时才调用模型。内部转账（对手方等于资料公司）保持 blocked。若明确把本月 bank 的 `preload_items` 设为 `"once"` 或 `"auto"`，系统会按流水方向在目标账套创建缺少的客户/供应商；该配置属于远端写操作，默认 `false` 不创建。
+银行模板使用 `flowDirections` 将收款和付款在模型调用前硬隔离。规则唯一时系统直接选择模板，不消耗 Qwen 调用；只有仍存在多个合法候选时才调用模型。内部转账（对手方等于资料公司）保持 blocked。v8 不接受月度 `preload_items` 字段；运行时会依据普通银行 map 和目标账套目录自动核对并创建缺失的客户或供应商。
 
 模板选择时会注入当前 bank key 的 `bank_account_number`。模板中名为“银行存款”的分录会在运行时强制解析为这个科目号；分析文件和最终 receipt 生成前还会再次校验。配置科目不存在、模板没有且仅有一条银行存款分录，或已有分析使用了其他银行科目时，任务立即阻断。
 
 数组中的完整名称优先于借贷方向分类，会在普通 OCR 前把对应 PDF 复制到特殊目录并排除；未配置姓名仍使用保守中文姓名规则作为兜底跳过。使用 `exceptions dataset公司ID YYYY-MM` 查看全部特殊对象、裁剪原件和特殊副本；`unmatched` 只显示未被 exception 接管的普通未匹配记录。
 
-下一步把 bank 设置为 `mode=analysis-only、analysis_stage=llm` 生成并复核 `generated/ocr/bank/template_analysis.json`。复核后改为 `mode=prepare、analysis_stage=existing`，这时才生成最终 `generated/receipts/bank/receipt_*/receipt.json`，并全部保持 `draft=true`。用户补齐并复核后手动改为 `draft=false`。
+下一步把 bank 设置为 `stage=llm`，生成并复核 `generated/ocr/bank/template_analysis.json`。复核后改为 `stage=prepare`，这时才生成最终 `generated/receipts/bank/receipt_*/receipt.json`，并全部保持 `draft=true`。用户补齐并复核后手动改为 `draft=false`；全部校验通过后才可改为 `stage=send`。
 
-只有在 `prepare+existing` 之后才能运行 `verify dataset公司ID YYYY-MM`。它逐条列出全部 `draft=true` 的号码、receiptId 和最终路径，并对 `draft=false` 文件执行与上传相同的字段、借贷平衡和附件校验。dry-run 和未来真实提交都会在执行前自动重复该检查；只要仍有草稿或无效 receipt，整批停止。
+只有在 `stage=prepare` 生成最终 receipt 后才能运行 `verify dataset公司ID YYYY-MM`。它逐条列出全部 `draft=true` 的号码、receiptId 和最终路径，并对 `draft=false` 文件执行与上传相同的字段、借贷平衡和附件校验。`stage=send` 和 `stage=all` 都会在提交前自动重复该检查；只要仍有草稿或无效 receipt，整批停止。
 
 验证还会以当前普通 `bank_map` 为白名单。旧流程生成、但后来已被 exception 分流的 receipt 会显示为“旧/特殊产物”并阻断，不能因手工改成 `draft=false` 而混入提交。
 

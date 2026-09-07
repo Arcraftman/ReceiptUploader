@@ -7,12 +7,12 @@
              │
              ├── templates/<template_company>/（跨月份共享）
              │
-             └── 月份 project.json v7
+             └── 月份 project.json v8
                    ├── dataset：明确资料来源公司
                    ├── target：明确目标账套
                    ├── input：本月 Excel 文件名与列
                    ├── defaults：四个业务共享的高级默认值
-                   └── sources：四个业务各自精确的 enabled/stage 与直接覆盖
+                   └── sources：四个业务各自精确的 enabled/stage；purchase 可声明用途确认开关
                          └── bank.banks：当月多银行科目、裁剪与流水列的唯一配置源
 
 公司发现 ──> runtime/registry/accountbooks.json v2（自动生成）
@@ -36,14 +36,14 @@ scripts/windows/                  登录、发现与菜单
 src/kdzwy_receipt_uploader/       核心应用包
 ```
 
-同主体工作区为 `workspaces/<login>/<target>/<month>`；跨主体增加 `from_<source_company_key>` 层。
+同主体工作区为 `workspaces/<login>/<target>/<month>`；跨主体增加 `from_<source_company_key>` 层。该层只隔离生成物和运行状态，输入始终读取 source/dataset 公司原月份目录，不复制 target 公司的第二份资料目录。
 
 ## 运行链路
 
 ```text
-project.json v7 预检
+project.json v8 预检
   -> dataset、目标账套和会话身份校验
-  -> sales/purchase XLSX 与 PDF 映射；bank 确定性拆分
+  -> sales 按实际 PDF；purchase 按用途确认表+PDF或小规模实际 PDF；bank 确定性拆分
   -> OCR
   -> 规则缩小模板候选
   -> Qwen 结构化模板选择
@@ -57,8 +57,8 @@ project.json v7 预检
 
 - `project.json.dataset` 的 key、公司 ID、公司名必须同时匹配资料公司配置。
 - `project.json.target` 的 key、公司 ID、公司名必须同时匹配运行期账套注册表。
-- 每月 source 独立，四个业务都必须精确声明 `enabled/stage`；新月份默认全部关闭，不继承其他月份。
-- bank 不再使用第二份裁剪配置；每家银行的 `bank_account_number`、`split` 和 `statement_columns` 统一放在 `project.json.sources.bank.banks`。
+- 每月 source 独立，四个业务都必须精确声明 `enabled/stage`；purchase 另有默认开启的 `usage_confirmation_enabled`。新月份默认全部业务关闭，不继承其他月份。
+- bank 不再使用第二份裁剪文件；银行开关、科目、裁剪和备注模板映射放在 `project.json.sources.bank.banks`，不同 XLSX 的五列定义独立放在同级 `sources.bank.statement_columns`。
 - 每家银行的固定科目号会注入模板候选与提示词，并在模板渲染时覆盖历史模板中的银行存款科目；已有分析和最终 receipt 生成前再次强校验。
 - 银行现金流入记录的非金额借方单元格若完全由数字串组成，这些数字会直接替换模板 `explanation_body`；银行存款分录另从 OCR 原文追加交易日期，且已有分析复用与最终 receipt 前都会校验这两项确定性规则。
 - bank 模板先按流水方向硬筛选；唯一候选走确定性选择，多个合法候选才调用精简上下文的 Qwen。辅助核算对象每次固定从 bank map 自动核对并补充到目标账套。

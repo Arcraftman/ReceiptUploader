@@ -75,5 +75,32 @@ def test_removed_templates_config_key_is_rejected() -> None:
         raise AssertionError("旧 templates 配置键必须被拒绝")
 
 
+def test_small_scale_purchase_omits_input_tax_entry() -> None:
+    engine = VoucherTemplateEngine([{
+        "name": "小规模采购",
+        "when": {"itemClass": "供应商"},
+        "entries": [
+            {"dc": 1, "accountSelector": {"number": "560107"}, "amountFrom": "purchase_map.amount"},
+            {"dc": 1, "accountSelector": {"number": "22210101"}, "amountFrom": "purchase_map.taxAmount"},
+            {"dc": -1, "accountSelector": {"number": "220201"}, "amountFrom": "purchase_map.totalAmount"},
+        ],
+    }])
+    context = TemplateContext(
+        invoice_code="1",
+        sales_map={},
+        accountbook={},
+        source={"itemClass": "供应商"},
+        purchase_map={"1": {
+            "amount": "113.00",
+            "taxAmount": "0.00",
+            "totalAmount": "113.00",
+            "inputTaxDeductible": False,
+        }},
+    )
+    rendered = engine.render_for(context)
+    assert [entry["accountSelector"]["number"] for entry in rendered["entries"]] == ["560107", "220201"]
+    assert [entry["amount"] for entry in rendered["entries"]] == ["113.00", "113.00"]
+
+
 if __name__ == "__main__":
     main()

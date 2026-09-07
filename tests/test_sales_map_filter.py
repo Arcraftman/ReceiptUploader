@@ -21,7 +21,7 @@ def main() -> None:
         (input_root / "sales").mkdir(parents=True)
         for code in ("1001", "1002", "1003"):
             (input_root / "sales" / f"dzfp_{code}_customer.pdf").write_bytes(b"%PDF")
-        cfg = MonthConfig.from_mapping("weiyu", "2026-08", {"income_cost_filename": "收入成本表.xlsx", "usage_filename": "用途确认信息.xlsx", "usage_column": "E"})
+        cfg = MonthConfig.from_mapping("weiyu", "2026-08", {"usage_filename": "用途确认信息.xlsx", "usage_column": "E"})
         sales_map = {
             "1001": {"amount": 100.0, "taxAmount": 13.0, "totalAmount": 113.0, "date": "2026-08-31"},
             "1002": {"amount": 200.0, "taxAmount": 26.0, "totalAmount": 226.0, "date": "2026-08-31"},

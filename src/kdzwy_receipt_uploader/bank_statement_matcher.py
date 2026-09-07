@@ -230,7 +230,7 @@ def _flow_fields(debit_raw: Any, credit_raw: Any) -> dict[str, Any]:
     }
 
 
-def _required_columns(bank_key: str, bank_config: Mapping[str, Any]) -> tuple[str, str, str, str]:
+def _required_columns(bank_key: str, bank_config: Mapping[str, Any]) -> tuple[str, str, str, str, str]:
     raw_columns = bank_config.get("statement_columns")
     if not isinstance(raw_columns, Mapping):
         raise BankStatementMatchError(
@@ -241,6 +241,7 @@ def _required_columns(bank_key: str, bank_config: Mapping[str, Any]) -> tuple[st
         "bank_debit_column",
         "bank_credit_column",
         "counterparty_name_column",
+        "remark_column",
     )
     values: list[str] = []
     for label in labels:
@@ -256,7 +257,7 @@ def _required_columns(bank_key: str, bank_config: Mapping[str, Any]) -> tuple[st
                 f"{bank_key}.{label} 不是有效 Excel 列：{value}"
             ) from exc
         values.append(value)
-    return values[0], values[1], values[2], values[3]
+    return values[0], values[1], values[2], values[3], values[4]
 
 
 def _read_statement_rows(
@@ -267,12 +268,13 @@ def _read_statement_rows(
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, str]]:
     if not statement_path.is_file():
         raise BankStatementMatchError(f"配置中的银行流水 Excel 不存在：{statement_path}")
-    index_column, debit_column, credit_column, counterparty_column = _required_columns(bank_key, bank_config)
+    index_column, debit_column, credit_column, counterparty_column, remark_column = _required_columns(bank_key, bank_config)
     index_col = column_index_from_string(index_column)
     debit_col = column_index_from_string(debit_column)
     credit_col = column_index_from_string(credit_column)
     counterparty_col = column_index_from_string(counterparty_column)
-    max_col = max(index_col, debit_col, credit_col, counterparty_col)
+    remark_col = column_index_from_string(remark_column)
+    max_col = max(index_col, debit_col, credit_col, counterparty_col, remark_col)
     split_config = bank_config.get("split")
     if not isinstance(split_config, Mapping):
         raise BankStatementMatchError(f"{bank_key}.split 必须是对象")
@@ -300,6 +302,11 @@ def _read_statement_rows(
                     continue
                 flow = _flow_fields(values[debit_col - 1], values[credit_col - 1])
                 counterparty_name = str(values[counterparty_col - 1] or "").strip()
+                remark = str(values[remark_col - 1] or "").strip()
+                remark_template_map = bank_config.get("remark_template_map")
+                if not isinstance(remark_template_map, Mapping):
+                    remark_template_map = {}
+                forced_template_path = str(remark_template_map.get(remark) or "").strip()
                 if flow["flowDirection"] == "outflow":
                     counterparty_type = "supplier"
                     item_class = "供应商"
@@ -318,6 +325,9 @@ def _read_statement_rows(
                     "counterpartyTypeHint": counterparty_type,
                     "itemClassHint": item_class,
                     "counterpartyRoleSource": "statement_direction_hint",
+                    "remark": remark,
+                    "forcedTemplatePath": forced_template_path,
+                    "templateRouteSource": "statement_remark_exact" if forced_template_path else "standard_rules",
                     **({"supplierName": counterparty_name} if counterparty_type == "supplier" else {}),
                     **({"customerName": counterparty_name, "customName": counterparty_name} if counterparty_type == "customer" else {}),
                     "statement": {
@@ -328,6 +338,7 @@ def _read_statement_rows(
                         "bankDebitColumn": debit_column,
                         "bankCreditColumn": credit_column,
                         "counterpartyNameColumn": counterparty_column,
+                        "remarkColumn": remark_column,
                     },
                     **flow,
                 })
@@ -342,6 +353,7 @@ def _read_statement_rows(
         "bank_debit_column": debit_column,
         "bank_credit_column": credit_column,
         "counterparty_name_column": counterparty_column,
+        "remark_column": remark_column,
     }
 
 
@@ -537,6 +549,9 @@ def match_bank_statements(
                 "counterpartyTypeHint": statement["counterpartyTypeHint"],
                 "itemClassHint": statement["itemClassHint"],
                 "counterpartyRoleSource": statement["counterpartyRoleSource"],
+                "remark": statement["remark"],
+                "forcedTemplatePath": statement["forcedTemplatePath"],
+                "templateRouteSource": statement["templateRouteSource"],
                 **({"supplierName": statement["supplierName"]} if statement.get("supplierName") else {}),
                 **({"customerName": statement["customerName"], "customName": statement["customName"]} if statement.get("customerName") else {}),
                 "bankDebitRaw": statement["bankDebitRaw"],

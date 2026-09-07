@@ -10,6 +10,7 @@ from kdzwy_receipt_uploader.bank_receipt_splitter import BankReceiptSplitError
 from kdzwy_receipt_uploader.company_registry import (
     CompanyRegistryError,
     validate_bank_configs,
+    validate_bank_statement_columns,
 )
 
 
@@ -18,18 +19,14 @@ def bank_config(
 ) -> dict[str, object]:
     return {
         "testbank": {
+            "enabled": True,
             "bank_account_number": "100201",
             "split": {
                 "parts_per_page": parts,
                 "filename_index_length": length,
                 "filename_index_prefix": prefix,
             },
-            "statement_columns": {
-                "index_column": None,
-                "bank_debit_column": None,
-                "bank_credit_column": None,
-                "counterparty_name_column": None,
-            },
+            "remark_template_map": {},
         }
     }
 
@@ -42,45 +39,46 @@ def bank_config(
         {"testbank": {}},
         {
             "testbank": {
+                "enabled": True,
                 "bank_account_number": "100201",
                 "split": {
                     "parts_per_page": 0,
                     "filename_index_length": 8,
                     "filename_index_prefix": "T",
                 },
-                "statement_columns": bank_config()["testbank"]["statement_columns"],
+                "remark_template_map": {},
             }
         },
         {
             "testbank": {
+                "enabled": True,
                 "bank_account_number": "100201",
                 "split": {
                     "parts_per_page": 2,
                     "filename_index_length": 5,
                     "filename_index_prefix": "T",
                 },
-                "statement_columns": bank_config()["testbank"]["statement_columns"],
+                "remark_template_map": {},
             }
         },
         {
             "testbank": {
+                "enabled": True,
                 "bank_account_number": "100201",
                 "split": {
                     "parts_per_page": 2,
                     "filename_index_length": 8,
                     "filename_index_prefix": "1",
                 },
-                "statement_columns": bank_config()["testbank"]["statement_columns"],
+                "remark_template_map": {},
             }
         },
         {
             "testbank": {
+                "enabled": True,
                 "bank_account_number": "100201",
                 "split": bank_config()["testbank"]["split"],
-                "statement_columns": {
-                    "index_column": None,
-                    "bank_debit_column": None,
-                },
+                "remark_template_map": {"运费": "../invalid.json"},
             }
         },
     ],
@@ -93,23 +91,38 @@ def test_unified_bank_config_rejects_invalid_rules(payload: object) -> None:
 def test_unified_bank_config_preserves_prefix_case_and_multiple_banks() -> None:
     payload = bank_config(prefix="c", length=15)
     payload["secondbank"] = {
+        "enabled": False,
         "bank_account_number": "100204",
         "split": {
             "parts_per_page": 3,
             "filename_index_length": 16,
             "filename_index_prefix": "V",
         },
-        "statement_columns": {
-            "index_column": "流水号",
-            "bank_debit_column": "借方",
-            "bank_credit_column": "贷方",
-            "counterparty_name_column": "对方名称",
-        },
+        "remark_template_map": {"运费": "bank/freight_template.json"},
     }
     normalized = validate_bank_configs(payload, "sources.bank.banks")
     assert set(normalized) == {"testbank", "secondbank"}
     assert normalized["testbank"]["split"]["filename_index_prefix"] == "c"
     assert normalized["secondbank"]["bank_account_number"] == "100204"
+    assert normalized["secondbank"]["enabled"] is False
+    assert normalized["secondbank"]["remark_template_map"]["运费"] == "bank/freight_template.json"
+
+
+def test_statement_columns_are_separate_and_require_remark_column() -> None:
+    banks = validate_bank_configs(bank_config(), "sources.bank.banks")
+    columns = {
+        "testbank": {
+            "index_column": "B",
+            "bank_debit_column": "F",
+            "bank_credit_column": "G",
+            "counterparty_name_column": "H",
+            "remark_column": "I",
+        }
+    }
+    assert validate_bank_statement_columns(columns, "sources.bank.statement_columns", banks) == columns
+    columns["testbank"].pop("remark_column")
+    with pytest.raises(CompanyRegistryError, match="五个列配置"):
+        validate_bank_statement_columns(columns, "sources.bank.statement_columns", banks)
 
 
 def test_filename_index_priority_and_configured_length() -> None:

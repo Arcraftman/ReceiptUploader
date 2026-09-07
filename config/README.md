@@ -23,7 +23,7 @@
 }
 ```
 
-动态账套注册表由公司发现流程写入 `runtime/registry/accountbooks.json`，不属于稳定配置。每月运行参数只写入 `data/inbox/<公司>/<YYYY-MM>/project.json` v7；其中必须同时显式声明 `dataset`、`target` 和四个业务各自的核心运行字段。当月全部银行规则也只写在 `sources.bank.banks`。
+动态账套注册表由公司发现流程写入 `runtime/registry/accountbooks.json`，不属于稳定配置。每月运行参数只写入 `data/inbox/<公司>/<YYYY-MM>/project.json` v8；其中必须同时显式声明 `dataset`、`target`，以及四个业务各自的 `enabled` 和 `stage`。purchase 可用 `usage_confirmation_enabled` 选择一般纳税人用途确认表路径或小规模实际 PDF 路径。银行主体规则写在 `sources.bank.banks`，各银行 XLSX 的列定义独立写在同级 `sources.bank.statement_columns`。
 
 `bank_exception.defaults.json` 只在一个月份首次创建、且该月尚无 `sources.bank.exceptions` 时复制一次。目前默认名称数组只包含通用 TIPS 电子缴税对象；`pdf_keywords` 是系统识别无索引 PDF 的技术规则。之后修改全局默认不会覆盖已有月份。用户在对应月份的 `project.json` 中只需向 `sources.bank.exceptions` 数组添加流水表对手方列出现的完整名称。
 

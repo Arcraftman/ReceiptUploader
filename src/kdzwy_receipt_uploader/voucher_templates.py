@@ -164,7 +164,16 @@ class VoucherTemplateEngine:
             if not isinstance(raw_entry, Mapping):
                 raise TemplateError("模板 entries 中每一项必须是对象")
             entry = dict(raw_entry)
-            entry["lineNo"] = entry.get("lineNo", index)
+            purchase_values = (context.purchase_map or {}).get(context.invoice_code, {})
+            selector = entry.get("accountSelector")
+            if (
+                isinstance(purchase_values, Mapping)
+                and purchase_values.get("inputTaxDeductible") is False
+                and isinstance(selector, Mapping)
+                and str(selector.get("number") or "") == "22210101"
+            ):
+                continue
+            entry["lineNo"] = entry.get("lineNo", len(entries) + 1)
             # A voucher has one explanation. Individual entries may not let
             # Qwen or template fragments diverge from it.
             entry["explanation"] = explanation
