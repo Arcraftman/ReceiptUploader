@@ -116,9 +116,6 @@ run.before-upload-reset.*.jsonl
 # Microsoft Office temporary files.
 ~$*
 
-# Windows batch launchers are machine-local because console/code-page behavior
-# differs across Windows installations.
-/commands/*.bat
 /scripts/windows/*.ps1
 
 # -----------------------------------------------------------------------------
