@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+from kdzwy_receipt_uploader.project_runtime import process_environment
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
@@ -746,7 +747,7 @@ def run_bank_pipeline(context: PipelineContext) -> int:
         return 3
     batch_command = [
         sys.executable,
-        str(ROOT / "scripts" / "commands" / "batch_receipts.py"),
+        "-m", "kdzwy_receipt_uploader.commands.batch_receipts",
         "--project-root", str(ROOT),
         "--runtime-root", str(workspace_root),
         "--config", str(app_config_path),
@@ -756,4 +757,4 @@ def run_bank_pipeline(context: PipelineContext) -> int:
     ]
     if mode == "confirm":
         batch_command.append("--confirm")
-    return subprocess.call(batch_command)
+    return subprocess.call(batch_command, env=process_environment(ROOT))

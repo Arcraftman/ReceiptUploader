@@ -81,9 +81,9 @@
 15 个 BAT 均有同名 `.sh`；安装与入口说明见 [commands/README.md](../commands/README.md)。Windows 原入口保留；当前工作区缺少它们引用的 PowerShell 文件，因此不能据此声称原 BAT 已恢复可用。
 
 ```sh
-commands/start.sh
-commands/discover_companies.sh
-commands/login_companies.sh --accountbook-key company_23354453 --no-pause
+scripts/linux/start.sh
+scripts/linux/start.sh discover
+scripts/linux/start.sh login --accountbook-key company_23354453 --no-pause
 ```
 
 静态扫描依赖 Python `requests`、Node.js 和 Acorn；页面验证另需 Playwright Chromium。Acorn 安装在忽略版本控制的运行目录：

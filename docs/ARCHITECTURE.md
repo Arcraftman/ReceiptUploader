@@ -6,7 +6,8 @@
 
 | 层次 / 位置 | 职责 | 依赖方向 |
 | --- | --- | --- |
-| `commands/`、`scripts/commands/` | Windows / Linux 启动、命令参数适配 | 调用 Python 包 |
+| `scripts/linux/`、`scripts/win/` | ASCII 平台启动器：解释器选择、参数透传 | 调用 `scripts/start.py` |
+| `command_dispatch.py`、包内 `commands/` | 共用子命令分派、英文菜单及参数适配；保留旧 receipt CLI | 调用 Python 业务包 |
 | `pipeline_runner.py` | 解析参数、加载配置、解析项目路径、分派来源 | 调用 `application/` |
 | `application/context.py` | 明确传递项目根目录、账套、路径、配置、状态回调 | 不调用业务流程 |
 | `application/bank_pipeline.py` | 银行拆分、排除、OCR、匹配、分析、生成和提交编排 | 调用银行组件、OCR、API |
@@ -22,7 +23,7 @@
 | `bank_rules.py` | 姓名识别与员工付款分类 | 标准库；不加载 Excel、OCR 或 HTTP |
 | `integrations/read_client.py` | 只读白名单、账套身份校验、HTTP 传输、查询参数 | 共用 API 会话加载与配置 |
 | `read_api_checks.py` | 接口契约测试、诊断报告 | 只读客户端；生产功能不反向依赖它 |
-| `finance_snapshot.py` | 财务报表数据整理 | 只读客户端 |
+| `finance/snapshot.py` | 财务报表数据整理 | 只读客户端 |
 | `api.py`、`workflow.py` 等现有组件 | 金蝶操作、凭证处理及其他已有领域服务 | 保留现有职责，按实际需求继续整理 |
 
 业务规则不能反向导入命令入口；OCR 组件不能依赖流程编排；生产代码不能依赖接口测试模块。`tests/test_architecture.py` 检查这些边界，以及旧 API 类型兼容、业务规则无 IO 依赖、各来源命令分派及路径和参数传递。
@@ -63,3 +64,22 @@ uv run --locked --extra dev python scripts/maintenance/check_project.py
 
 安装、依赖升级、检查与故障恢复以 [质量检查与故障恢复](QUALITY_AND_RECOVERY.md) 为当前说明：已增加 uv.lock、带哈希的 requirements 导出、关键路径覆盖率门槛、8个模块的 strict 类型检查，以及 Linux/Windows × Python3.10/3.13 的 CI 和 OCR 冒烟任务。上文“尚无锁定流程”等状态仅描述前一轮架构拆分时点。
 正常 CLI 上传增加独立的提交日志和操作系统互斥锁，保存前持久化意图，已知凭证ID只恢复回读/绑定核验，结果不明不重新保存。正常账务规则与命令保持兼容。
+
+## 2026-09-19 Unified launchers
+
+See [command reference](COMMANDS.md). The installed `kdzwy-receipts` command and source launchers share `command_dispatch.py`. Login uses the existing cross-platform kernel lock, released before entering the console. Business rules and configuration formats remain unchanged.
+
+## Packaged runtime commands
+
+`commands/` inside the Python package owns command parsing and orchestration.
+`command_dispatch.py` invokes command functions directly with explicit argument
+lists. `project_runtime.py` binds a workspace for one invocation and restores it
+on exit, including exceptions; there is no mutable module-global workspace.
+Isolated login, setup, pipeline and upload workers use `python -m` package
+modules with an explicit workspace and environment. Package code neither edits
+`sys.path` nor executes files from `scripts/`.
+
+`finance/` owns the service, snapshot transformation and export. The external
+`scripts/finance/` directory retains only the Windows Excel installer. Workbook authoring uses the packaged
+`finance/build_template.py` and `template_layout.json` resource. Business configuration, templates and private sessions remain
+workspace resources; installation does not provision or copy these resources.

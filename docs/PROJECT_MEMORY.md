@@ -163,3 +163,47 @@ uv.lock是版本及哈希来源，requirements.txt与requirements-dev.txt从锁�
 
 用户要求提交全部更改，并明确Windows拿到源码后如何得到xlsx。源码新增不含公司数据的excel/finance-template.xlsx，17张表和公式保留，无需运行依赖制作环境的Node脚本。原带实测数据样本仍只在outputs本地。Install-Finance.ps1现在有默认路径，无参数运行生成excel/finance.xlsm，不覆盖已有文件。
 明确当前边界：只读采集、单月快照/年初至当月趋势和模板已实现；Windows宏与安装源码存在但尚未实机验收。账号密码表单登录、公司名选择、任意起止月份、本地组件一键部署尚未实现。生成xlsm仍需已登录会话、服务和令牌，不能宣称简化登录刷新已完成。文档docs/finance/README.md已更新。
+
+## 2026-09-19 Unified cross-platform launchers
+
+- Canonical launchers: scripts/linux/start.sh, scripts/win/start.bat, scripts/win/start.ps1. ASCII wrappers, English command UI, UTF-8 Python I/O; business data remains unchanged.
+- Shared Python command_dispatch; installed CLI uses the same dispatch. Old option-based receipt calls and commands/* forwarders remain supported.
+- Login no longer depends solely on fcntl; uses the shared Windows/POSIX lock and releases it before the interactive console.
+- Excel installer moved to scripts/finance/install-excel.ps1; excel/Install-Finance.ps1 forwards with unchanged default workbook paths.
+- See docs/COMMANDS.md. Windows native launchers are covered by CI tests but have not been executed on this Linux host.
+- Validation: Linux Python 3.13 full quality check passed (367 tests, 37 skips, 3697 historical subtests; Ruff, mypy, coverage gates and build). Focused launcher/login/month tests also passed on Python 3.10 (33 passed, 2 Windows-only skips). No real login, upload or Excel COM action was performed during this refactor.
+
+## Latest launcher cleanup
+
+The user requested removal of the old command launchers. Removed the root
+commands/ directory and scripts/commands/linux_command.py. Previous notes about
+compatibility forwarders are superseded. User-facing entry points are now
+scripts/linux/start.sh and scripts/win/start.bat or start.ps1. Internal Python
+implementations in scripts/commands/ remain required by shared dispatch.
+Updated active documentation and native/month integration tests to use only
+the new launchers. The obsolete historical README manual was removed.
+
+## Packaged command implementation
+
+Moved all scripts/commands implementations into src/kdzwy_receipt_uploader/commands
+and removed scripts/commands. Dispatch calls packaged functions directly; worker
+processes use Python -m modules. project_runtime provides scoped workspace context
+and worker environment propagation without a mutable global ROOT. Finance runtime
+(service, export and snapshots) now lives in the package finance/ directory.
+Runtime no longer requires a source scripts directory; configs/templates/sessions
+remain external workspace resources. Earlier source-checkout-only notes are superseded.
+Removed the stale scripts/windows PowerShell ignore rule.
+
+Validation: Python 3.13 full quality checks passed: 371 tests, 37 skips, 3697 historical subtests; Ruff, mypy, coverage gates and wheel/sdist build passed. Python 3.10 focused package/runtime/month/finance tests: 37 passed, 2 Windows-only skips. Installed the built wheel into a fresh temporary virtual environment; from an unrelated directory and a workspace with no scripts/, verified CLI help/status/login help/finance help, real offline v8 month initialization (including its worker), and pipeline/upload worker help. No real login, upload or Excel COM invocation occurred.
+
+## Portable XLSX generation
+
+Implemented `finance build-template [--output FILE] [--overwrite]` in the shared
+CLI. Uses openpyxl and the packaged finance/template_layout.json resource; does
+not require an existing XLSX, Node.js, account sessions or network. Default output
+is WORKSPACE/excel/finance-template.xlsx; existing files require explicit overwrite.
+17 sheets and all 1769 formulas match the prior template; updated the workbook's
+installer path. Excel recalculates formulas on open. Removed the obsolete Node
+builder and config/finance_template_blank.json. Refreshed the distributed XLSX.
+
+Validation: 376 tests passed, 37 skipped, 3697 historical subtests; static/type checks, coverage gates and build passed. Python 3.10 builder/distribution checks: 7 passed. The installed wheel generated the 17-sheet workbook in an empty temporary workspace without Node or an existing workbook. Artifact verification found no formula errors, checked all sheet previews, and verified budget variance, aging/overdue amounts and stale-period suppression. Windows native Excel has not been exercised on this Linux host.

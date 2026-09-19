@@ -1,0 +1,4 @@
+# Keep shell launchers executable on Linux and batch files native on Windows.
+*.sh text eol=lf
+*.py text eol=lf
+*.bat text eol=crlf whitespace=trailing-space,space-before-tab,cr-at-eol

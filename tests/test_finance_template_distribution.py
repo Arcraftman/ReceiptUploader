@@ -3,7 +3,7 @@ from pathlib import Path
 
 from openpyxl import load_workbook
 
-from kdzwy_receipt_uploader.finance_snapshot import MANAGED_SHEETS
+from kdzwy_receipt_uploader.finance.snapshot import MANAGED_SHEETS
 
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE = ROOT / 'excel/finance-template.xlsx'
@@ -36,7 +36,7 @@ def test_template_preserves_formula_and_installer_contract():
     assert 'B4<>""' in book['经营统计']['B5'].value
     assert book['经营统计']._charts
     book.close()
-    installer = (ROOT / 'excel/Install-Finance.ps1').read_text(encoding='utf-8')
-    assert "Join-Path $PSScriptRoot 'finance-template.xlsx'" in installer
-    assert "Join-Path $PSScriptRoot 'finance.xlsm'" in installer
+    installer = (ROOT / 'scripts/finance/install-excel.ps1').read_text(encoding='utf-8')
+    assert "Join-Path $PSScriptRoot '../../excel/finance-template.xlsx'" in installer
+    assert "Join-Path $PSScriptRoot '../../excel/finance.xlsm'" in installer
     assert 'SaveAs($outputPath, 52)' in installer

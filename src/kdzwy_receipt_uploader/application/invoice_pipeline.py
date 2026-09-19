@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+from kdzwy_receipt_uploader.project_runtime import process_environment
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
@@ -974,7 +975,7 @@ def run_invoice_pipeline(context: PipelineContext) -> int:
         print("准备阶段完成：已生成待上传 receipt，但没有调用真实上传接口。")
         print("复核 receipt 后，将对应业务的 stage 改为 send。")
         return 0
-    command = [sys.executable, str(ROOT / "scripts" / "commands" / "batch_receipts.py"), "--project-root", str(ROOT), "--runtime-root", str(workspace_root), "--config", str(app_config_path), "--expected-company", expected_company, "--input-dir", str(receipt_dir), "--pdf-map", str(upload_map_path), "--source", pipeline_source_key]
+    command = [sys.executable, "-m", "kdzwy_receipt_uploader.commands.batch_receipts", "--project-root", str(ROOT), "--runtime-root", str(workspace_root), "--config", str(app_config_path), "--expected-company", expected_company, "--input-dir", str(receipt_dir), "--pdf-map", str(upload_map_path), "--source", pipeline_source_key]
     if mode == "confirm":
         from kdzwy_receipt_uploader.preupload_review import (
             PreuploadReviewError,
@@ -996,6 +997,6 @@ def run_invoice_pipeline(context: PipelineContext) -> int:
     print("开始批量处理：" + " ".join(command))
     checkpoint("upload")
     logger.info("开始调用 batch_receipts: %s", " ".join(command))
-    return_code = subprocess.call(command)
+    return_code = subprocess.call(command, env=process_environment(ROOT))
     checkpoint("upload_complete" if return_code == 0 else "batch_failed", counters={"batchExitCode": return_code})
     return return_code

@@ -5,7 +5,7 @@ from xml.etree import ElementTree as ET
 
 import pytest
 
-from kdzwy_receipt_uploader.finance_snapshot import normalize_entries, spreadsheet_xml, number, MANAGED_SHEETS
+from kdzwy_receipt_uploader.finance.snapshot import normalize_entries, spreadsheet_xml, number, MANAGED_SHEETS
 from kdzwy_receipt_uploader.read_api_checks import CheckFailure, validate_request
 
 
@@ -66,7 +66,7 @@ def test_excel_refresh_only_writes_managed_sheets_and_stages_before_write():
 
 
 def test_snapshot_removes_auxiliary_totals_and_adds_nonauxiliary_accounts(tmp_path):
-    from kdzwy_receipt_uploader.finance_snapshot import collect_snapshot
+    from kdzwy_receipt_uploader.finance.snapshot import collect_snapshot
     root = Path(__file__).parents[1]
     (tmp_path / "runtime/registry").mkdir(parents=True)
     (tmp_path / "config").mkdir()

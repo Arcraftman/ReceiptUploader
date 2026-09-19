@@ -24,7 +24,7 @@ CASES = load_cases(ROOT / 'tests/fixtures/read_api_cases.json')
 
 class ReadAPIContractTests(unittest.TestCase):
     def test_command_exit_codes_preserve_failure_and_strict_skip(self):
-        spec = importlib.util.spec_from_file_location('read_api_command', ROOT / 'scripts/commands/test_read_apis.py')
+        spec = importlib.util.spec_from_file_location('read_api_command', ROOT / 'src/kdzwy_receipt_uploader/commands/test_read_apis.py')
         command = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(command)
         for summary, strict, expected in [({'passed': 33, 'skipped': 1}, False, 0),

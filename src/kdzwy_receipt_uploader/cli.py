@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from .project_runtime import project_root
 from .api import KdzwyApi
 from .config import AppConfig
 from .map_lookup import InvoicePdfMap
@@ -152,7 +153,7 @@ def run_confirm_sequential(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="账无忧凭证与 PDF 附件批处理")
-    parser.add_argument("--project-root", type=Path, default=Path(__file__).resolve().parents[2])
+    parser.add_argument("--project-root", type=Path, default=project_root())
     parser.add_argument("--runtime-root", type=Path, default=None, help="本次账套工作区；日志、失败归档和审计均写入该目录")
     parser.add_argument("--input-dir", type=Path, default=None, help="receipt 输入目录，默认 data/inbox")
     parser.add_argument("--config", type=Path, default=None, help="配置 JSON，默认 config/app.json")

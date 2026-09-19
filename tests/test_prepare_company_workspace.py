@@ -4,7 +4,7 @@ import json
 import sys
 from pathlib import Path
 
-from scripts.commands import prepare_company_workspace
+from kdzwy_receipt_uploader.commands import prepare_company_workspace
 
 
 def write_json(path: Path, value: object) -> None:
@@ -100,7 +100,7 @@ def test_workspace_always_contains_all_builtin_sources(tmp_path: Path, monkeypat
         },
     )
 
-    monkeypatch.setattr(prepare_company_workspace, "ROOT", tmp_path)
+    monkeypatch.setattr(prepare_company_workspace, "project_root", lambda: tmp_path)
     monkeypatch.setattr(
         sys,
         "argv",

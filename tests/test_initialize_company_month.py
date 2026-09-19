@@ -11,13 +11,13 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
-COMMANDS = ROOT / "scripts" / "commands"
+COMMANDS = ROOT / "src" / "kdzwy_receipt_uploader" / "commands"
 for candidate in (ROOT, SRC, COMMANDS):
     if str(candidate) not in sys.path:
         sys.path.insert(0, str(candidate))
 
-import initialize_company_month as month_initializer  # noqa: E402
-from initialize_company_month import (  # noqa: E402
+from kdzwy_receipt_uploader.commands import initialize_company_month as month_initializer  # noqa: E402
+from kdzwy_receipt_uploader.commands.initialize_company_month import (  # noqa: E402
     BUILT_IN_SOURCES,
     choose_template,
     load_default_bank_exceptions,
@@ -240,7 +240,7 @@ class InitializeCompanyMonthLegacyTests(unittest.TestCase):
 
             completed = subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
             with (
-                patch.object(month_initializer, "ROOT", project_root),
+                patch.object(month_initializer, "project_root", return_value=project_root),
                 patch.object(month_initializer.subprocess, "run", return_value=completed),
                 patch.object(sys, "argv", ["initialize_company_month.py", config_name, "2026-09"]),
             ):
@@ -262,7 +262,7 @@ class InitializeCompanyMonthLegacyTests(unittest.TestCase):
             )
 
             with (
-                patch.object(month_initializer, "ROOT", project_root),
+                patch.object(month_initializer, "project_root", return_value=project_root),
                 patch.object(month_initializer.subprocess, "run", return_value=completed),
                 patch.object(sys, "argv", ["initialize_company_month.py", config_name, "2026-10"]),
             ):
@@ -278,7 +278,7 @@ class InitializeCompanyMonthLegacyTests(unittest.TestCase):
             self.assertTrue(all(not october["sources"][source]["enabled"] for source in BUILT_IN_SOURCES))
 
             with (
-                patch.object(month_initializer, "ROOT", project_root),
+                patch.object(month_initializer, "project_root", return_value=project_root),
                 patch.object(month_initializer.subprocess, "run", return_value=completed),
                 patch.object(
                     sys,
@@ -319,14 +319,14 @@ class InitializeCompanyMonthLegacyTests(unittest.TestCase):
                 },
             )
             with (
-                patch.object(month_initializer, "ROOT", project_root),
+                patch.object(month_initializer, "project_root", return_value=project_root),
                 patch.object(month_initializer.subprocess, "run", return_value=completed),
                 patch.object(sys, "argv", ["initialize_company_month.py", config_name, "2026-12"]),
             ):
                 self.assertEqual(month_initializer.main(), 2)
 
             with (
-                patch.object(month_initializer, "ROOT", project_root),
+                patch.object(month_initializer, "project_root", return_value=project_root),
                 patch.object(month_initializer.subprocess, "run", return_value=completed),
                 patch.object(
                     sys,
@@ -429,8 +429,7 @@ class InitializeCompanyMonthV8Tests(unittest.TestCase):
             write(root / "templates" / "company_1" / "index.json", {"version": "5.0"})
             completed = subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
             with (
-                patch.object(month_initializer, "ROOT", root),
-                patch.object(month_initializer, "ACCOUNTBOOKS_PATH", accountbooks),
+                patch.object(month_initializer, "project_root", return_value=root),
                 patch.object(month_initializer.subprocess, "run", return_value=completed),
                 patch.object(sys, "argv", ["initialize_company_month.py", config_name, "2026-10", "company_1"]),
             ):
@@ -461,8 +460,7 @@ class InitializeCompanyMonthV8Tests(unittest.TestCase):
             self.assertFalse({"company_key", "company_id", "company_name", "company_config", "login_account", "workspace_directory"} & set(project))
 
             with (
-                patch.object(month_initializer, "ROOT", root),
-                patch.object(month_initializer, "ACCOUNTBOOKS_PATH", accountbooks),
+                patch.object(month_initializer, "project_root", return_value=root),
                 patch.object(month_initializer.subprocess, "run", return_value=completed),
                 patch.object(
                     sys,

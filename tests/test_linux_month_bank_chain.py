@@ -29,8 +29,9 @@ def write(path, data):
 def test_linux_month_to_bank_prepare(tmp_path):
     # Run the shipped shell dispatcher and initializer, including its real
     # prepare_company_workspace subprocess, in a disposable project.
-    for folder in ['commands', 'scripts/commands']:
+    for folder in ['scripts/linux', 'scripts/win']:
         shutil.copytree(ROOT / folder, tmp_path / folder)
+    shutil.copy2(ROOT / 'scripts/start.py', tmp_path / 'scripts/start.py')
     if os.name == 'nt':
         shutil.copytree(ROOT / 'src', tmp_path / 'src', ignore=shutil.ignore_patterns('__pycache__'))
     else:
@@ -51,16 +52,16 @@ def test_linux_month_to_bank_prepare(tmp_path):
     write(tmp_path / 'config/bank_exception.defaults.json', {'version': 2, 'exceptions': [], 'pdf_keywords': {}})
     template_root = tmp_path / 'templates' / key
     shutil.copytree(ROOT / 'templates/company_20139879', template_root)
-    command = ([os.environ.get('COMSPEC', 'cmd.exe'), '/d', '/c', r'commands\initialize_month.bat']
-               if os.name == 'nt' else ['bash', 'commands/initialize_month.sh'])
-    command += [config_name, '2026-09', key]
-    env = {**os.environ, 'PYTHON_EXE': sys.executable, 'PYTHONUTF8': '1',
+    command = ([os.environ.get('COMSPEC', 'cmd.exe'), '/d', '/c', r'scripts\win\start.bat']
+               if os.name == 'nt' else ['bash', 'scripts/linux/start.sh'])
+    command += ['month', config_name, '2026-09', key]
+    env = {**os.environ, 'PYTHON_EXE': sys.executable, 'PYTHONUTF8': '1', 'PYTHONPATH': str(tmp_path / 'src'), 'KDZWY_PROJECT_ROOT': str(tmp_path),
            'PATH': str(Path(sys.executable).parent) + os.pathsep + os.environ.get('PATH', '')}
     write(tmp_path / 'config/template_companies.json', {
         'version': 2, 'default_base_template': key,
         'template_companies': [{'key': key, 'name': '测试公司', 'directory': key, 'enabled': True}],
     })
-    created = subprocess.run([sys.executable, 'scripts/commands/create_company.py', '--name', '新公司'],
+    created = subprocess.run([sys.executable, '-m', 'kdzwy_receipt_uploader.commands.create_company', '--name', '新公司'],
                              cwd=tmp_path, env=env, capture_output=True, text=True, timeout=30)
     assert created.returncode == 0, created.stdout + created.stderr
     assert json.loads((tmp_path / 'config/companies/company_3_新公司.json').read_text())['template_company'] == 'company_3'

@@ -1,5 +1,7 @@
 # 企业凭证 OCR、模板匹配与账无忧上传
 
+启动方式已统一，见 [统一命令说明](COMMANDS.md)。旧 `commands/` 启动器已删除，请使用下面的新入口。
+
 本项目按“资料公司 + 会计月份”处理 `sales`、`purchase`、`bank`、`misc` 四类资料，并把结果写入该月份明确指定的目标账套。
 
 当前配置只有三层：
@@ -42,7 +44,7 @@ copy config\kdzwy.example.json config\kdzwy.json
 
 ```bat
 set DASHSCOPE_API_KEY=你的百炼API_KEY
-commands\start.bat
+scripts\win\start.bat
 ```
 
 `start.bat` 会依次完成：登录主账号、发现可访问公司、生成运行期账套注册表、刷新各公司 HTTP 会话，然后进入命令循环。它不会自动上传凭证。
@@ -184,8 +186,8 @@ input/misc/
 同一家公司不同月份必须分别写明月份：
 
 ```bat
-commands\run_company.bat company_17867515_上海微誉信息技术有限公司 2026-07
-commands\run_company.bat company_17867515_上海微誉信息技术有限公司 2026-08
+scripts\win\start.bat run company_17867515_上海微誉信息技术有限公司 2026-07
+scripts\win\start.bat run company_17867515_上海微誉信息技术有限公司 2026-08
 ```
 
 第一个参数是 `config/companies` 下的文件名，不含 `.json`；第二个参数始终是 `YYYY-MM`。因此不会误用该公司的其他月份。
@@ -219,20 +221,20 @@ commands\run_company.bat company_17867515_上海微誉信息技术有限公司 2
 生成简明分析报告：
 
 ```bat
-commands\analysis_report.bat company_17867515_上海微誉信息技术有限公司 2026-08 sales
+scripts\win\start.bat report company_17867515_上海微誉信息技术有限公司 2026-08 sales
 ```
 
 查看任务状态：
 
 ```bat
-commands\status.bat
+scripts\win\start.bat status
 ```
 
 真实上传前必须检查工作区中的 `preupload_review.report.json`。确认单张和全部上传分别使用：
 
 ```bat
-commands\confirm_one.bat company_17867515_上海微誉信息技术有限公司 2026-08
-commands\confirm_all.bat company_17867515_上海微誉信息技术有限公司 2026-08
+scripts\win\start.bat confirm-one company_17867515_上海微誉信息技术有限公司 2026-08
+scripts\win\start.bat confirm-all company_17867515_上海微誉信息技术有限公司 2026-08
 ```
 
 两个入口都会要求再次输入确认文本。跨主体目标也必须由当月 `project.json` 显式许可。
@@ -240,7 +242,7 @@ commands\confirm_all.bat company_17867515_上海微誉信息技术有限公司 2
 清除指定公司、指定月份的本地上传断点：
 
 ```bat
-commands\reset_upload_state.bat company_17867515_上海微誉信息技术有限公司 2026-08
+scripts\win\start.bat reset-upload-state company_17867515_上海微誉信息技术有限公司 2026-08
 ```
 
 ## 银行回单拆分
@@ -337,7 +339,7 @@ bank 入口只读取和校验当月 `project.json`，不会自动增加银行或
 ## 目录结构
 
 ```text
-commands/                       用户 BAT 入口
+scripts/linux/、scripts/win/      跨平台启动入口
 config/                         稳定配置与本地私密配置
 data/inbox/<公司>/<月>/         原始资料和该月 project.json
 templates/<模板公司>/           跨月份共享模板与提示词

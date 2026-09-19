@@ -21,13 +21,13 @@
 Linux：
 
 ```sh
-commands/test_read_apis.sh company_17867515 2026-07
+scripts/linux/start.sh test-read-apis company_17867515 2026-07
 ```
 
 Windows：
 
 ```bat
-commands\test_read_apis.bat company_17867515 2026-07
+scripts\win\start.bat test-read-apis company_17867515 2026-07
 ```
 
 公司必须是 `runtime/registry/accountbooks.json` 中明确启用的账套 key，月份必须明确提供。此测试不要求初始化当月业务工作区，也不会自动创建或修改公司/月度配置。
@@ -41,8 +41,8 @@ commands\test_read_apis.bat company_17867515 2026-07
 若会话已过期，先刷新所选公司的会话，再重跑：
 
 ```sh
-commands/login_companies.sh --accountbook-key company_17867515 --no-pause
-commands/test_read_apis.sh company_17867515 2026-07
+scripts/linux/start.sh login --accountbook-key company_17867515 --no-pause
+scripts/linux/start.sh test-read-apis company_17867515 2026-07
 ```
 
 集成测试也已接入 Python `unittest`：

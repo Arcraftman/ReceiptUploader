@@ -32,7 +32,8 @@ def test_dependency_direction():
             continue
         for name in imports(path):
             assert not name.endswith("receipts_ocr"), path
-            assert not name.endswith("read_api_checks"), path
+            if path != PACKAGE / "commands/test_read_apis.py":
+                assert not name.endswith("read_api_checks"), path
     for path in (PACKAGE / "ocr").glob("*.py"):
         for name in imports(path):
             assert "application" not in name and "pipeline_runner" not in name, path
@@ -78,7 +79,7 @@ def test_pipeline_entrypoint_preserves_paths_flags_and_exit_code(tmp_path, monke
         }.items()},
     }
     (tmp_path / "run.json").write_text(json.dumps(settings), encoding="utf-8")
-    monkeypatch.setattr(pipeline_runner, "ROOT", tmp_path)
+    monkeypatch.setattr(pipeline_runner, "project_root", lambda: tmp_path)
     monkeypatch.setattr(pipeline_runner, "configure_pipeline_logger", lambda *a, **k: logging.getLogger("test-dispatch"))
     monkeypatch.setattr(pipeline_runner, "install_console_transcript", lambda *a, **k: tmp_path / "console.log")
     seen = []

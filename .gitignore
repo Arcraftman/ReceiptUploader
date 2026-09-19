@@ -119,7 +119,6 @@ run.before-upload-reset.*.jsonl
 # Microsoft Office temporary files.
 ~$*
 
-/scripts/windows/*.ps1
 
 # -----------------------------------------------------------------------------
 # IDE, Codex-local metadata and operating-system files

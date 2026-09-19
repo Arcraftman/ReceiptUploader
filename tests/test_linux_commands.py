@@ -17,8 +17,8 @@ def module(name, path):
     spec.loader.exec_module(mod)
     return mod
 
-commands = module('linux_commands', 'scripts/commands/linux_command.py')
-login = module('portable_login', 'scripts/commands/login_companies.py')
+from kdzwy_receipt_uploader import command_dispatch as commands
+login = module('portable_login', 'src/kdzwy_receipt_uploader/commands/login_companies.py')
 scan = module('scan_interfaces', 'scripts/maintenance/scan_read_interfaces.py')
 
 class LinuxCommandTests(unittest.TestCase):
@@ -29,15 +29,14 @@ class LinuxCommandTests(unittest.TestCase):
         self.assertTrue(login.block_login_page_request('GET', 'https://vip1-gj.kdzwy.com/guanjia/fusion/update/status'))
 
     @unittest.skipUnless(os.name == "posix", "POSIX executable bits and bash syntax; Windows exercises native bat instead")
-    def test_all_bats_have_executable_syntax_valid_shell_entry(self):
-        for bat in (ROOT / 'commands').glob('*.bat'):
-            shell = bat.with_suffix('.sh')
-            self.assertTrue(shell.is_file(), shell)
-            self.assertTrue(shell.stat().st_mode & 0o111)
-            subprocess.run(['bash', '-n', str(shell)], check=True)
+    def test_linux_launcher_is_executable_and_syntax_valid(self):
+        shell = ROOT / 'scripts/linux/start.sh'
+        self.assertTrue(shell.is_file())
+        self.assertTrue(shell.stat().st_mode & 0o111)
+        subprocess.run(['bash', '-n', str(shell)], check=True)
 
     def test_chinese_and_space_arguments_preserved(self):
-        with patch.object(sys, 'argv', ['linux_command.py','initialize_month','company_123_测试 公司','2026-09','company_456']), patch.object(commands,'run') as run:
+        with patch.object(sys, 'argv', ['start.py','initialize_month','company_123_测试 公司','2026-09','company_456']), patch.object(commands,'run') as run:
             self.assertEqual(commands.main(), 0)
             run.assert_called_once_with('initialize_company_month.py','company_123_测试 公司','2026-09','company_456')
 
@@ -47,12 +46,12 @@ class LinuxCommandTests(unittest.TestCase):
             (root/'config/companies/company_1_测试.json').write_text('{}')
             for mode in ('confirm_one','confirm_all'):
                 for answer in ('no', EOFError()):
-                    with patch.object(commands,'ROOT',root), patch.object(sys,'argv',['linux_command.py',mode,'company_1_测试','2026-09']), patch.object(commands,'run') as run, patch('builtins.input', side_effect=answer if isinstance(answer,Exception) else None, return_value=answer):
+                    with patch.object(commands,'project_root',return_value=root), patch.object(sys,'argv',['start.py',mode,'company_1_测试','2026-09']), patch.object(commands,'run') as run, patch('builtins.input', side_effect=answer if isinstance(answer,Exception) else None, return_value=answer):
                         self.assertEqual(commands.main(),2)
                         run.assert_not_called()
 
     def test_failed_prepare_stops_pipeline(self):
-        with patch.object(commands.subprocess,'run',return_value=Mock(returncode=17)):
+        with patch('kdzwy_receipt_uploader.commands.prepare_company_workspace.main', return_value=17):
             with self.assertRaises(SystemExit) as error:
                 commands.run('prepare_company_workspace.py')
             self.assertEqual(error.exception.code,17)
@@ -69,7 +68,7 @@ class LinuxCommandTests(unittest.TestCase):
         response=Mock();response.url='https://vip4-kj.kdzwy.com/accounting/index.html'
         new=Mock();new.headers={};new.cookies.get.return_value='secret-auth';new.get.return_value=response
         with patch('requests.Session',return_value=new),patch.object(login,'data',side_effect=[{},'https://vip4-kj.kdzwy.com/zwy/start',{'access_token':'secret-token'},{'companyId':2,'DBID':'100'}]),patch.object(login,'write_private') as write:
-            with self.assertRaisesRegex(RuntimeError,'不一致'):
+            with self.assertRaisesRegex(RuntimeError,'mismatch'):
                 login.book_session(session,'https://vip1-gj.kdzwy.com',{'companyId':1,'databaseId':'100','companyName':'测试'},'a')
             write.assert_not_called()
 

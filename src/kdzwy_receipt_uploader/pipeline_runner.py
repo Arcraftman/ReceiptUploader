@@ -23,7 +23,7 @@ from .application.context import PipelineContext
 from .application.contracts import PipelineOptions
 from .application.invoice_pipeline import run_invoice_pipeline
 
-ROOT = Path(__file__).resolve().parents[2]
+from .project_runtime import project_root
 
 def _cleanup_obsolete_source_maps(map_directory: Path, source: str) -> list[Path]:
     obsolete_names = {
@@ -65,7 +65,7 @@ def _cleanup_obsolete_source_maps(map_directory: Path, source: str) -> list[Path
 def main() -> int:
     parser = argparse.ArgumentParser(description="从指定的运行配置执行 map、receipt 生成和批量处理")
     parser.add_argument("--run-config", type=Path, required=True, help="运行配置路径；通常由 run_companies.py 动态生成")
-    parser.add_argument("--app-config", type=Path, default=ROOT / "config" / "app.json")
+    parser.add_argument("--app-config", type=Path, default=project_root() / "config" / "app.json")
     parser.add_argument("--limit", type=int, default=0, help="传递给上传阶段的单证限制（仅 confirm 阶段生效）")
     parser.add_argument("--receipt-id", type=str, default="", help="传递给上传阶段的单个 receiptId（仅 confirm 阶段生效）")
     parser.add_argument("--test-upload", action="store_true", help="传递给上传阶段的 test-upload 标记（仅 confirm 阶段生效）")
@@ -78,8 +78,8 @@ def main() -> int:
         if state_store is not None:
             state_store.update(phase=phase, artifacts=artifacts, counters=counters, event=event)
 
-    run_config_path = args.run_config if args.run_config.is_absolute() else ROOT / args.run_config
-    app_config_path = args.app_config if args.app_config.is_absolute() else ROOT / args.app_config
+    run_config_path = args.run_config if args.run_config.is_absolute() else project_root() / args.run_config
+    app_config_path = args.app_config if args.app_config.is_absolute() else project_root() / args.app_config
     settings = json.loads(run_config_path.read_text(encoding="utf-8"))
     company = str(settings["company"])
     document_entity_name = str(settings.get("document_entity_name") or settings.get("company_name") or company)
@@ -89,7 +89,7 @@ def main() -> int:
     pipeline_source_key = normalize_source_key(pipeline_source) or "all"
     workspace_root = resolve_config_path(
         str(settings["workspace_root"]),
-        ROOT, company, month, pipeline_source_key,
+        project_root(), company, month, pipeline_source_key,
     )
     logger = configure_pipeline_logger(
         workspace_root / "logs" / pipeline_source_key,
@@ -102,24 +102,24 @@ def main() -> int:
     )
     logger.info("完整控制台日志：%s", transcript_path)
     paths_config = settings.get("paths", settings)
-    month_dir = resolve_config_path(str(paths_config["month_dir"]), ROOT, company, month, pipeline_source_key)
-    input_dir = resolve_config_path(str(paths_config["input_dir"]), ROOT, company, month, pipeline_source_key)
-    map_path = resolve_config_path(str(paths_config["map_file"]), ROOT, company, month, pipeline_source_key)
-    sales_map_path = resolve_config_path(str(paths_config["sales_map_file"]), ROOT, company, month, pipeline_source_key)
-    sales_map_report_path = resolve_config_path(str(paths_config["sales_map_report_file"]), ROOT, company, month, pipeline_source_key)
-    purchase_map_path = resolve_config_path(str(paths_config["purchase_map_file"]), ROOT, company, month, pipeline_source_key)
-    purchase_map_report_path = resolve_config_path(str(paths_config["purchase_map_report_file"]), ROOT, company, month, pipeline_source_key)
+    month_dir = resolve_config_path(str(paths_config["month_dir"]), project_root(), company, month, pipeline_source_key)
+    input_dir = resolve_config_path(str(paths_config["input_dir"]), project_root(), company, month, pipeline_source_key)
+    map_path = resolve_config_path(str(paths_config["map_file"]), project_root(), company, month, pipeline_source_key)
+    sales_map_path = resolve_config_path(str(paths_config["sales_map_file"]), project_root(), company, month, pipeline_source_key)
+    sales_map_report_path = resolve_config_path(str(paths_config["sales_map_report_file"]), project_root(), company, month, pipeline_source_key)
+    purchase_map_path = resolve_config_path(str(paths_config["purchase_map_file"]), project_root(), company, month, pipeline_source_key)
+    purchase_map_report_path = resolve_config_path(str(paths_config["purchase_map_report_file"]), project_root(), company, month, pipeline_source_key)
     removed_obsolete_maps = _cleanup_obsolete_source_maps(map_path.parent, pipeline_source_key)
     if removed_obsolete_maps:
         logger.info(
             "清理当前业务的旧重复 map：%s",
             ", ".join(path.name for path in removed_obsolete_maps),
         )
-    template_path = resolve_config_path(str(settings["templates_file"]), ROOT, company, month, pipeline_source_key)
+    template_path = resolve_config_path(str(settings["templates_file"]), project_root(), company, month, pipeline_source_key)
     template_root = template_path.parent
     template_catalog = TemplateCatalog.load(template_root) if template_path.name == "index.json" and template_path.is_file() else None
     pdf_folders = resolve_source_folders(pipeline_source, list(settings["pdf_folders"]))
-    receipt_dir = resolve_config_path(str(paths_config["receipt_dir"]), ROOT, company, month, pipeline_source_key)
+    receipt_dir = resolve_config_path(str(paths_config["receipt_dir"]), project_root(), company, month, pipeline_source_key)
     workflow_stage = str(settings.get("workflow_stage", "ocr"))
     mode = str(settings.get("mode", "analysis-only"))
     analysis_stage = str(settings.get("analysis_stage", "ocr"))
@@ -137,7 +137,7 @@ def main() -> int:
         print(f"月份输入配置错误：{exc}")
         return 2
     context = PipelineContext(
-        root=ROOT,
+        root=project_root(),
         analysis_stage=analysis_stage,
         app_config_path=app_config_path,
         args=args,

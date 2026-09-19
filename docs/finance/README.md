@@ -12,14 +12,41 @@
 若需要安装现有的刷新按钮，在 Windows 桌面 Excel 所在电脑打开项目根目录的 PowerShell，执行：
 
 ```powershell
-.\excel\Install-Finance.ps1
+.\scripts\finance\install-excel.ps1
 ```
 
 默认读取 `excel/finance-template.xlsx`，生成 `excel/finance.xlsm`，原模板不会被覆盖。若目标文件已经存在，脚本停止，避免覆盖已有数据。安装需要 Excel 允许“信任对 VBA 工程对象模型的访问”，实际运行宏也受组织宏安全策略约束。
 
 `.xlsx`是普通工作簿，不含 VBA 按钮；`.xlsm`才包含可执行的刷新按钮。即使生成了`.xlsm`，实际刷新仍需要下面的一次性服务连接配置、有效账套会话和访问令牌，并非现在只填写账号密码就能运行。
 
-此前 `outputs/finance_refresh_20260919/财务管理模板.xlsx` 是带公司实测数据的本地样本，outputs 不随 Git 提交。`scripts/finance/build_workbook.mjs` 是模板制作脚本，依赖制作环境的 `@oai/artifact-tool`，不是 Windows 用户的运行依赖。维护空白模板时使用 `config/finance_template_blank.json`，生成后更新仓库中的正式模板。
+## Windows / Linux 重新生成空白模板
+
+生成器使用项目已有的 `openpyxl`，不需要 Node.js、专用制作环境或原始 XLSX。
+完成项目依赖安装后，在项目根目录执行：
+
+```powershell
+# Windows: regenerate the distributed template (explicit replacement)
+.\scripts\win\start.bat finance build-template --overwrite
+
+# Or create a separate file without replacing the distributed template
+.\scripts\win\start.ps1 finance build-template --output .\outputs\finance-template.xlsx
+```
+
+```bash
+# Linux
+./scripts/linux/start.sh finance build-template --overwrite
+```
+
+默认输出 `excel/finance-template.xlsx`；文件存在时，未指定 `--overwrite` 会停止。
+`--output` 相对路径按当前终端目录解析。此命令不登录、不读取金蝶接口、不写入真实公司数据。
+公式保存在工作簿中，Excel 打开时自动重算；`openpyxl` 本身不计算公式缓存。
+
+生成器位于包内 `finance/build_template.py`，静态标题、表头和列宽保存在同目录的
+`template_layout.json`，随 wheel 一起分发。修改公式/样式后重新执行上述命令即可。
+旧 Node.js 生成脚本和旧空白快照配置已删除，避免维护两套生成逻辑。
+
+如需刷新按钮，再执行 `scripts/finance/install-excel.ps1` 生成 `.xlsm`，后台连接要求不变。
+此前带公司数据的 `outputs/finance_refresh_20260919/财务管理模板.xlsx` 是本地实测样本，不随 Git 分发。
 
 ## 选型结果（2026-09-19）
 
@@ -54,13 +81,13 @@
 2. 刷新一个账套登录（过期时再执行，不在 Excel 中存金蝶密码）：
 
 ```bash
-bash commands/login_companies.sh --accountbook-key company_17867515 --no-pause
+bash scripts/linux/start.sh login --accountbook-key company_17867515 --no-pause
 ```
 
 3. 启动服务：
 
 ```bash
-bash commands/finance_server.sh
+bash scripts/linux/start.sh finance serve
 ```
 
 只监听 `127.0.0.1:18765`。第一次运行生成权限为0600的 `runtime/finance/access.token`；不要将令牌或会话文件放入工作簿、Git或聊天中。
@@ -83,7 +110,7 @@ scp steve@你的Linux主机:/home/steve/PythonC/ReceiptUploader/runtime/finance/
 Excel 的 VBA 工程安装需要用户允许“信任对 VBA 工程对象模型的访问”。脚本不修改注册表或自动降低宏安全设置；组织策略禁止时由管理员部署。安装完成后可关闭该工程访问选项，运行已安装宏仍按组织宏信任规则处理。
 
 ```powershell
-.\excel\Install-Finance.ps1 -Template .\财务管理模板.xlsx -Output .\财务管理.xlsm
+.\scripts\finance\install-excel.ps1 -Template .\财务管理模板.xlsx -Output .\财务管理.xlsm
 ```
 
 打开生成的 `.xlsm`，在控制台填公司编号及 `YYYY-MM`，点击“刷新财务数据”。公司编号见“公司列表”。宏成功后不自动保存，用户自行保存工作簿。
