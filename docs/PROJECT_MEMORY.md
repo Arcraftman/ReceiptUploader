@@ -207,3 +207,9 @@ installer path. Excel recalculates formulas on open. Removed the obsolete Node
 builder and config/finance_template_blank.json. Refreshed the distributed XLSX.
 
 Validation: 376 tests passed, 37 skipped, 3697 historical subtests; static/type checks, coverage gates and build passed. Python 3.10 builder/distribution checks: 7 passed. The installed wheel generated the 17-sheet workbook in an empty temporary workspace without Node or an existing workbook. Artifact verification found no formula errors, checked all sheet previews, and verified budget variance, aging/overdue amounts and stale-period suppression. Windows native Excel has not been exercised on this Linux host.
+
+The former launcher commands `build-template` and `finance build-template` were
+removed at the user's request. Template generation now has one user-facing
+entry: enter `finance` at the interactive `kdzwy>` setup console. It rebuilds
+the default workbook with overwrite enabled. The packaged builder remains an
+internal implementation and test boundary.

@@ -190,7 +190,11 @@ def initialize(rows, dataset, month, target):
 
 
 def console(rows):
-    print('Setup console: list | login | discover | month DATASET YYYY-MM TARGET | status | help | quit')
+    help_text = (
+        'list | login | discover | month DATASET YYYY-MM TARGET | '
+        'bank/exceptions/unmatched/verify DATASET YYYY-MM | finance | status | help | quit'
+    )
+    print('Setup console: ' + help_text)
     while True:
         try:
             words = shlex.split(input('kdzwy> '))
@@ -215,14 +219,28 @@ def console(rows):
                 rows = json.loads((project_root() / 'runtime/registry/accountbooks.json').read_text(encoding='utf-8'))['accountbooks']
             elif cmd == 'status' and not args:
                 subprocess.run([sys.executable, "-m", "kdzwy_receipt_uploader.commands.pipeline_status"], check=True, env=process_environment())
+            elif cmd == 'finance':
+                if args in (['help'], ['--help'], ['-h']):
+                    print('finance  # rebuild excel/finance-template.xlsx')
+                    continue
+                if args:
+                    print('Usage: finance')
+                    continue
+                subprocess.run(
+                    [sys.executable, '-m', 'kdzwy_receipt_uploader.finance.build_template', '--overwrite'],
+                    check=True,
+                    env=process_environment(),
+                )
             elif cmd in ('bank', 'exceptions', 'unmatched', 'verify') and len(args) == 2:
                 row = resolve_selector(rows, args[0])
                 mapping = {'bank': 'run_bank', 'exceptions': 'list_bank_exceptions', 'unmatched': 'list_unmatched_bank', 'verify': 'verify_bank'}
                 from kdzwy_receipt_uploader.company_registry import company_config_filename
                 config_name = company_config_filename(row['company_id'], row['name']).removesuffix('.json')
                 subprocess.run([sys.executable, "-m", "kdzwy_receipt_uploader.command_dispatch", mapping[cmd], config_name, args[1]], check=True, env=process_environment())
+            elif cmd == 'help' and not args:
+                print(help_text)
             else:
-                print('list | login | discover | month DATASET YYYY-MM TARGET | bank/exceptions/unmatched/verify DATASET YYYY-MM | status | quit')
+                print(help_text)
         except (RuntimeError, subprocess.CalledProcessError) as e:
             print(str(e))
 

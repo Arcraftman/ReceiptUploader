@@ -56,6 +56,15 @@ class LinuxCommandTests(unittest.TestCase):
                 commands.run('prepare_company_workspace.py')
             self.assertEqual(error.exception.code,17)
 
+    def test_setup_console_finance_rebuild_shortcut(self):
+        with patch('builtins.input', side_effect=['finance', 'quit']), \
+             patch.object(login.subprocess, 'run') as run:
+            login.console([])
+        command = run.call_args.args[0]
+        self.assertEqual(command[:3], [sys.executable, '-m', 'kdzwy_receipt_uploader.finance.build_template'])
+        self.assertEqual(command[3:], ['--overwrite'])
+        self.assertTrue(run.call_args.kwargs['check'])
+
     def test_discovery_paginates_and_checks_total(self):
         session=Mock()
         with patch.object(login,'data',side_effect=[ [{'nodeName':'服务管理','id':9}], {'items':[{'companyId':1,'isCreateAccount':True,'databaseId':'100'}],'hasNextPage':True}, {'items':[{'companyId':2,'isCreateAccount':True,'databaseId':'200'}],'hasNextPage':False,'totalCount':2} ]):

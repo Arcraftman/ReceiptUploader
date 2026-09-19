@@ -59,7 +59,6 @@ or without `.json`; business filenames are not renamed.
 | `start reset-upload-state COMPANY_CONFIG YYYY-MM [SOURCE]` | Clear local upload checkpoints |
 | `start create-company --name "EXACT COMPANY NAME"` | Create company configuration and templates |
 | `start test-read-apis --help` | Read-only API test options |
-| `start finance build-template [--output FILE] [--overwrite]` | Generate the blank XLSX using Python only |
 | `start finance serve [--port 18765]` | Start the existing loopback finance service |
 | `start receipts --help` | Original low-level receipt command |
 
@@ -67,6 +66,10 @@ Inside the interactive setup console, `month DATASET YYYY-MM TARGET` retains its
 registry selector behavior (company ID, key or exact name), and can create a
 missing company configuration. The direct `month` subcommand takes an existing
 company config filename, matching the old `initialize_month` scripts.
+
+Inside that console, `finance` regenerates `excel/finance-template.xlsx` and
+replaces the existing distributed template. This is the only user-facing entry
+for template generation; the previous launcher subcommands were removed.
 
 Upload confirmations remain required. No upload or bank accounting rules change.
 English menus do not imply that upstream server errors or domain diagnostics

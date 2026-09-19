@@ -141,4 +141,5 @@ Desktop.ini
 $RECYCLE.BIN/
 
 # Generated Excel client may contain live financial data.
-/excel/finance.xlsm
+excel/*.xlsm
+excel/*.xlsx

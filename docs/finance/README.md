@@ -22,23 +22,14 @@
 ## Windows / Linux 重新生成空白模板
 
 生成器使用项目已有的 `openpyxl`，不需要 Node.js、专用制作环境或原始 XLSX。
-完成项目依赖安装后，在项目根目录执行：
+启动项目进入 `kdzwy>` 控制台后输入：
 
-```powershell
-# Windows: regenerate the distributed template (explicit replacement)
-.\scripts\win\start.bat finance build-template --overwrite
-
-# Or create a separate file without replacing the distributed template
-.\scripts\win\start.ps1 finance build-template --output .\outputs\finance-template.xlsx
+```text
+kdzwy> finance
 ```
 
-```bash
-# Linux
-./scripts/linux/start.sh finance build-template --overwrite
-```
-
-默认输出 `excel/finance-template.xlsx`；文件存在时，未指定 `--overwrite` 会停止。
-`--output` 相对路径按当前终端目录解析。此命令不登录、不读取金蝶接口、不写入真实公司数据。
+该命令重新生成并替换 `excel/finance-template.xlsx`。模板生成不会读取金蝶接口，
+也不会写入真实公司数据。旧的脚本参数入口已经删除，避免出现多套使用方式。
 公式保存在工作簿中，Excel 打开时自动重算；`openpyxl` 本身不计算公式缓存。
 
 生成器位于包内 `finance/build_template.py`，静态标题、表头和列宽保存在同目录的
@@ -47,6 +38,7 @@
 
 如需刷新按钮，再执行 `scripts/finance/install-excel.ps1` 生成 `.xlsm`，后台连接要求不变。
 此前带公司数据的 `outputs/finance_refresh_20260919/财务管理模板.xlsx` 是本地实测样本，不随 Git 分发。
+
 
 ## 选型结果（2026-09-19）
 

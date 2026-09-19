@@ -56,13 +56,10 @@ def dispatch(argv: list[str] | None = None) -> int:
         parser.error(f'Unknown command: {command}')
     if command == 'finance':
         if argv in ([], ['--help'], ['-h']):
-            print('Usage: kdzwy-receipts finance {serve|build-template} [options]')
-            return 0
-        if argv[0] == 'build-template':
-            run('finance/build_template.py', *argv[1:])
+            print('Usage: kdzwy-receipts finance serve [--port PORT]')
             return 0
         if argv[0] != 'serve':
-            parser.error('Expected: finance serve or finance build-template')
+            parser.error('Expected: finance serve [--port PORT]')
         argv = argv[1:]
         command = 'finance_server'
     root = project_root()

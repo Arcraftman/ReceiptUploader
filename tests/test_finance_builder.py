@@ -71,7 +71,7 @@ def test_no_output_written_with_wrong_extension(tmp_path):
 def test_cli_builds_from_empty_workspace_without_node_or_existing_template(tmp_path):
     (tmp_path / 'config').mkdir()
     env = {**os.environ, 'KDZWY_PROJECT_ROOT': str(tmp_path), 'PYTHONPATH': str(ROOT / 'src'), 'PYTHONUTF8': '1'}
-    command = [sys.executable, '-m', 'kdzwy_receipt_uploader.command_dispatch', 'finance', 'build-template']
+    command = [sys.executable, '-m', 'kdzwy_receipt_uploader.finance.build_template']
     result = subprocess.run(command, cwd=tmp_path, env=env, capture_output=True, text=True, timeout=20)
     assert result.returncode == 0, result.stderr + result.stdout
     target = tmp_path / 'excel/finance-template.xlsx'
