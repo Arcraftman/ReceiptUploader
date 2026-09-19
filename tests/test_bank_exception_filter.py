@@ -97,7 +97,6 @@ def test_special_pdfs_are_copied_and_excluded_before_ordinary_pipeline(
                 "counterparty_name_column": "H",
                 "remark_column": "I",
             },
-            "remark_template_map": {},
         }
     }
     exceptions = [

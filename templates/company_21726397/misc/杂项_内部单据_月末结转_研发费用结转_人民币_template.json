@@ -1,0 +1,219 @@
+{
+  "id": "company_21726397-misc-research",
+  "name": "杂项_内部单据_月末结转_研发费用结转_人民币",
+  "version": "2.0",
+  "enabled": true,
+  "documentBlock": "杂项",
+  "documentType": "内部单据",
+  "settlementMethod": "月末结转",
+  "businessType": "研发费用结转",
+  "currency": "人民币",
+  "keywords": [
+    "研发费用结转",
+    "结转研发费用"
+  ],
+  "when": {
+    "businessType": "研发费用结转",
+    "settlementMethod": "月末结转"
+  },
+  "matchRules": {
+    "sourceFolders": [
+      "misc"
+    ],
+    "allowedDocumentBlocks": [
+      "杂项"
+    ],
+    "anyKeywords": [
+      "研发费用结转",
+      "结转研发费用"
+    ],
+    "excludeKeywords": [
+      "重分类",
+      "重复入账",
+      "多入调整",
+      "补计提",
+      "资产清理",
+      "换开专票"
+    ],
+    "expectedAccounts": [
+      "43010103",
+      "5602200101",
+      "43010105",
+      "5602200102",
+      "43010104",
+      "5602200103",
+      "43010102",
+      "5602200104",
+      "43010101",
+      "5602200105",
+      "43010106",
+      "5602200106",
+      "43010108",
+      "5602200108"
+    ],
+    "priority": 300
+  },
+  "amountSource": "source",
+  "summary": {
+    "header": "研发费用结转",
+    "body": "{source.period}",
+    "separator": " "
+  },
+  "entries": [
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "43010103",
+        "name": "研发支出_费用化支出_研发人员工资"
+      },
+      "amountFrom": "source.researchSalary",
+      "amountForFrom": "source.researchSalary"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "5602200101",
+        "name": "管理费用_研发费_费用化支出_研发人员工资"
+      },
+      "amountFrom": "source.researchSalary",
+      "amountForFrom": "source.researchSalary"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "43010105",
+        "name": "研发支出_费用化支出_研发人员社保"
+      },
+      "amountFrom": "source.researchSocialSecurity",
+      "amountForFrom": "source.researchSocialSecurity"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "5602200102",
+        "name": "管理费用_研发费_费用化支出_研发人员社保"
+      },
+      "amountFrom": "source.researchSocialSecurity",
+      "amountForFrom": "source.researchSocialSecurity"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "43010104",
+        "name": "研发支出_费用化支出_研发人员公积金"
+      },
+      "amountFrom": "source.researchHousingFund",
+      "amountForFrom": "source.researchHousingFund"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "5602200103",
+        "name": "管理费用_研发费_费用化支出_研发人员公积金"
+      },
+      "amountFrom": "source.researchHousingFund",
+      "amountForFrom": "source.researchHousingFund"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "43010102",
+        "name": "研发支出_费用化支出_交通费"
+      },
+      "amountFrom": "source.researchTransport",
+      "amountForFrom": "source.researchTransport"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "5602200104",
+        "name": "管理费用_研发费_费用化支出_交通费"
+      },
+      "amountFrom": "source.researchTransport",
+      "amountForFrom": "source.researchTransport"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "43010101",
+        "name": "研发支出_费用化支出_差旅费"
+      },
+      "amountFrom": "source.researchTravel",
+      "amountForFrom": "source.researchTravel"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "5602200105",
+        "name": "管理费用_研发费_费用化支出_差旅费"
+      },
+      "amountFrom": "source.researchTravel",
+      "amountForFrom": "source.researchTravel"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "43010106",
+        "name": "研发支出_费用化支出_软件购置费"
+      },
+      "amountFrom": "source.researchSoftware",
+      "amountForFrom": "source.researchSoftware"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "5602200106",
+        "name": "管理费用_研发费_费用化支出_软件购置费"
+      },
+      "amountFrom": "source.researchSoftware",
+      "amountForFrom": "source.researchSoftware"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "43010108",
+        "name": "研发支出_费用化支出_折旧费"
+      },
+      "amountFrom": "source.researchDepreciation",
+      "amountForFrom": "source.researchDepreciation"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "5602200108",
+        "name": "管理费用_研发费_费用化支出_折旧费"
+      },
+      "amountFrom": "source.researchDepreciation",
+      "amountForFrom": "source.researchDepreciation"
+    }
+  ],
+  "historicalEvidence": {
+    "period": "2026-01至2026-08",
+    "count": 2,
+    "monthCount": 2,
+    "months": [
+      "2026-07",
+      "2026-08"
+    ],
+    "voucherRefs": [
+      {
+        "period": "2026-07",
+        "voucher": "记-191",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 3448,
+        "lastRow": 3461
+      },
+      {
+        "period": "2026-08",
+        "voucher": "记-170",
+        "sourceFile": "20260918193311_凭证列表_【智轻云(上海)科技有限公司】_2026年第8期.xlsx",
+        "sheet": "凭证列表#2026年第8期",
+        "firstRow": 428,
+        "lastRow": 441
+      }
+    ],
+    "reason": "按完整凭证分录结构和金额关系复现，剔除显式纠错、补提、重分类；结构覆盖不等于OCR可自动分类。"
+  },
+  "usageNotes": "七项研发支出按当月已核对余额分别结转到对应管理研发费用。保留红字负数，不取绝对值；不能根据收入金额分摊。"
+}

@@ -7,6 +7,18 @@
       "name": "上海微誉信息技术有限公司",
       "directory": "company_17867515",
       "enabled": true
+    },
+    {
+      "key": "company_20139879",
+      "name": "千云（上海）信息科技有限公司",
+      "directory": "company_20139879",
+      "enabled": true
+    },
+    {
+      "key": "company_21726397",
+      "name": "智轻云(上海)科技有限公司",
+      "directory": "company_21726397",
+      "enabled": true
     }
   ]
 }

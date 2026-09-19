@@ -136,8 +136,7 @@ data/inbox/company_<id>_<公司名>/<YYYY-MM>/project.json
             "parts_per_page": 3,
             "filename_index_length": 15,
             "filename_index_prefix": "C"
-          },
-          "remark_template_map": {}
+          }
         }
       },
       "statement_columns": {
@@ -165,7 +164,7 @@ data/inbox/company_<id>_<公司名>/<YYYY-MM>/project.json
 - `sources.<业务>`：四个业务都必须精确写全 `enabled`、`stage`；只有 `enabled=true` 才会执行。
 - `defaults.cross_company_upload_enabled`：输入 `month B YYYY-MM A` 时自动设为 `true`，使用 B 的资料并上传到显式 target A；手工改成 `false` 后，运行目标自动回到 B 自己的账套，效果等同于 `month B YYYY-MM B`。两种情况都只使用 B 的这一份 `project.json` 和 `input/`，不会复制第二份输入资料。
 - `sources.purchase.usage_confirmation_enabled`：默认 `true`；设为 `false` 表示小规模纳税人，不要求 `用途确认信息.xlsx`，purchase 直接以实际 PDF 为范围并把价税合计计入成本/费用。
-- `sources.bank.banks`：每个 bank key 保存单银行 `enabled`、`bank_account_number`、`split` 和 `remark_template_map`。
+- `sources.bank.banks`：每个 bank key 保存单银行 `enabled`、`bank_account_number` 和 `split`。
 - `sources.bank.statement_columns`：与 `banks` 使用完全相同的 bank key，分别保存各银行 XLSX 的五列位置。
 - 某个 source 还可直接覆盖 `analysis_validation`、并发数、`purpose`、跨主体许可和 `only_mapped_invoices`；不再使用嵌套 `overrides`。
 
@@ -260,9 +259,6 @@ commands\reset_upload_state.bat company_17867515_上海微誉信息技术有限�
         "parts_per_page": 3,
         "filename_index_length": 15,
         "filename_index_prefix": "C"
-      },
-      "remark_template_map": {
-        "货款": "bank/银行_银行回单_银行结算_付供应商款_人民币_template.json"
       }
     }
   },
@@ -288,10 +284,9 @@ commands\reset_upload_state.bat company_17867515_上海微誉信息技术有限�
 | `bank_debit_column` | 银行借方列；有金额时是我方贷方，即现金流出 |
 | `bank_credit_column` | 银行贷方列；有金额时是我方借方，即现金流入 |
 | `counterparty_name_column` | 对手方名称列；现金流出固定作为供应商，现金流入固定作为客户 |
-| `remark_column` | 备注/摘要列；完整文本用于精确模板路由 |
-| `remark_template_map` | 备注完整文本到 `bank/..._template.json` 的映射；未命中时走普通规则 |
+| `remark_column` | 备注/摘要列；作为正常模板分析的业务证据 |
 
-银行借贷两列中只有一方是有效金额，另一方可以是 0、空值或文字。单家银行 `enabled=true` 时五列不允许为 `null`；禁用银行可保留 `null` 且不要求 PDF/XLSX。备注映射按去除首尾空格后的完整文本精确匹配；命中后不调用模型选择模板，但全部固定会计校验仍执行。`configCompany` 固定等于本月 `dataset.company_name`；对手方名称和供应商/客户角色由流水表及上述方向规则决定，OCR 和模型不得覆盖。
+银行借贷两列中只有一方是有效金额，另一方可以是 0、空值或文字。单家银行 `enabled=true` 时五列不允许为 `null`；禁用银行可保留 `null` 且不要求 PDF/XLSX。备注不直接指定模板，普通银行记录通过正常规则及模型分析选择模板。`configCompany` 固定等于本月 `dataset.company_name`；对手方名称和供应商/客户角色由流水表及上述方向规则决定，OCR 和模型不得覆盖。
 
 现金流入时，如果 `bank_credit_column` 是有效金额，并且同一行的 `bank_debit_column` 完全由一串或多串数字组成（数字之间只能有空格、换行或常用分隔符，不能含普通文字），系统会按原顺序保存这些数字，并让它们直接成为 `explanation_body`。这条规则是替换，不会与模板原有 body 拼接；只要单元格中含有普通文字就不触发。
 
@@ -362,3 +357,11 @@ tests/                          自动化测试
 .auto\Scripts\python.exe -m pytest -q
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\windows\start_console.ps1 -ValidateOnly
 ```
+
+
+## 2026-09-19 员工工资与费用报销
+
+用户确认：以 `counterparty_name_column` 识别人名，再读取 `remark_column`。
+仅付款方向且备注包含“工资”或“费用报销”其中一种时，直接使用该公司的工资/报销模板，不调用模型。两种同时出现、收款或未命中备注仍按人员待处理；显式 exceptions 名单继续优先。
+微誉、千云、智轻云均已设置：工资借记 221101，费用报销全额暂记 560106 销售费用—差旅费，贷记当前银行配置的 bank_account_number。金额、日期及目标科目正常校验；人员不预建为客户/供应商。
+通过校验后沿用 `stage=all` / `send` 提交流程，无需逐张人工确认；上传后用户自行调整费用科目。`ocr` / `llm` 不上传。备注、人员、方向或银行科目变化时禁止复用旧分析。

@@ -50,6 +50,8 @@ class KdzwyApi:
             payload = json.loads(path.read_text(encoding="utf-8-sig"))
         except (OSError, json.JSONDecodeError) as exc:
             raise ApiError(f"无法读取账簿会话文件：{exc}") from exc
+        if not isinstance(payload, dict):
+            raise ApiError("账簿会话文件结构无效")
         target_url = payload.get("target_url")
         cookies = payload.get("cookies")
         if not isinstance(target_url, str) or not isinstance(cookies, list):

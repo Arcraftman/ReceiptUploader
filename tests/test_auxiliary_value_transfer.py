@@ -55,9 +55,9 @@ def make_receipt(item_class: str, prefix: str, item_id: str, name: str) -> Recei
     )
 
 
-def main() -> None:
+def test_auxiliary_value_transfer() -> None:
     for item_class, prefix, item_id, name in (
-        ("客户", "custom", "customer-live-id", "动态客户"),
+        ("客户", "customer", "customer-live-id", "动态客户"),
         ("供应商", "supplier", "supplier-live-id", "动态供应商"),
     ):
         receipt = make_receipt(item_class, prefix, item_id, name)
@@ -82,4 +82,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    test_auxiliary_value_transfer()

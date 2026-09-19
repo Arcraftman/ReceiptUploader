@@ -1,0 +1,56 @@
+name: Python checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.10', '3.13']
+    env:
+      PYTHONUTF8: '1'
+      KDZWY_READ_TEST_COMPANY: ''
+      KDZWY_READ_TEST_MONTH: ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.12.17'
+          enable-cache: true
+      - run: uv sync --locked --extra dev --python ${{ matrix.python-version }}
+      - run: uv run --locked --extra dev python scripts/maintenance/check_project.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: quality-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: |
+            coverage.json
+            outputs/quality/coverage
+            outputs/quality/dist
+  ocr-runtime:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.10', '3.13']
+    env:
+      PYTHONUTF8: '1'
+      KDZWY_OCR_SMOKE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.12.17'
+          enable-cache: true
+      - run: uv sync --locked --extra dev --extra ocr --python ${{ matrix.python-version }}
+      - run: uv run --locked --extra dev --extra ocr python -m pytest tests/test_ocr_runtime.py -q

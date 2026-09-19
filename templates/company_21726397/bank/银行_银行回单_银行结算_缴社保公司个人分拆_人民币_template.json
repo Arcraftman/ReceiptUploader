@@ -1,0 +1,199 @@
+{
+  "id": "company_21726397-bank-social-split",
+  "name": "银行_银行回单_银行结算_缴社保公司个人分拆_人民币",
+  "version": "2.0",
+  "enabled": true,
+  "documentBlock": "银行",
+  "documentType": "银行回单",
+  "settlementMethod": "银行结算",
+  "businessType": "缴社保公司个人分拆",
+  "currency": "人民币",
+  "keywords": [
+    "缴社保",
+    "社保缴费",
+    "社会保险费"
+  ],
+  "when": {
+    "businessType": "缴社保公司个人分拆",
+    "settlementMethod": "银行结算"
+  },
+  "matchRules": {
+    "sourceFolders": [
+      "bank"
+    ],
+    "allowedDocumentBlocks": [
+      "银行"
+    ],
+    "anyKeywords": [
+      "缴社保",
+      "社保缴费",
+      "社会保险费"
+    ],
+    "excludeKeywords": [
+      "重分类",
+      "重复入账",
+      "多入调整",
+      "补计提",
+      "资产清理",
+      "换开专票",
+      "仅公司部分",
+      "单独缴纳"
+    ],
+    "expectedAccounts": [
+      "22110201",
+      "22410305",
+      "source.bankAccountNumber"
+    ],
+    "priority": 300,
+    "flowDirections": [
+      "outflow"
+    ],
+    "excludeCounterpartyEqualsConfigCompany": true
+  },
+  "amountSource": "source",
+  "summary": {
+    "header": "缴社保公司个人分拆",
+    "body": "",
+    "separator": " "
+  },
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "name": "应付职工薪酬_社会保险费_保险费（公司）",
+        "number": "22110201"
+      },
+      "amountFrom": "source.companySocialSecurity",
+      "amountForFrom": "source.companySocialSecurity"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "name": "其他应付款_代扣代缴_社保（个人）",
+        "number": "22410305"
+      },
+      "amountFrom": "source.employeeSocialSecurity",
+      "amountForFrom": "source.employeeSocialSecurity"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "name": "银行存款（由project.json动态注入）",
+        "numberFrom": "source.bankAccountNumber"
+      },
+      "amountFrom": "source.amount",
+      "amountForFrom": "source.amount"
+    }
+  ],
+  "historicalEvidence": {
+    "period": "2026-01至2026-08",
+    "count": 12,
+    "monthCount": 4,
+    "months": [
+      "2026-04",
+      "2026-05",
+      "2026-06",
+      "2026-07"
+    ],
+    "voucherRefs": [
+      {
+        "period": "2026-04",
+        "voucher": "记-124",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1549,
+        "lastRow": 1551
+      },
+      {
+        "period": "2026-05",
+        "voucher": "记-98",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 2086,
+        "lastRow": 2088
+      },
+      {
+        "period": "2026-06",
+        "voucher": "记-50",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 2439,
+        "lastRow": 2441
+      },
+      {
+        "period": "2026-07",
+        "voucher": "记-92",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 3175,
+        "lastRow": 3177
+      },
+      {
+        "period": "2026-07",
+        "voucher": "记-97",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 3208,
+        "lastRow": 3210
+      },
+      {
+        "period": "2026-07",
+        "voucher": "记-99",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 3213,
+        "lastRow": 3215
+      },
+      {
+        "period": "2026-07",
+        "voucher": "记-100",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 3216,
+        "lastRow": 3218
+      },
+      {
+        "period": "2026-07",
+        "voucher": "记-101",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 3219,
+        "lastRow": 3221
+      },
+      {
+        "period": "2026-07",
+        "voucher": "记-102",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 3222,
+        "lastRow": 3224
+      },
+      {
+        "period": "2026-07",
+        "voucher": "记-103",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 3225,
+        "lastRow": 3227
+      },
+      {
+        "period": "2026-07",
+        "voucher": "记-104",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 3228,
+        "lastRow": 3230
+      },
+      {
+        "period": "2026-07",
+        "voucher": "记-105",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 3231,
+        "lastRow": 3233
+      }
+    ],
+    "reason": "按完整凭证分录结构和金额关系复现，剔除显式纠错、补提、重分类；结构覆盖不等于OCR可自动分类。"
+  },
+  "usageNotes": "依据当期扣款明细分别读取公司与个人金额，合计等于银行扣款；历史比例不复用。旧按险种细分科目的凭证不直接套用。"
+}

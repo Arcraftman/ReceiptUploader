@@ -1,0 +1,15 @@
+{
+  "scan_date": "2026-09-18T09:44:31.269504+00:00",
+  "static_unique_method_url_pairs": 1130,
+  "static_classification_counts": {
+    "excluded_action_or_ambiguous": 245,
+    "post_query_candidate_needs_review": 45,
+    "read_candidate": 372,
+    "unknown_or_write": 468
+  },
+  "verified_unique_method_path_action": 60,
+  "downloaded_resources": 300,
+  "parse_failures": [],
+  "asset_failures": [],
+  "blocked_request_count": 60
+}

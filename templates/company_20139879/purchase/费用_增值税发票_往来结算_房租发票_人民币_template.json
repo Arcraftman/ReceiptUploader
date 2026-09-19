@@ -1,0 +1,159 @@
+{
+  "id": "company_20139879-purchase-rent",
+  "name": "费用_增值税发票_往来结算_房租发票_人民币",
+  "version": "2.0",
+  "enabled": true,
+  "documentBlock": "费用",
+  "documentType": "增值税发票",
+  "settlementMethod": "往来结算",
+  "businessType": "房租发票",
+  "currency": "人民币",
+  "keywords": [
+    "房租",
+    "房屋租赁"
+  ],
+  "when": {
+    "businessType": "房租发票",
+    "settlementMethod": "往来结算"
+  },
+  "matchRules": {
+    "sourceFolders": [
+      "purchase"
+    ],
+    "allowedDocumentBlocks": [
+      "费用"
+    ],
+    "anyKeywords": [
+      "房租",
+      "房屋租赁"
+    ],
+    "excludeKeywords": [
+      "重分类",
+      "重复入账",
+      "多入调整",
+      "补计提",
+      "资产清理",
+      "换开专票"
+    ],
+    "expectedAccounts": [
+      "560210",
+      "22210101",
+      "2202"
+    ],
+    "priority": 300
+  },
+  "amountSource": "purchase_map",
+  "summary": {
+    "header": "房租发票",
+    "body": "{invoiceCode}",
+    "separator": " "
+  },
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "name": "管理费用_房租及水电费",
+        "number": "560210"
+      },
+      "amountFrom": "purchase_map.amount",
+      "amountForFrom": "purchase_map.amount"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "name": "应交税费_应交增值税_进项税额",
+        "number": "22210101"
+      },
+      "amountFrom": "purchase_map.taxAmount",
+      "amountForFrom": "purchase_map.taxAmount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "name": "应付账款",
+        "number": "2202"
+      },
+      "amountFrom": "purchase_map.totalAmount",
+      "amountForFrom": "purchase_map.totalAmount",
+      "auxiliary": {
+        "field": "supplierId",
+        "itemClassId": 5,
+        "selector": "auxiliaryItem"
+      }
+    }
+  ],
+  "historicalEvidence": {
+    "period": "2026-01至2026-08",
+    "count": 7,
+    "monthCount": 7,
+    "months": [
+      "2026-01",
+      "2026-02",
+      "2026-03",
+      "2026-04",
+      "2026-05",
+      "2026-06",
+      "2026-07"
+    ],
+    "voucherRefs": [
+      {
+        "period": "2026-01",
+        "voucher": "记-98",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 330,
+        "lastRow": 332
+      },
+      {
+        "period": "2026-02",
+        "voucher": "记-51",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1179,
+        "lastRow": 1181
+      },
+      {
+        "period": "2026-03",
+        "voucher": "记-98",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1699,
+        "lastRow": 1701
+      },
+      {
+        "period": "2026-04",
+        "voucher": "记-114",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 2556,
+        "lastRow": 2558
+      },
+      {
+        "period": "2026-05",
+        "voucher": "记-98",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 3422,
+        "lastRow": 3424
+      },
+      {
+        "period": "2026-06",
+        "voucher": "记-133",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 4223,
+        "lastRow": 4225
+      },
+      {
+        "period": "2026-07",
+        "voucher": "记-87",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 4863,
+        "lastRow": 4865
+      }
+    ],
+    "reason": "按完整凭证分录结构和金额关系复现，剔除显式纠错、补提、重分类；结构覆盖不等于OCR可自动分类。"
+  },
+  "usageNotes": "1—7月均出现，采用千云560210；本期发票与抵扣依据取数。"
+}

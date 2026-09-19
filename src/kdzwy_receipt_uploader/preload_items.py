@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from typing import Any, Mapping
 
+from .bank_rules import employee_payment_kind
 from .item_class import AUXILIARY_ITEM_CLASSES, resolve_item_class_id
 from .xlsx_cache import load_read_only_workbook
 
@@ -204,7 +205,7 @@ def preload_bank_counterparties(
     create_missing: bool = True,
     role_evidence: Mapping[int, list[str]] | None = None,
 ) -> PreloadedItems:
-    """Resolve bank counterparties from evidence or validated debit/credit direction."""
+    """Resolve bank counterparties from business evidence or the live target catalog."""
 
     def normalize_name(value: Any) -> str:
         translated = str(value or "").strip().translate(
@@ -222,41 +223,6 @@ def preload_bank_counterparties(
             except (TypeError, ValueError):
                 continue
         return False
-
-    def looks_like_organization(value: str) -> bool:
-        normalized = normalize_name(value)
-        if not normalized:
-            return False
-        non_entity_markers = (
-            "网上电子汇划收入",
-            "电子汇划收入",
-            "公积金",
-            "社保",
-            "税款",
-            "待报解预算收入",
-            "手续费",
-            "工资",
-            "结息",
-            "内部转账",
-        )
-        if any(normalize_name(marker) in normalized for marker in non_entity_markers):
-            return False
-        organization_markers = (
-            "公司",
-            "中心",
-            "商行",
-            "经营部",
-            "事务所",
-            "合伙企业",
-            "银行",
-            "工厂",
-            "合作社",
-            "委员会",
-            "研究院",
-            "学校",
-            "医院",
-        )
-        return any(normalize_name(marker) in normalized for marker in organization_markers)
 
     normalized_evidence = {
         int(class_id): {
@@ -288,6 +254,8 @@ def preload_bank_counterparties(
     resolved: list[dict[str, Any]] = []
     unresolved: list[dict[str, Any]] = []
     for record_key, record in records.items():
+        if employee_payment_kind(record):
+            continue
         name = str(record.get("counterpartyName") or "").strip()
         config_company = str(record.get("configCompany") or "").strip()
         if not name or (config_company and name == config_company):
@@ -309,17 +277,7 @@ def preload_bank_counterparties(
         credit_has_amount = has_positive_amount(
             record.get("bankCreditAmount"), record.get("bankCreditRaw")
         )
-        direction_class = (
-            5
-            if debit_has_amount and not credit_has_amount
-            else 1
-            if credit_has_amount and not debit_has_amount
-            else None
-        )
-        if direction_class is not None and looks_like_organization(name):
-            resolved_classes = [direction_class]
-            resolution_source = "validated_bank_amount_direction"
-        elif evidence_classes:
+        if evidence_classes:
             resolved_classes = evidence_classes
             resolution_source = "source_business_evidence"
         elif existing_classes:

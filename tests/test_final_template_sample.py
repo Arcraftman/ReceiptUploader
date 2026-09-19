@@ -11,7 +11,7 @@ from kdzwy_receipt_uploader.final_template_sample import (
 
 def test_final_template_sample_and_runtime_catalog() -> None:
     project_root = Path(__file__).resolve().parents[1]
-    sample = load_final_template_sample(project_root / "templates" / "weiyu" / "final_template_sample.json")
+    sample = load_final_template_sample(project_root / "templates" / "company_17867515" / "final_template_sample.json")
     context = build_final_template_context(
         sample,
         account_catalog=[{"id": "a1", "number": "1001", "fullName": "库存现金"}],

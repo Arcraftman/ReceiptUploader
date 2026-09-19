@@ -1,0 +1,218 @@
+{
+  "id": "company_21726397-sales-goods",
+  "name": "销售_增值税发票_往来结算_销售商品收入_人民币",
+  "version": "2.0",
+  "enabled": true,
+  "documentBlock": "销售",
+  "documentType": "增值税发票",
+  "settlementMethod": "往来结算",
+  "businessType": "销售商品收入",
+  "currency": "人民币",
+  "keywords": [
+    "销售商品收入",
+    "钉钉AI办公小助理",
+    "考勤机",
+    "门禁机"
+  ],
+  "when": {
+    "businessType": "销售商品收入",
+    "settlementMethod": "往来结算"
+  },
+  "matchRules": {
+    "sourceFolders": [
+      "sales"
+    ],
+    "allowedDocumentBlocks": [
+      "销售"
+    ],
+    "anyKeywords": [
+      "销售商品收入",
+      "钉钉AI办公小助理",
+      "考勤机",
+      "门禁机"
+    ],
+    "excludeKeywords": [
+      "重分类",
+      "重复入账",
+      "多入调整",
+      "补计提",
+      "资产清理",
+      "换开专票"
+    ],
+    "expectedAccounts": [
+      "1122",
+      "500103",
+      "22210106"
+    ],
+    "priority": 300
+  },
+  "amountSource": "sales_map",
+  "summary": {
+    "header": "销售商品收入",
+    "body": "{invoiceCode}",
+    "separator": " "
+  },
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "name": "应收账款",
+        "number": "1122"
+      },
+      "amountFrom": "sales_map.totalAmount",
+      "amountForFrom": "sales_map.totalAmount",
+      "auxiliary": {
+        "field": "customerId",
+        "itemClassId": 1,
+        "selector": "auxiliaryItem"
+      }
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "name": "主营业务收入_销售商品收入",
+        "number": "500103"
+      },
+      "amountFrom": "sales_map.amount",
+      "amountForFrom": "sales_map.amount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "name": "应交税费_应交增值税_销项税额",
+        "number": "22210106"
+      },
+      "amountFrom": "sales_map.taxAmount",
+      "amountForFrom": "sales_map.taxAmount"
+    }
+  ],
+  "historicalEvidence": {
+    "period": "2026-01至2026-08",
+    "count": 14,
+    "monthCount": 6,
+    "months": [
+      "2026-03",
+      "2026-04",
+      "2026-05",
+      "2026-06",
+      "2026-07",
+      "2026-08"
+    ],
+    "voucherRefs": [
+      {
+        "period": "2026-03",
+        "voucher": "记-7",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 740,
+        "lastRow": 742
+      },
+      {
+        "period": "2026-03",
+        "voucher": "记-8",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 743,
+        "lastRow": 745
+      },
+      {
+        "period": "2026-03",
+        "voucher": "记-29",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1009,
+        "lastRow": 1011
+      },
+      {
+        "period": "2026-04",
+        "voucher": "记-15",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1662,
+        "lastRow": 1664
+      },
+      {
+        "period": "2026-05",
+        "voucher": "记-8",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 2024,
+        "lastRow": 2026
+      },
+      {
+        "period": "2026-05",
+        "voucher": "记-13",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 2179,
+        "lastRow": 2181
+      },
+      {
+        "period": "2026-06",
+        "voucher": "记-5",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 2379,
+        "lastRow": 2381
+      },
+      {
+        "period": "2026-06",
+        "voucher": "记-7",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 2420,
+        "lastRow": 2422
+      },
+      {
+        "period": "2026-06",
+        "voucher": "记-9",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 2434,
+        "lastRow": 2436
+      },
+      {
+        "period": "2026-07",
+        "voucher": "记-5",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 2932,
+        "lastRow": 2934
+      },
+      {
+        "period": "2026-07",
+        "voucher": "记-6",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 2935,
+        "lastRow": 2937
+      },
+      {
+        "period": "2026-07",
+        "voucher": "记-19",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 3291,
+        "lastRow": 3293
+      },
+      {
+        "period": "2026-07",
+        "voucher": "记-22",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 3308,
+        "lastRow": 3310
+      },
+      {
+        "period": "2026-08",
+        "voucher": "记-18",
+        "sourceFile": "20260918193311_凭证列表_【智轻云(上海)科技有限公司】_2026年第8期.xlsx",
+        "sheet": "凭证列表#2026年第8期",
+        "firstRow": 54,
+        "lastRow": 56
+      }
+    ],
+    "reason": "按完整凭证分录结构和金额关系复现，剔除显式纠错、补提、重分类；结构覆盖不等于OCR可自动分类。"
+  },
+  "usageNotes": "3—8月持续出现硬件销售，独立于项目/研发服务收入；必须明确是本公司销售货物。"
+}

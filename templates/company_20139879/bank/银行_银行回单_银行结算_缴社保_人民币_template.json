@@ -1,0 +1,169 @@
+{
+  "id": "company_20139879-bank-social",
+  "name": "银行_银行回单_银行结算_缴社保_人民币",
+  "version": "2.0",
+  "enabled": true,
+  "documentBlock": "银行",
+  "documentType": "银行回单",
+  "settlementMethod": "银行结算",
+  "businessType": "缴社保",
+  "currency": "人民币",
+  "keywords": [
+    "缴社保",
+    "社会保险费",
+    "社保缴费"
+  ],
+  "when": {
+    "businessType": "缴社保",
+    "settlementMethod": "银行结算"
+  },
+  "matchRules": {
+    "sourceFolders": [
+      "bank"
+    ],
+    "allowedDocumentBlocks": [
+      "银行"
+    ],
+    "anyKeywords": [
+      "缴社保",
+      "社会保险费",
+      "社保缴费"
+    ],
+    "excludeKeywords": [
+      "重分类",
+      "重复入账",
+      "多入调整",
+      "补计提",
+      "资产清理",
+      "换开专票"
+    ],
+    "expectedAccounts": [
+      "221102",
+      "224102",
+      "source.bankAccountNumber"
+    ],
+    "priority": 300,
+    "flowDirections": [
+      "outflow"
+    ],
+    "excludeCounterpartyEqualsConfigCompany": true
+  },
+  "amountSource": "source",
+  "summary": {
+    "header": "缴社保",
+    "body": "",
+    "separator": " "
+  },
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "221102",
+        "name": "应付职工薪酬_社保（公司部分）"
+      },
+      "amountFrom": "source.companySocialSecurity",
+      "amountForFrom": "source.companySocialSecurity"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "224102",
+        "name": "其他应付款_社保（个人部分）"
+      },
+      "amountFrom": "source.employeeSocialSecurity",
+      "amountForFrom": "source.employeeSocialSecurity"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "numberFrom": "source.bankAccountNumber",
+        "name": "银行存款（由project.json动态注入）"
+      },
+      "amountFrom": "source.amount",
+      "amountForFrom": "source.amount"
+    }
+  ],
+  "historicalEvidence": {
+    "period": "2026-01至2026-08",
+    "count": 8,
+    "monthCount": 8,
+    "months": [
+      "2026-01",
+      "2026-02",
+      "2026-03",
+      "2026-04",
+      "2026-05",
+      "2026-06",
+      "2026-07",
+      "2026-08"
+    ],
+    "voucherRefs": [
+      {
+        "period": "2026-08",
+        "voucher": "记-259",
+        "sourceFile": "20260918193017_凭证列表_【千云（上海）信息科技有限公司】_2026年第8期.xlsx",
+        "sheet": "凭证列表#2026年第8期",
+        "firstRow": 233,
+        "lastRow": 235
+      },
+      {
+        "period": "2026-01",
+        "voucher": "记-283",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 283,
+        "lastRow": 285
+      },
+      {
+        "period": "2026-02",
+        "voucher": "记-197",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1005,
+        "lastRow": 1007
+      },
+      {
+        "period": "2026-03",
+        "voucher": "记-275",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1550,
+        "lastRow": 1552
+      },
+      {
+        "period": "2026-04",
+        "voucher": "记-287",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 2319,
+        "lastRow": 2321
+      },
+      {
+        "period": "2026-05",
+        "voucher": "记-251",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 3134,
+        "lastRow": 3136
+      },
+      {
+        "period": "2026-06",
+        "voucher": "记-308",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 3887,
+        "lastRow": 3889
+      },
+      {
+        "period": "2026-07",
+        "voucher": "记-251",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 4712,
+        "lastRow": 4714
+      }
+    ],
+    "reason": "按完整凭证分录结构和金额关系复现，剔除显式纠错、补提、重分类；结构覆盖不等于OCR可自动分类。"
+  },
+  "usageNotes": "公司和个人实缴分别读取当期明细，合计等于银行支出，不推断比例。"
+}

@@ -1,6 +1,30 @@
 # 用户命令
 
-日常操作只运行本目录中的 BAT；完整流程见 [当前操作手册](../docs/USAGE.md)。
+Windows 使用本目录中的 BAT；Linux 使用同名 `.sh`，16 个入口均有对应版本。完整流程见 [当前操作手册](../docs/USAGE.md)。
+
+Linux 首次安装登录依赖：
+
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -e '.[discovery]'
+.venv/bin/python -m playwright install chromium
+commands/start.sh
+```
+
+如系统缺少 Chromium 动态库，按 Playwright 的安装提示补齐。入口依次选择 `PYTHON_EXE`、`.venv/bin/python`、`.auto/bin/python`、`python3`。中文及含空格的参数应加引号；执行失败会保留退出码，不自动暂停。
+
+Linux 登录实现不依赖当前仓库缺失的 `scripts/windows/*.ps1`：通过官方登录页登录，随后以 HTTP 请求发现公司、分页读取列表并获取独立账套会话。每份会话保存前核对公司 ID 和 DBID，文件权限为 `0600`；运行期注册表仍为 v2。`--headed` 可显示浏览器以人工处理验证码，`--refresh` 强制刷新主账号登录。
+
+```sh
+commands/discover_companies.sh
+commands/login_companies.sh --accountbook-key company_23354453 --no-pause
+commands/initialize_month.sh COMPANY_CONFIG_NAME YYYY-MM TARGET_COMPANY_ID_OR_KEY
+commands/run_company.sh COMPANY_CONFIG_NAME YYYY-MM
+```
+
+`start.sh` 登录并进入设置菜单，不自动运行业务。`confirm_one.sh` 和 `confirm_all.sh` 保留与 BAT 相同的真实上传二次确认；本次扫描没有执行这些上传操作。普通运行入口仍由现有 Python 上传安全门拦截未经确认的 `send/all`。
+
+接口分析与复现方法见 [只读接口扫描报告](../docs/KDZwy_READ_API_REPORT.md)。
 
 | 命令 | 用途 |
 |---|---|
@@ -15,6 +39,7 @@
 | `run_company.bat` | 执行明确的资料公司和月份 |
 | `analysis_report.bat` | 生成指定月份、指定业务的人工复核简表 |
 | `status.bat` | 查看隔离任务状态 |
+| `test_read_apis.bat` | 只读验证指定账套、月份的主要数据接口 |
 | `confirm_one.bat` | 二次确认后真实上传一张 |
 | `confirm_all.bat` | 二次确认后真实上传全部有效凭证 |
 | `reset_upload_state.bat` | 清除指定公司、指定月份的本地上传断点 |
@@ -45,3 +70,12 @@ commands\reset_upload_state.bat COMPANY_CONFIG_NAME YYYY-MM
 ```
 
 `COMPANY_CONFIG_NAME` 是 dataset 公司的配置文件名，不含 `.json`。月份配置必须显式包含 `project.json.dataset` 和 `project.json.target`。
+
+
+主要读取接口的可重复集成测试：
+
+```sh
+commands/test_read_apis.sh company_17867515 2026-07
+```
+
+Windows 使用同名 `.bat`。结果、参数和默认不联网的 unittest 入口见 [读取接口测试说明](../docs/READ_API_TESTS.md)。

@@ -46,6 +46,7 @@ ENV/
 .coverage
 .coverage.*
 coverage.xml
+/coverage.json
 htmlcov/
 
 build/
@@ -72,6 +73,7 @@ pnpm-debug.log*
 *.log
 *.log.*
 *.lock
+!uv.lock
 *.pid
 *.tmp
 *.temp
@@ -95,6 +97,7 @@ outputs/
 # Receipt uploader local configuration and generated business data
 # -----------------------------------------------------------------------------
 /config/app.json
+/config/kdzwy.json
 /config/companies/company_*.json
 /config/*.local.json
 /config/companies/*.local.json
@@ -137,3 +140,6 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
+
+# Generated Excel client may contain live financial data.
+/excel/finance.xlsm

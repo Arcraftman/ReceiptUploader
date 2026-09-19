@@ -16,6 +16,7 @@ sys.path.insert(0, str(PROJECT / "src"))
 
 from kdzwy_receipt_uploader.receipts_ocr import (
     OcrArtifact,
+    OcrPipelineError,
     OpenAICompatibleTemplateSelector,
     analyze_ocr_and_choose_template,
     compact_analysis_for_storage,
@@ -99,7 +100,7 @@ def test_bank_template_uses_configured_bank_account_number() -> None:
                         {
                             "dc": -1,
                             "accountSelector": {
-                                "number": "100201",
+                                "numberFrom": "source.bankAccountNumber",
                                 "name": "银行存款_上海银行",
                             },
                             "amountFrom": "source.amount",
@@ -162,10 +163,10 @@ def test_bank_template_uses_configured_bank_account_number() -> None:
         assert compact["filledEntries"][1]["explanation"].endswith(" 2026-07-21")
 
 
-def test_bank_remark_exact_route_skips_selector_and_forces_template() -> None:
+def test_legacy_forced_path_cannot_bypass_keyword_rules() -> None:
     class FailIfCalledSelector:
         def choose(self, *_args, **_kwargs):
-            raise AssertionError("备注精确命中时不应调用模型选择模板")
+            raise AssertionError("未通过关键词规则时不应调用模型")
 
     with TemporaryDirectory() as directory:
         root = Path(directory)
@@ -216,33 +217,50 @@ def test_bank_remark_exact_route_skips_selector_and_forces_template() -> None:
             engine="test",
             status="success",
         )
-        decision = analyze_ocr_and_choose_template(
-            artifact,
-            root,
-            selector=FailIfCalledSelector(),
-            final_template_context={
-                "businessMapValues": {
-                    "amount": "12.30",
-                    "transactionAmount": "12.30",
-                    "statementAmount": "12.30",
-                    "amountSource": "bank_statement.ourCreditAmount",
-                    "amountValidated": True,
-                    "bankAccountNumber": "100201",
-                    "flowDirection": "outflow",
-                    "remark": "运费",
-                    "forcedTemplatePath": "bank/freight_template.json",
+        with unittest.TestCase().assertRaisesRegex(OcrPipelineError, "没有命中可审计的模板规则"):
+            decision = analyze_ocr_and_choose_template(
+                artifact,
+                root,
+                selector=FailIfCalledSelector(),
+                final_template_context={
+                    "businessMapValues": {
+                        "amount": "12.30",
+                        "transactionAmount": "12.30",
+                        "statementAmount": "12.30",
+                        "amountSource": "bank_statement.ourCreditAmount",
+                        "amountValidated": True,
+                        "bankAccountNumber": "100201",
+                        "flowDirection": "outflow",
+                        "remark": "运费",
+                        "forcedTemplatePath": "bank/freight_template.json",
+                    },
+                    "dynamicAccountCatalog": {"accounts": [
+                        {"id": "expense", "number": "6603", "fullName": "财务费用"},
+                        {"id": "bank", "number": "100201", "fullName": "银行存款_上海银行"},
+                    ]},
+                    "dynamicItemClassCatalog": {"classes": []},
                 },
-                "dynamicAccountCatalog": {"accounts": [
-                    {"id": "expense", "number": "6603", "fullName": "财务费用"},
-                    {"id": "bank", "number": "100201", "fullName": "银行存款_上海银行"},
-                ]},
-                "dynamicItemClassCatalog": {"classes": []},
-            },
-        )
-        assert decision["analysisStatus"] == "ready_for_review"
-        assert decision["templatePath"] == "bank/freight_template.json"
-        assert decision["selectionMode"] == "statement_remark_exact"
-        assert decision["llmAttempted"] is False
+            )
+
+        # Even a single valid candidate must reach the normal selector; stale
+        # generated metadata must neither lock a path nor skip classification.
+        payload = json.loads(template.read_text(encoding="utf-8"))
+        payload["matchRules"]["requiredKeywords"] = []
+        payload["matchRules"]["anyKeywords"] = ["记账日期"]
+        template.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+        class CalledSelector:
+            def choose(self, *_args, **_kwargs):
+                raise RuntimeError("normal selector called")
+
+        with unittest.TestCase().assertRaisesRegex(RuntimeError, "normal selector called"):
+            analyze_ocr_and_choose_template(
+                artifact, root, selector=CalledSelector(),
+                final_template_context={"businessMapValues": {
+                    "bankAccountNumber": "100201", "flowDirection": "outflow",
+                    "forcedTemplatePath": "bank/nonexistent_template.json",
+                }},
+            )
 
 
 def test_extract_bank_transaction_date_prefers_labelled_transaction_date() -> None:
@@ -254,10 +272,11 @@ def test_extract_bank_transaction_date_prefers_labelled_transaction_date() -> No
     assert extract_bank_transaction_date("没有日期") == ""
 
 
-def test_bank_unique_rule_skips_llm_and_uses_bank_validation() -> None:
-    class FailIfCalledSelector:
+def test_bank_unique_rule_calls_llm_and_uses_bank_validation() -> None:
+    class RecordingSelector:
         def choose(self, *_args, **_kwargs):
-            raise AssertionError("唯一银行规则不应调用 LLM")
+            self.called = True
+            return {"templatePath": _args[1][0]["path"], "templateId": "bank-01", "confidence": 0.99, "llmAttempted": True, "selectionMode": "llm"}
 
     with TemporaryDirectory() as directory:
         root = Path(directory)
@@ -280,13 +299,16 @@ def test_bank_unique_rule_skips_llm_and_uses_bank_validation() -> None:
             engine="test",
             status="success",
         )
+        selector = RecordingSelector()
         decision = analyze_ocr_and_choose_template(
             artifact,
-            PROJECT / "templates" / "weiyu",
-            selector=FailIfCalledSelector(),
+            PROJECT / "templates" / "company_17867515",
+            selector=selector,
             final_template_context={
                 "businessMapValues": {
-                    "amount": "100.00",
+                    "amount": "100.00", "transactionAmount": "100.00", "statementAmount": "100.00",
+                    "amountSource": "bank_statement.ourDebitAmount", "amountValidated": True,
+                    "counterpartyRoles": ["customer"],
                     "bankAccountNumber": "100204",
                     "flowDirection": "inflow",
                     "invoiceNumbers": ["26312000004664982496"],
@@ -300,7 +322,7 @@ def test_bank_unique_rule_skips_llm_and_uses_bank_validation() -> None:
                 "dynamicAccountCatalog": {
                     "accounts": [
                         {"id": "bank", "number": "100204", "fullName": "银行存款_招商银行"},
-                        {"id": "ar", "number": "1122", "fullName": "应收账款"},
+                        {"id": "ar", "number": "112201", "fullName": "应收账款"},
                     ]
                 },
                 "dynamicItemClassCatalog": {
@@ -316,7 +338,8 @@ def test_bank_unique_rule_skips_llm_and_uses_bank_validation() -> None:
             },
         )
         assert decision["templateId"] == "bank-01"
-        assert decision["selectionMode"] == "deterministic_rule"
+        assert selector.called
+        assert decision["selectionMode"] == "llm"
         assert decision["analysisStatus"] == "ready_for_review"
         assert decision["validation"] == {
             "folderRule": True,
@@ -324,99 +347,15 @@ def test_bank_unique_rule_skips_llm_and_uses_bank_validation() -> None:
             "confidenceRule": True,
             "mapSourceRule": True,
             "flowDirectionRule": True,
+            "amountRule": True,
             "finalTemplateRule": True,
         }
 
 
-def test_jd_dynamic_payables_exception_is_pending_until_allocations_are_complete() -> None:
-    class FailIfCalledSelector:
-        def choose(self, *_args, **_kwargs):
-            raise AssertionError("京东动态应付 exception 必须确定性选择，不应调用 LLM")
-
-    with TemporaryDirectory() as directory:
-        root = Path(directory)
-        metadata = root / "ocr.json"
-        metadata.write_text("{}", encoding="utf-8")
-        text_path = root / "ocr.txt"
-        text_path.write_text(
-            "上海银行业务回单 对方户名：重庆京东盛际小额贷款有限公司 "
-            "用途：采购货款 记账日期：2026-07-03",
-            encoding="utf-8",
-        )
-        artifact = OcrArtifact(
-            invoice_code="shanghaiyinhang__V026070301320654",
-            source_pdf=root / "V026070301320654.pdf",
-            source_folder="bank",
-            source_side="bank",
-            output_dir=root,
-            text_path=text_path,
-            metadata_path=metadata,
-            text=text_path.read_text(encoding="utf-8"),
-            engine="test",
-            status="success",
-        )
-
-        def context(allocations):
-            return {
-                "businessMapValues": {
-                    "amount": "100.00",
-                    "bankAccountNumber": "100201",
-                    "flowDirection": "outflow",
-                    "counterpartyName": "重庆京东盛际小额贷款有限公司",
-                    "exceptionConfig": {
-                        "handling": "dynamic_supplier_payables",
-                        "template_id": "bank-jd-dynamic-ap-cny",
-                        "party_type": "suppliers",
-                        "counterparty_name": "重庆京东盛际小额贷款有限公司",
-                        "record_key": artifact.invoice_code,
-                        "allocations": allocations,
-                    },
-                },
-                "dynamicAccountCatalog": {
-                    "accounts": [
-                        {"id": "ap", "number": "2202", "fullName": "应付账款"},
-                        {"id": "bank", "number": "100201", "fullName": "银行存款_上海银行"},
-                    ]
-                },
-                "dynamicItemClassCatalog": {
-                    "classes": [
-                        {
-                            "itemClassId": 5,
-                            "items": [
-                                {"id": "supplier-1", "number": "S001", "name": "实际供应商甲"}
-                            ],
-                        }
-                    ]
-                },
-            }
-
-        pending = analyze_ocr_and_choose_template(
-            artifact,
-            PROJECT / "templates" / "weiyu",
-            selector=FailIfCalledSelector(),
-            final_template_context=context([]),
-        )
-        assert pending["templateId"] == "bank-jd-dynamic-ap-cny"
-        assert pending["analysisStatus"] == "exception_pending"
-        assert pending["exceptionStatus"] == "pending"
-        assert pending["filledEntries"] == []
-
-        ready = analyze_ocr_and_choose_template(
-            artifact,
-            PROJECT / "templates" / "weiyu",
-            selector=FailIfCalledSelector(),
-            final_template_context=context(
-                [{"supplier_name": "实际供应商甲", "amount": "100.00"}]
-            ),
-        )
-        assert ready["analysisStatus"] == "ready_for_review"
-        assert ready["exceptionStatus"] == "resolved"
-        assert [entry["accountNumber"] for entry in ready["filledEntries"]] == [
-            "2202",
-            "100201",
-        ]
-        assert ready["filledEntries"][0]["auxiliary"]["name"] == "实际供应商甲"
-        assert all(entry["accountNumber"] != "1123" for entry in ready["filledEntries"])
+def test_jd_has_no_ordinary_template() -> None:
+    from kdzwy_receipt_uploader.template_catalog import TemplateCatalog
+    catalog = TemplateCatalog.load(PROJECT / "templates" / "company_17867515")
+    assert not any(r["id"] == "bank-jd-dynamic-ap-cny" for r in catalog.records)
 
 
 def test_analysis_memory_parallel_writes_are_merged_atomically(tmp_path: Path) -> None:

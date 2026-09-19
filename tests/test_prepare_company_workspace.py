@@ -92,7 +92,7 @@ def test_workspace_always_contains_all_builtin_sources(tmp_path: Path, monkeypat
                 "bank": {
                     "enabled": False,
                     "stage": "ocr",
-                    "banks": {},
+                    "banks": {}, "statement_columns": {},
                     "exceptions": [],
                 },
                 "misc": {"enabled": False, "stage": "ocr"},
@@ -169,14 +169,14 @@ def test_workspace_always_contains_all_builtin_sources(tmp_path: Path, monkeypat
                 "usage_filename": "用途确认信息.xlsx",
                 "usage_column": "E",
             },
-            "defaults": {"analysis_validation": "strict"},
+            "defaults": {"analysis_validation": "strict", "cross_company_upload_enabled": True},
             "sources": {
                 "sales": {"enabled": False, "stage": "ocr"},
                 "purchase": {"enabled": True, "stage": "prepare"},
                 "bank": {
                     "enabled": False,
                     "stage": "ocr",
-                    "banks": {},
+                    "banks": {}, "statement_columns": {},
                     "exceptions": [],
                 },
                 "misc": {"enabled": False, "stage": "ocr"},

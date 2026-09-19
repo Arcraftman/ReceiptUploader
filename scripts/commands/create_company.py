@@ -41,7 +41,7 @@ def read_json_object(path: Path) -> dict[str, Any]:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="根据账套公司名称创建一套跨期间复用的标准模板")
     parser.add_argument("--name", required=True, help="公司完整中文名称")
-    parser.add_argument("--base-template", default="weiyu", help="明确指定复制来源模板 key；默认 weiyu")
+    parser.add_argument("--base-template", default=None, help="明确指定复制来源模板 key；默认读取模板注册表 default_base_template")
     return parser.parse_args()
 
 
@@ -50,10 +50,6 @@ def main() -> int:
     company_name = args.name.strip()
     if not company_name:
         raise SystemExit("--name不能为空")
-    base_template_key = args.base_template.strip().lower()
-    if not re.fullmatch(r"[a-z][a-z0-9_-]*", base_template_key):
-        raise SystemExit(f"--base-template格式不正确：{base_template_key}")
-
     accountbooks_path = ROOT / "runtime" / "registry" / "accountbooks.json"
     accountbooks_payload = read_json_object(accountbooks_path)
     accountbooks = accountbooks_payload.get("accountbooks")
@@ -79,6 +75,10 @@ def main() -> int:
     if company_config_path.exists():
         raise SystemExit(f"公司配置已存在，未覆盖：{company_config_path}")
     registry = read_json_object(registry_path)
+    base_template_key = str(args.base_template or registry.get("default_base_template") or "").strip().lower()
+    if not re.fullmatch(r"[a-z][a-z0-9_-]*", base_template_key):
+        raise SystemExit(f"--base-template格式不正确：{base_template_key}")
+
     records = registry.get("template_companies")
     if not isinstance(records, list):
         raise SystemExit(f"模板公司注册表格式错误：{registry_path}")

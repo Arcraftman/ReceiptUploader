@@ -12,7 +12,8 @@ from typing import Any
 from .api import KdzwyApi
 from .map_lookup import InvoicePdfMap
 from .models import ApiError, AttachmentFile, Receipt, ReceiptError
-from .paths import ProjectPaths
+from .upload_contracts import VerifiedAttachmentResult
+from .upload_journal import UploadJournal, UploadRecoveryRequired, exclusive_lock
 
 MONEY = Decimal("0.01")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -25,6 +26,8 @@ def money(value: Any, field: str) -> Decimal:
         amount = Decimal(str(value)).quantize(MONEY, rounding=ROUND_HALF_UP)
     except (InvalidOperation, ValueError, TypeError) as exc:
         raise ReceiptError(f"{field} 不是有效金额") from exc
+    if not amount.is_finite():
+        raise ReceiptError(f"{field} 必须为有限金额")
     # Negative amounts are valid accounting values, including red invoices.
     return amount
 
@@ -238,7 +241,7 @@ def build_voucher(receipt: Receipt, number_data: dict[str, Any], dbid: str | Non
     number = int(number_data["vchNum"])
     year = str(number_data["year"])
     period = str(number_data["period"])
-    entries = []
+    entries: list[dict[str, Any]] = []
     for entry in source["entries"]:
         item = dict(entry)
         item.pop("lineNo", None)
@@ -256,7 +259,9 @@ def build_voucher(receipt: Receipt, number_data: dict[str, Any], dbid: str | Non
         item["entryId"] = item.get("entryId") or len(entries) + 1
         def browser_number_text(value: Any) -> str:
             number = Decimal(str(value))
-            text = format(number, "f").rstrip("0").rstrip(".")
+            text = format(number, "f")
+            if "." in text:
+                text = text.rstrip("0").rstrip(".")
             return text or "0"
 
         # Current accounting frontend calls .toString() for these fields
@@ -390,7 +395,17 @@ def build_v1_voucher_payload(receipt: Receipt, number_data: dict[str, Any], dbid
     return {"type": 0, "vch": voucher}
 
 
-def process_one(receipt: Receipt, api: KdzwyApi) -> dict[str, Any]:
+def process_one(receipt: Receipt, api: KdzwyApi, journal: UploadJournal | None = None) -> dict[str, Any]:
+    if journal is None:
+        return _process_one(receipt, api)
+    with exclusive_lock(journal.lock_path):
+        journal.load(receipt)
+        if journal.state.phase == "verified":
+            return dict(journal.state.result)
+        return _process_one(receipt, api, journal)
+
+
+def _process_one(receipt: Receipt, api: KdzwyApi, journal: UploadJournal | None = None) -> dict[str, Any]:
     source = dict(receipt.voucher)
     system_params = api.get_dynamic_system_params()
     user_context = api.get_current_user_context()
@@ -413,9 +428,9 @@ def process_one(receipt: Receipt, api: KdzwyApi) -> dict[str, Any]:
     # Upload and validate every attachment before saving the voucher. A failed
     # OCR/upload response can then be retried safely without creating a remote
     # voucher whose local state is ambiguous.
-    file_ids: list[str] = []
+    file_ids: list[str] = list(journal.state.file_ids) if journal else []
     if receipt_for_upload.attachment_files:
-        for attachment in receipt_for_upload.attachment_files:
+        for attachment in receipt_for_upload.attachment_files[len(file_ids):]:
             retry_delays = (2, 5, 10)
             for attempt in range(len(retry_delays) + 1):
                 try:
@@ -432,6 +447,9 @@ def process_one(receipt: Receipt, api: KdzwyApi) -> dict[str, Any]:
                 file_id = uploaded_file_id(uploaded)
                 if file_id:
                     file_ids.append(file_id)
+                    if journal:
+                        journal.state.file_ids = list(file_ids)
+                        journal.write()
                     break
                 if attempt >= len(retry_delays):
                     raise ApiError(
@@ -440,23 +458,50 @@ def process_one(receipt: Receipt, api: KdzwyApi) -> dict[str, Any]:
                     )
                 time.sleep(retry_delays[attempt])
 
-    number = api.get_voucher_number(source["date"], str(source["groupId"]))
-    if not number.get("vchNum"):
-        raise ApiError("新版取号接口未返回有效凭证号，未调用保存接口")
-    voucher_payload = build_v1_voucher_payload(receipt_for_upload, number, api.dbid or str(system_params.get("DBID", "")))
-    voucher_id = api.save_voucher_v1(voucher_payload)
+    if journal and journal.state.voucher_id:
+        voucher_id = journal.state.voucher_id
+        voucher_no = journal.state.voucher_no
+    else:
+        number = api.get_voucher_number(source["date"], str(source["groupId"]))
+        if not number.get("vchNum"):
+            raise ApiError("新版取号接口未返回有效凭证号，未调用保存接口")
+        voucher_payload = build_v1_voucher_payload(receipt_for_upload, number, api.dbid or str(system_params.get("DBID", "")))
+        voucher_no = voucher_payload["vch"]["voucherNo"]
+        if journal:
+            journal.state.phase = "saving"
+            journal.state.voucher_no = voucher_no
+            journal.write()  # Persist intent before the first irreversible request.
+        voucher_id = api.save_voucher_v1(voucher_payload)
+        if journal:
+            journal.state.voucher_id = voucher_id
+            journal.state.phase = "saved"
+            journal.write()
     detail = api.get_voucher_v1(voucher_id)
     auxiliary_readback = validate_auxiliary_readback(source["entries"], detail)
-    result: dict[str, Any] = {"status": "submitted_and_verified", "apiVersion": "vip4-v1", "receiptId": receipt.receipt_id, "voucherId": voucher_id, "voucherNo": voucher_payload["vch"]["voucherNo"], "voucherReadback": detail, "auxiliaryReadback": auxiliary_readback, "attachmentStatus": "not_requested", "attachmentFileIds": [], "unresolvedInvoiceCodes": receipt.unresolved_invoice_codes, "completedAt": datetime.now(timezone.utc).isoformat()}
+    result: VerifiedAttachmentResult = {"status": "submitted_and_verified", "apiVersion": "vip4-v1", "receiptId": receipt.receipt_id, "voucherId": voucher_id, "voucherNo": voucher_no, "voucherReadback": detail, "auxiliaryReadback": auxiliary_readback, "attachmentStatus": "not_requested", "attachmentFileIds": [], "unresolvedInvoiceCodes": receipt.unresolved_invoice_codes, "completedAt": datetime.now(timezone.utc).isoformat()}
     if file_ids:
-        bound = api.bind_voucher_files_v1(voucher_id, file_ids)
-        api.data("新版附件绑定", bound)
-        detail_after_bind = api.get_voucher_v1(voucher_id)
+        if journal and journal.state.phase == "binding":
+            # The bind may have reached the server before an interruption.
+            # Re-read it; never blindly repeat an uncertain write.
+            detail_after_bind = detail
+            if not isinstance(detail, dict) or int(detail.get("usedAttachments", 0) or 0) < len(file_ids):
+                raise UploadRecoveryRequired("附件绑定结果不明；声明的 attachments 数量不是绑定证据，请核对远端")
+        else:
+            if journal:
+                journal.state.phase = "binding"
+                journal.write()
+            bound = api.bind_voucher_files_v1(voucher_id, file_ids)
+            api.data("新版附件绑定", bound)
+            detail_after_bind = api.get_voucher_v1(voucher_id)
         detail_data = detail_after_bind if isinstance(detail_after_bind, dict) else {}
         if int(detail_data.get("attachments", 0) or 0) < len(file_ids) and int(detail_data.get("usedAttachments", 0) or 0) < len(file_ids):
-            raise ApiError("新版附件绑定后凭证回读未确认附件数量；不重试保存")
+            raise UploadRecoveryRequired("新版附件绑定后凭证回读未确认附件数量；不重试保存或绑定，请核对远端")
         result.update({"attachmentStatus": "uploaded_linked_and_verified", "attachmentFileIds": file_ids, "voucherReadbackAfterAttachment": detail_after_bind})
-    return result
+    if journal:
+        journal.state.result = dict(result)
+        journal.state.phase = "verified"
+        journal.write()
+    return dict(result)
 
 
 def archive(path: Path, target_dir: Path, receipt: Receipt, result: dict[str, Any]) -> None:

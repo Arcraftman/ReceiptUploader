@@ -1,0 +1,165 @@
+{
+  "id": "company_21726397-purchase-rent",
+  "name": "费用_增值税发票_往来结算_房租发票_人民币",
+  "version": "2.0",
+  "enabled": true,
+  "documentBlock": "费用",
+  "documentType": "增值税发票",
+  "settlementMethod": "往来结算",
+  "businessType": "房租发票",
+  "currency": "人民币",
+  "keywords": [
+    "房租",
+    "房屋租赁"
+  ],
+  "when": {
+    "businessType": "房租发票",
+    "settlementMethod": "往来结算"
+  },
+  "matchRules": {
+    "sourceFolders": [
+      "purchase"
+    ],
+    "allowedDocumentBlocks": [
+      "费用"
+    ],
+    "anyKeywords": [
+      "房租",
+      "房屋租赁"
+    ],
+    "excludeKeywords": [
+      "重分类",
+      "重复入账",
+      "多入调整",
+      "补计提",
+      "资产清理",
+      "换开专票"
+    ],
+    "expectedAccounts": [
+      "560221",
+      "22210101",
+      "2202"
+    ],
+    "priority": 300
+  },
+  "amountSource": "purchase_map",
+  "summary": {
+    "header": "房租发票",
+    "body": "{invoiceCode}",
+    "separator": " "
+  },
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "name": "管理费用_租金",
+        "number": "560221"
+      },
+      "amountFrom": "purchase_map.amount",
+      "amountForFrom": "purchase_map.amount"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "name": "应交税费_应交增值税_进项税额",
+        "number": "22210101"
+      },
+      "amountFrom": "purchase_map.taxAmount",
+      "amountForFrom": "purchase_map.taxAmount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "name": "应付账款",
+        "number": "2202"
+      },
+      "amountFrom": "purchase_map.totalAmount",
+      "amountForFrom": "purchase_map.totalAmount",
+      "auxiliary": {
+        "field": "supplierId",
+        "itemClassId": 5,
+        "selector": "auxiliaryItem"
+      }
+    }
+  ],
+  "historicalEvidence": {
+    "period": "2026-01至2026-08",
+    "count": 8,
+    "monthCount": 5,
+    "months": [
+      "2026-03",
+      "2026-04",
+      "2026-05",
+      "2026-06",
+      "2026-07"
+    ],
+    "voucherRefs": [
+      {
+        "period": "2026-03",
+        "voucher": "记-61",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 887,
+        "lastRow": 889
+      },
+      {
+        "period": "2026-03",
+        "voucher": "记-69",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1077,
+        "lastRow": 1079
+      },
+      {
+        "period": "2026-03",
+        "voucher": "记-49",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1157,
+        "lastRow": 1159
+      },
+      {
+        "period": "2026-04",
+        "voucher": "记-56",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1716,
+        "lastRow": 1718
+      },
+      {
+        "period": "2026-05",
+        "voucher": "记-54",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 2196,
+        "lastRow": 2198
+      },
+      {
+        "period": "2026-06",
+        "voucher": "记-131",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 2431,
+        "lastRow": 2433
+      },
+      {
+        "period": "2026-07",
+        "voucher": "记-163",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 3154,
+        "lastRow": 3156
+      },
+      {
+        "period": "2026-07",
+        "voucher": "记-173",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 3281,
+        "lastRow": 3283
+      }
+    ],
+    "reason": "按完整凭证分录结构和金额关系复现，剔除显式纠错、补提、重分类；结构覆盖不等于OCR可自动分类。"
+  },
+  "usageNotes": "采用智轻云560221房租科目；以当期合同、发票及抵扣确认决定金额，不套千云560210。"
+}

@@ -18,6 +18,9 @@ class FakeApi:
             }
         return {"rows": []}
 
+    def get_all_items_v1(self, **kwargs):
+        return {"客户": {"items": self.get_items_v1(1)["rows"]}, "供应商": {"items": []}}
+
     def get_next_item_number_v1(self, class_id: int) -> str:
         self.next_number += 1
         return f"N{class_id}-{self.next_number}"
@@ -27,19 +30,19 @@ class FakeApi:
         return {"id": f"created-{class_id}-{name}", "number": number, "name": name}
 
 
-def test_bank_preload_uses_statement_direction_and_skips_self_transfer() -> None:
+def test_bank_preload_uses_confirmed_roles_and_skips_self_transfer() -> None:
     api = FakeApi()
     result = preload_bank_counterparties(
         api,
         {
             "inflow": {
                 "flowDirection": "inflow",
-                "counterpartyName": "已有客户",
+                "counterpartyName": "已有客户", "counterpartyRoles": ["customer"],
                 "configCompany": "资料公司",
             },
             "outflow": {
                 "flowDirection": "outflow",
-                "counterpartyName": "新增供应商",
+                "counterpartyName": "新增供应商", "counterpartyRoles": ["supplier"],
                 "configCompany": "资料公司",
             },
             "self": {
@@ -48,6 +51,7 @@ def test_bank_preload_uses_statement_direction_and_skips_self_transfer() -> None
                 "configCompany": "资料公司",
             },
         },
+        role_evidence={5: ["新增供应商"]},
     )
     assert result.source_columns == {"1": ["已有客户"], "5": ["新增供应商"]}
     assert result.resolve(1, "已有客户")["id"] == "customer-1"

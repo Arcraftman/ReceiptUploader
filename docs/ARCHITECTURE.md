@@ -1,90 +1,65 @@
-# 项目架构
+# 项目架构与开发约定
 
-## 配置模型
+本次整理以保持现有业务行为为前提：命令、项目配置、模板、产物格式和上传阶段不变。Excel 功能优化暂时搁置。
 
-```text
-资料公司 v3（跨月份身份 + template_company）
-             │
-             ├── templates/<template_company>/（跨月份共享）
-             │
-             └── 月份 project.json v8
-                   ├── dataset：明确资料来源公司
-                   ├── target：明确目标账套
-                   ├── input：本月 Excel 文件名与列
-                   ├── defaults：四个业务共享的高级默认值
-                   └── sources：四个业务各自精确的 enabled/stage；purchase 可声明用途确认开关
-                         └── bank.banks：当月多银行科目、裁剪与流水列的唯一配置源
+## 模块职责
 
-公司发现 ──> runtime/registry/accountbooks.json v2（自动生成）
-技术默认 ──> config/pipeline.defaults.json v2
+| 层次 / 位置 | 职责 | 依赖方向 |
+| --- | --- | --- |
+| `commands/`、`scripts/commands/` | Windows / Linux 启动、命令参数适配 | 调用 Python 包 |
+| `pipeline_runner.py` | 解析参数、加载配置、解析项目路径、分派来源 | 调用 `application/` |
+| `application/context.py` | 明确传递项目根目录、账套、路径、配置、状态回调 | 不调用业务流程 |
+| `application/bank_pipeline.py` | 银行拆分、排除、OCR、匹配、分析、生成和提交编排 | 调用银行组件、OCR、API |
+| `application/invoice_pipeline.py` | 销售、进项和杂项的映射、分析、生成与提交编排 | 调用来源组件、OCR、API |
+| `ocr/models.py` | OCR 产物类型和异常 | 标准库 |
+| `ocr/fields.py` | 票据字段提取、买卖方规则 | 来源定义与标准库 |
+| `ocr/engine.py` | PDF 识别、识别引擎缓存、OCR 文件读写 | 字段提取、产物类型、PDF / OCR 依赖 |
+| `ocr/selector.py` | OpenAI 兼容模型请求与响应解析 | 产物异常、HTTP |
+| `ocr/rules.py` | 模板候选、币种、交易对方规则 | 产物类型、银行规则 |
+| `ocr/rendering.py` | 按模板生成和校验分录、摘要、金额快照 | 模板引擎、规则 |
+| `ocr/memory.py` | 分析记忆并发合并、原子保存与重试 | 标准库 |
+| `ocr/service.py` | 组合 OCR 产物、模型选择、规则校验和分析保存 | 上述 OCR 组件 |
+| `bank_rules.py` | 姓名识别与员工付款分类 | 标准库；不加载 Excel、OCR 或 HTTP |
+| `integrations/read_client.py` | 只读白名单、账套身份校验、HTTP 传输、查询参数 | 共用 API 会话加载与配置 |
+| `read_api_checks.py` | 接口契约测试、诊断报告 | 只读客户端；生产功能不反向依赖它 |
+| `finance_snapshot.py` | 财务报表数据整理 | 只读客户端 |
+| `api.py`、`workflow.py` 等现有组件 | 金蝶操作、凭证处理及其他已有领域服务 | 保留现有职责，按实际需求继续整理 |
+
+业务规则不能反向导入命令入口；OCR 组件不能依赖流程编排；生产代码不能依赖接口测试模块。`tests/test_architecture.py` 检查这些边界，以及旧 API 类型兼容、业务规则无 IO 依赖、各来源命令分派及路径和参数传递。
+
+## 兼容约定
+
+- `receipts_ocr.py` 保留为兼容导出层，旧脚本和调用方的导入不需要调整；包内代码使用具体的新模块。
+- `read_api_checks.py` 继续导出旧客户端和异常名称，客户端实现只有一份。
+- 银行匹配模块继续导出 `is_person_name`、`employee_payment_kind`，其他业务模块直接使用 `bank_rules.py`。
+- 项目根目录仍由原入口确定，通过 `PipelineContext.root` 传入新流程。移动文件不会改变配置、模板和脚本的路径解析。
+- 包内入口不再修改 `sys.path`；从源码直接启动的脚本保留既有引导方式。
+- 配置字典和命令参数仍沿用原有对象，不通过隐式全局变量或动态 `locals()` 注入流程。上下文冻结的是字段绑定，并非深度冻结配置字典。
+- 银行科目、工资 / 报销路由、金额校验、模型提示词、缓存版本、重试、失败退出码和阶段顺序沿用原实现。
+
+## 开发安装与检查
+
+当前统一安装与检查流程见 [质量检查与故障恢复](QUALITY_AND_RECOVERY.md)。在仓库根目录执行：
+
+```bash
+uv sync --locked --extra dev --python 3.13
+uv run --locked --extra dev python scripts/maintenance/check_project.py
 ```
 
-运行配置合并顺序只有：技术默认 → 月份 `defaults` → source 直接覆盖 → 命令行维护性临时覆盖。
+`pyproject.toml` 声明直接依赖，`uv.lock` 锁定版本和哈希；requirements 文件由锁文件导出，兼容旧 pip 部署入口。完整 OCR 使用 `--extra ocr`。模板、配置和运行数据仍属于项目工作目录，不打入 Python wheel。
 
-## 稳定目录
+静态检查拦截语法和未定义名称等明确错误；类型检查逐步覆盖核心契约。CI 执行 Linux/Windows × Python3.10/3.13 的离线测试、关键路径覆盖率门槛与构建，另行运行完整 OCR 安装和推理测试。真实接口默认不执行；CI 配置存在不代表远端已实际运行。
 
-```text
-commands/                         Windows 用户入口
-config/                           稳定配置和本地私密配置
-data/inbox/<资料公司>/<月份>/     原始资料与 project.json
-templates/<模板公司>/             跨月份共享模板与提示词
-runtime/registry/                 自动发现的账套注册表
-http_sessions/                    登录与公司会话
-workspaces/<账号>/<目标账套>/     生成物、状态和日志
-scripts/commands/                 Python 命令编排
-scripts/windows/                  登录、发现与菜单
-src/kdzwy_receipt_uploader/       核心应用包
-```
+## 验证与后续边界
 
-同主体工作区为 `workspaces/<login>/<target>/<month>`；跨主体增加 `from_<source_company_key>` 层。该层只隔离生成物和运行状态，输入始终读取 source/dataset 公司原月份目录，不复制 target 公司的第二份资料目录。
+最初架构拆分时在 Linux / Python 3.13 验证：208 项测试通过、3697 个历史分录子测试通过、34 项真实接口测试按默认规则跳过；静态检查、wheel 构建、离开源码目录后从 wheel 导入和 CLI 帮助均通过。
 
-## 运行链路
+重构前后还比较了 OCR 的 31 个函数 / 类以及银行和发票流程的语法树，除导入位置和显式上下文提取外，业务语句保持一致。本次没有调用真实上传接口，没有验收 Windows 运行环境。
 
-```text
-project.json v8 预检
-  -> dataset、目标账套和会话身份校验
-  -> sales 按实际 PDF；purchase 按用途确认表+PDF或小规模实际 PDF；bank 确定性拆分
-  -> OCR
-  -> 规则缩小模板候选
-  -> Qwen 结构化模板选择
-  -> 动态账套科目和辅助对象解析
-  -> receipt 生成与预审
-  -> prepare 或显式 send/all
-  -> 凭证与附件回读校验
-```
+这次建立了模块边界，并不代表所有旧模块都已足够小。银行和发票编排仍分别约 760 / 1000 行，模板渲染约 610 行；公司注册与配置校验仍集中在 `company_registry.py`。后续优先在补充各阶段独立契约测试后拆分分析、生成等内部阶段，避免仅为了缩短文件引入复杂框架。无需立即加入依赖注入容器、插件系统或通用工作流引擎。
 
-## 核心边界
 
-- `project.json.dataset` 的 key、公司 ID、公司名必须同时匹配资料公司配置。
-- `project.json.target` 的 key、公司 ID、公司名必须同时匹配运行期账套注册表。
-- 每月 source 独立，四个业务都必须精确声明 `enabled/stage`；purchase 另有默认开启的 `usage_confirmation_enabled`。新月份默认全部业务关闭，不继承其他月份。
-- bank 不再使用第二份裁剪文件；银行开关、科目、裁剪和备注模板映射放在 `project.json.sources.bank.banks`，不同 XLSX 的五列定义独立放在同级 `sources.bank.statement_columns`。
-- 每家银行的固定科目号会注入模板候选与提示词，并在模板渲染时覆盖历史模板中的银行存款科目；已有分析和最终 receipt 生成前再次强校验。
-- 银行现金流入记录的非金额借方单元格若完全由数字串组成，这些数字会直接替换模板 `explanation_body`；银行存款分录另从 OCR 原文追加交易日期，且已有分析复用与最终 receipt 前都会校验这两项确定性规则。
-- bank 模板先按流水方向硬筛选；唯一候选走确定性选择，多个合法候选才调用精简上下文的 Qwen。辅助核算对象每次固定从 bank map 自动核对并补充到目标账套。
-- bank 的 `configCompany` 固定来自 `dataset.company_name`；银行借方有效金额的对手方固定为供应商，贷方有效金额的对手方固定为客户，Excel 配置列是权威值，OCR/LLM 不得覆盖。
-- bank 遵循“裁剪 → 特殊对象物理分流 → 剩余 OCR/匹配 → LLM → prepare → send”阶段；`all` 可连续执行完整流程。特殊对象 PDF 保留裁剪原件并复制到专用目录，同时从普通后续输入中排除。
-- 未匹配流水只写入报告并标记为不可进入下游；`unmatched` 命令只负责列出，不会启动任何业务处理。
-- 对手方为保守规则识别出的个人姓名时，在 OCR 调度前按流水索引排除并清除旧 OCR 缓存；只写报告，不进入供应商/客户、匹配、LLM、模板和 receipt。
-- 四类资料目录始终存在，但只有 `enabled=true` 的业务实际运行。
-- 模板 JSON 同时保存分类规则与会计分录；`index.json` 不重复模板清单。
-- 动态科目和辅助对象 ID 只能来自当前目标账套。
-- 生成物不写入 `data/inbox`，只写隔离工作区。
-- 真实上传串行执行；任一失败或歧义都会停止后续任务。
-- 人工银行 receipt 完成后由用户手动从 `draft=true` 改为 `draft=false`；`verify` 和真实提交入口使用同一校验器，任何剩余草稿或无效字段都会阻断整批提交。
-- 银行和杂项在业务规则尚未完成时继续保持真实上传阻断。
+## 2026-09-19 工程保障补齐
 
-## 不兼容边界
-
-以下旧配置已移除：
-
-- `config/datasets.json`
-- `config/accountbooks.json`
-- `month.conf`
-- `project.json` v6 及更早版本
-- 公司 JSON 中的 `dataset`、`enabled` 和运行字段
-- accountbook/dataset 级 `pipeline_overrides`
-- source 中的嵌套 `overrides`
-- 模板 `classification_rules.json` 与 index 重复清单
-
-遇到旧字段时程序直接报错，不做猜测或自动兼容。
+安装、依赖升级、检查与故障恢复以 [质量检查与故障恢复](QUALITY_AND_RECOVERY.md) 为当前说明：已增加 uv.lock、带哈希的 requirements 导出、关键路径覆盖率门槛、8个模块的 strict 类型检查，以及 Linux/Windows × Python3.10/3.13 的 CI 和 OCR 冒烟任务。上文“尚无锁定流程”等状态仅描述前一轮架构拆分时点。
+正常 CLI 上传增加独立的提交日志和操作系统互斥锁，保存前持久化意图，已知凭证ID只恢复回读/绑定核验，结果不明不重新保存。正常账务规则与命令保持兼容。

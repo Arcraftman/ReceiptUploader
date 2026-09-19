@@ -1,0 +1,858 @@
+{
+  "version": 1,
+  "started_at": "2026-09-18T10:24:15.444325+00:00",
+  "finished_at": "2026-09-18T10:24:19.274013+00:00",
+  "company_key": "company_17867515",
+  "company_name": "上海微誉信息技术有限公司",
+  "month": "2026-07",
+  "summary": {
+    "passed": 33,
+    "skipped": 1
+  },
+  "results": [
+    {
+      "id": "identity_before",
+      "label": "查询前账套身份",
+      "method": "GET",
+      "endpoint": "/basedata/initParams?m=getSystemParams",
+      "identity_matches": true,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "status": 200
+      },
+      "elapsed_ms": 246
+    },
+    {
+      "id": "subjects",
+      "label": "科目树",
+      "method": "GET",
+      "endpoint": "/jdy-fi-bd/{dbId}/v1/account/",
+      "data_type": "dict",
+      "data_keys": [
+        "rows"
+      ],
+      "row_counts": {
+        "rows": 226
+      },
+      "group_counts": {},
+      "totals": {},
+      "empty": false,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0,
+        "code": "0",
+        "success": true,
+        "ok": true
+      },
+      "elapsed_ms": 162
+    },
+    {
+      "id": "account_classes",
+      "label": "科目分类",
+      "method": "GET",
+      "endpoint": "/jdy-fi/{dbId}/bs/v1/account-class",
+      "data_type": "dict",
+      "data_keys": [
+        "rows"
+      ],
+      "row_counts": {
+        "rows": 5
+      },
+      "group_counts": {},
+      "totals": {},
+      "empty": false,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0
+      },
+      "elapsed_ms": 94
+    },
+    {
+      "id": "voucher_groups",
+      "label": "凭证字",
+      "method": "GET",
+      "endpoint": "/jdy-fi/{dbId}/bs/v1/vch-group",
+      "data_type": "dict",
+      "data_keys": [
+        "rows"
+      ],
+      "row_counts": {
+        "rows": 1
+      },
+      "group_counts": {},
+      "totals": {},
+      "empty": false,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0
+      },
+      "elapsed_ms": 75
+    },
+    {
+      "id": "currencies",
+      "label": "币别",
+      "method": "GET",
+      "endpoint": "/jdy-fi/{dbId}/bs/v1/currency",
+      "data_type": "dict",
+      "data_keys": [
+        "rows"
+      ],
+      "row_counts": {
+        "rows": 2
+      },
+      "group_counts": {},
+      "totals": {},
+      "empty": false,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0
+      },
+      "elapsed_ms": 108
+    },
+    {
+      "id": "item_classes",
+      "label": "自定义辅助核算类别",
+      "method": "GET",
+      "endpoint": "/jdy-fi/{dbId}/gl/v1/itemClass",
+      "data_type": "dict",
+      "data_keys": [
+        "rows"
+      ],
+      "row_counts": {
+        "rows": 0
+      },
+      "group_counts": {},
+      "totals": {},
+      "empty": true,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0
+      },
+      "elapsed_ms": 77
+    },
+    {
+      "id": "customers",
+      "label": "客户目录",
+      "method": "GET",
+      "endpoint": "/jdy-fi/{dbId}/gl/v1/item/page",
+      "data_type": "dict",
+      "data_keys": [
+        "page",
+        "records",
+        "rows",
+        "totalPage"
+      ],
+      "row_counts": {
+        "rows": 20
+      },
+      "group_counts": {},
+      "totals": {
+        "records": 214,
+        "totalPage": 11,
+        "page": 1
+      },
+      "empty": false,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0
+      },
+      "elapsed_ms": 85
+    },
+    {
+      "id": "suppliers",
+      "label": "供应商目录",
+      "method": "GET",
+      "endpoint": "/jdy-fi/{dbId}/gl/v1/item/page",
+      "data_type": "dict",
+      "data_keys": [
+        "page",
+        "records",
+        "rows",
+        "totalPage"
+      ],
+      "row_counts": {
+        "rows": 20
+      },
+      "group_counts": {},
+      "totals": {
+        "records": 1623,
+        "totalPage": 82,
+        "page": 1
+      },
+      "empty": false,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0
+      },
+      "elapsed_ms": 64
+    },
+    {
+      "id": "voucher_list",
+      "label": "凭证列表",
+      "method": "GET",
+      "endpoint": "/jdy-fi/{dbId}/gl/v1/voucher/list",
+      "data_type": "dict",
+      "data_keys": [
+        "page",
+        "records",
+        "recycleSize",
+        "rows",
+        "totalCredit",
+        "totalDebit",
+        "totalPage"
+      ],
+      "row_counts": {
+        "rows": 20
+      },
+      "group_counts": {},
+      "totals": {
+        "records": 586,
+        "totalPage": 30,
+        "page": 1
+      },
+      "empty": false,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0
+      },
+      "elapsed_ms": 239
+    },
+    {
+      "id": "voucher_summary",
+      "label": "凭证汇总",
+      "method": "GET",
+      "endpoint": "/jdy-fi/{dbId}/gl/v1/voucherTotal/list",
+      "data_type": "dict",
+      "data_keys": [
+        "attachmentCount",
+        "cmountTotal",
+        "dmountTotal",
+        "totalCount",
+        "vchs"
+      ],
+      "row_counts": {
+        "vchs": 17
+      },
+      "group_counts": {},
+      "totals": {
+        "totalCount": 586
+      },
+      "empty": false,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0
+      },
+      "elapsed_ms": 91
+    },
+    {
+      "id": "general_ledger",
+      "label": "总账",
+      "method": "POST",
+      "endpoint": "/jdy-fi-rpt/{dbId}/v1/gl/general/query-total",
+      "data_type": "dict",
+      "data_keys": [
+        "item",
+        "records"
+      ],
+      "row_counts": {
+        "item": 78
+      },
+      "group_counts": {
+        "item": 26
+      },
+      "totals": {
+        "records": 26
+      },
+      "empty": false,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0,
+        "success": true,
+        "code": "0",
+        "ok": true
+      },
+      "elapsed_ms": 86
+    },
+    {
+      "id": "subject_balance",
+      "label": "科目余额表",
+      "method": "POST",
+      "endpoint": "/jdy-fi-rpt/{dbId}/v1/gl/balance-report",
+      "data_type": "dict",
+      "data_keys": [
+        "head",
+        "item",
+        "records"
+      ],
+      "row_counts": {
+        "item": 27
+      },
+      "group_counts": {},
+      "totals": {
+        "records": 1121
+      },
+      "empty": false,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0,
+        "code": "0",
+        "success": true,
+        "ok": true
+      },
+      "elapsed_ms": 279
+    },
+    {
+      "id": "auxiliary_balance",
+      "label": "辅助核算余额表",
+      "method": "POST",
+      "endpoint": "/jdy-fi-rpt/{dbId}/v1/balance-item-report/query",
+      "data_type": "list",
+      "row_counts": {
+        "data": 123
+      },
+      "empty": false,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0,
+        "success": true,
+        "code": "0",
+        "ok": true
+      },
+      "elapsed_ms": 128
+    },
+    {
+      "id": "quantity_ledger",
+      "label": "数量金额总账",
+      "method": "POST",
+      "endpoint": "/jdy-fi-rpt/{dbId}/v1/qtyTotalAccount/detail",
+      "data_type": "dict",
+      "data_keys": [
+        "rows",
+        "size"
+      ],
+      "row_counts": {
+        "rows": 0
+      },
+      "group_counts": {},
+      "totals": {},
+      "empty": true,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0,
+        "success": true,
+        "code": "0",
+        "ok": true
+      },
+      "elapsed_ms": 76
+    },
+    {
+      "id": "balance_sheet",
+      "label": "资产负债表",
+      "method": "GET",
+      "endpoint": "/jdy-fi/{dbId}/rpt/v1/balance",
+      "data_type": "dict",
+      "data_keys": [
+        "absentAccounts",
+        "isAbsent",
+        "isBalance",
+        "isBeginBalance",
+        "isPlTrans",
+        "isPreBalByCache",
+        "isRepeat",
+        "latestPeriod",
+        "needReload",
+        "repeatedAccounts",
+        "rows"
+      ],
+      "row_counts": {
+        "rows": 32
+      },
+      "group_counts": {},
+      "totals": {},
+      "empty": false,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0
+      },
+      "elapsed_ms": 90
+    },
+    {
+      "id": "profit_sheet",
+      "label": "利润表",
+      "method": "GET",
+      "endpoint": "/jdy-fi/{dbId}/rpt/v1/profit",
+      "data_type": "dict",
+      "data_keys": [
+        "absentAccounts",
+        "editable",
+        "isAbsent",
+        "isBalance",
+        "isEmpty",
+        "isNonProfitBalance",
+        "isRepeat",
+        "latestPeriod",
+        "needReload",
+        "nonProfitBalance",
+        "repeatedAccounts",
+        "rows"
+      ],
+      "row_counts": {
+        "rows": 32
+      },
+      "group_counts": {},
+      "totals": {},
+      "empty": false,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0
+      },
+      "elapsed_ms": 75
+    },
+    {
+      "id": "cashflow",
+      "label": "现金流量表",
+      "method": "GET",
+      "endpoint": "/jdy-fi/{dbId}/rpt/v1/cashflow",
+      "data_type": "dict",
+      "data_keys": [
+        "addendum",
+        "checkRes",
+        "initCheckRes",
+        "isBalance",
+        "main",
+        "status"
+      ],
+      "row_counts": {},
+      "group_counts": {},
+      "totals": {},
+      "empty": null,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0
+      },
+      "elapsed_ms": 268
+    },
+    {
+      "id": "cost_detail",
+      "label": "费用明细",
+      "method": "POST",
+      "endpoint": "/jdy-fi-rpt/{dbId}/v1/cost-detail/list",
+      "data_type": "list",
+      "row_counts": {
+        "data": 4
+      },
+      "empty": false,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0,
+        "success": true,
+        "code": "0",
+        "ok": true
+      },
+      "elapsed_ms": 135
+    },
+    {
+      "id": "asset_types",
+      "label": "固定资产类别",
+      "method": "GET",
+      "endpoint": "/jdy-fi/{dbId}/fa/v1/type",
+      "data_type": "dict",
+      "data_keys": [
+        "rows"
+      ],
+      "row_counts": {
+        "rows": 6
+      },
+      "group_counts": {},
+      "totals": {},
+      "empty": false,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0
+      },
+      "elapsed_ms": 82
+    },
+    {
+      "id": "asset_cards",
+      "label": "固定资产卡片",
+      "method": "POST",
+      "endpoint": "/jdy-fi/{dbId}/fa/v1/card/list",
+      "data_type": "dict",
+      "data_keys": [
+        "depreVoucher",
+        "page",
+        "records",
+        "rows",
+        "totalPage"
+      ],
+      "row_counts": {
+        "rows": 0
+      },
+      "group_counts": {},
+      "totals": {
+        "records": 0,
+        "totalPage": 0,
+        "page": 1
+      },
+      "empty": true,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0
+      },
+      "elapsed_ms": 62
+    },
+    {
+      "id": "depreciation_detail",
+      "label": "折旧明细",
+      "method": "GET",
+      "endpoint": "/jdy-fi/{dbId}/fa/v1/report/depreciation-detail",
+      "data_type": "dict",
+      "data_keys": [
+        "hasShare",
+        "page",
+        "records",
+        "rows",
+        "totalPage"
+      ],
+      "row_counts": {
+        "rows": 0
+      },
+      "group_counts": {},
+      "totals": {
+        "records": 0,
+        "totalPage": 0,
+        "page": 1
+      },
+      "empty": true,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0
+      },
+      "elapsed_ms": 49
+    },
+    {
+      "id": "depreciation_summary",
+      "label": "折旧汇总",
+      "method": "GET",
+      "endpoint": "/jdy-fi/{dbId}/fa/v1/report/depreciation-sum",
+      "data_type": "dict",
+      "data_keys": [
+        "hasShare",
+        "page",
+        "records",
+        "rows",
+        "totalPage"
+      ],
+      "row_counts": {
+        "rows": 1
+      },
+      "group_counts": {},
+      "totals": {
+        "records": 0,
+        "totalPage": 0,
+        "page": 1
+      },
+      "empty": false,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0
+      },
+      "elapsed_ms": 86
+    },
+    {
+      "id": "asset_changes",
+      "label": "资产变动记录",
+      "method": "GET",
+      "endpoint": "/jdy-fi/{dbId}/fa/v1/change-record",
+      "data_type": "dict",
+      "data_keys": [
+        "page",
+        "records",
+        "rows",
+        "totalPage"
+      ],
+      "row_counts": {
+        "rows": 0
+      },
+      "group_counts": {},
+      "totals": {
+        "records": 0,
+        "totalPage": 0,
+        "page": 1
+      },
+      "empty": true,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0
+      },
+      "elapsed_ms": 69
+    },
+    {
+      "id": "salary_list",
+      "label": "工资表",
+      "method": "POST",
+      "endpoint": "/jdy-fi/{dbId}/pay/v1/sheet-list",
+      "data_type": "dict",
+      "data_keys": [
+        "hasOld",
+        "page",
+        "realSalaryTotal",
+        "records",
+        "rows",
+        "salaryTotal",
+        "totalPage"
+      ],
+      "row_counts": {
+        "rows": 0
+      },
+      "group_counts": {},
+      "totals": {
+        "records": 0,
+        "totalPage": 0,
+        "page": 1
+      },
+      "empty": true,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0
+      },
+      "elapsed_ms": 71
+    },
+    {
+      "id": "salary_stats",
+      "label": "月度工资统计",
+      "method": "POST",
+      "endpoint": "/jdy-fi/{dbId}/pay/v1/sheet/statMonthPay",
+      "data_type": "dict",
+      "data_keys": [
+        "colName",
+        "dbId",
+        "items",
+        "yearPeriod"
+      ],
+      "row_counts": {
+        "items": 0
+      },
+      "group_counts": {},
+      "totals": {},
+      "empty": true,
+      "response_dbid_placeholder": true,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0
+      },
+      "elapsed_ms": 74
+    },
+    {
+      "id": "departments",
+      "label": "部门目录",
+      "method": "GET",
+      "endpoint": "/jdy-fi/{dbId}/bs/v1/dept",
+      "data_type": "dict",
+      "data_keys": [
+        "depts",
+        "totalsize"
+      ],
+      "row_counts": {
+        "depts": 1
+      },
+      "group_counts": {},
+      "totals": {},
+      "empty": false,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0
+      },
+      "elapsed_ms": 80
+    },
+    {
+      "id": "employees",
+      "label": "职员目录",
+      "method": "GET",
+      "endpoint": "/jdy-fi/{dbId}/bs/v1/employee",
+      "data_type": "dict",
+      "data_keys": [
+        "page",
+        "records",
+        "rows",
+        "totalPage"
+      ],
+      "row_counts": {
+        "rows": 0
+      },
+      "group_counts": {},
+      "totals": {
+        "records": 0,
+        "totalPage": 0,
+        "page": 1
+      },
+      "empty": true,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0
+      },
+      "elapsed_ms": 73
+    },
+    {
+      "id": "invoices",
+      "label": "发票列表",
+      "method": "POST",
+      "endpoint": "/jdy-fi/{dbId}/vat/v1/invoice-list",
+      "data_type": "dict",
+      "data_keys": [
+        "allTotal",
+        "page",
+        "records",
+        "rows",
+        "total",
+        "totalPage"
+      ],
+      "row_counts": {
+        "rows": 0
+      },
+      "group_counts": {},
+      "totals": {
+        "records": 0,
+        "totalPage": 0,
+        "page": 1
+      },
+      "empty": true,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0
+      },
+      "elapsed_ms": 85
+    },
+    {
+      "id": "tax_burden",
+      "label": "税负数据",
+      "method": "GET",
+      "endpoint": "/jdy-fi/{dbId}/vat/v1/tax-burden",
+      "data_type": "dict",
+      "data_keys": [
+        "attach",
+        "cal",
+        "increment",
+        "int",
+        "out"
+      ],
+      "row_counts": {},
+      "group_counts": {},
+      "totals": {},
+      "empty": null,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0
+      },
+      "elapsed_ms": 79
+    },
+    {
+      "id": "cashier_accounts",
+      "label": "出纳账户",
+      "method": "GET",
+      "endpoint": "/jdy-fi/{dbId}/ca/v1/cashier-account",
+      "data_type": "dict",
+      "data_keys": [
+        "isAllBind",
+        "mCur",
+        "naturalCur",
+        "rows"
+      ],
+      "row_counts": {
+        "rows": 5
+      },
+      "group_counts": {},
+      "totals": {},
+      "empty": false,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0
+      },
+      "elapsed_ms": 94
+    },
+    {
+      "id": "voucher_pagination",
+      "label": "凭证跨页一致性",
+      "method": "GET",
+      "endpoint": "/jdy-fi/{dbId}/gl/v1/voucher/list",
+      "first_page_rows": 20,
+      "second_page_rows": 20,
+      "disjoint_ids": true,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0
+      },
+      "elapsed_ms": 299
+    },
+    {
+      "id": "voucher_detail",
+      "label": "凭证详情与借贷一致性",
+      "method": "GET",
+      "endpoint": "/jdy-fi/{dbId}/gl/v1/voucher/{voucherId}",
+      "entries": 3,
+      "id_matches": true,
+      "period_matches": true,
+      "balanced": true,
+      "response_dbid_placeholder": true,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "errcode": 0
+      },
+      "elapsed_ms": 87
+    },
+    {
+      "id": "attachment_urls",
+      "label": "电子附件预览链接",
+      "method": "GET",
+      "endpoint": "/jdy-fi/{dbId}/att/v1/file/urls",
+      "status": "skipped",
+      "reason": "前两页及所选详情无 fileIds；纸质附件张数不代表已上传电子附件",
+      "elapsed_ms": 0
+    },
+    {
+      "id": "identity_after",
+      "label": "查询后账套身份",
+      "method": "GET",
+      "endpoint": "/basedata/initParams?m=getSystemParams",
+      "identity_matches": true,
+      "status": "passed",
+      "http_status": 200,
+      "business_status": {
+        "status": 200
+      },
+      "elapsed_ms": 134
+    }
+  ]
+}

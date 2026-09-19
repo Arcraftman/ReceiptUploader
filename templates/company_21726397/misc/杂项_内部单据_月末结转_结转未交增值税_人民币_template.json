@@ -1,0 +1,137 @@
+{
+  "id": "company_21726397-misc-vat",
+  "name": "杂项_内部单据_月末结转_结转未交增值税_人民币",
+  "version": "2.0",
+  "enabled": true,
+  "documentBlock": "杂项",
+  "documentType": "内部单据",
+  "settlementMethod": "月末结转",
+  "businessType": "结转未交增值税",
+  "currency": "人民币",
+  "keywords": [
+    "结转未交增值税",
+    "转出未交增值税",
+    "结转本期未交增值税"
+  ],
+  "when": {
+    "businessType": "结转未交增值税",
+    "settlementMethod": "月末结转"
+  },
+  "matchRules": {
+    "sourceFolders": [
+      "misc"
+    ],
+    "allowedDocumentBlocks": [
+      "杂项"
+    ],
+    "anyKeywords": [
+      "结转未交增值税",
+      "转出未交增值税",
+      "结转本期未交增值税"
+    ],
+    "excludeKeywords": [
+      "重分类",
+      "重复入账",
+      "多入调整",
+      "补计提",
+      "资产清理",
+      "换开专票"
+    ],
+    "expectedAccounts": [
+      "22210105",
+      "222102"
+    ],
+    "priority": 300
+  },
+  "amountSource": "source",
+  "summary": {
+    "header": "结转未交增值税",
+    "body": "{source.period}",
+    "separator": " "
+  },
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "22210105",
+        "name": "应交税费_应交增值税_转出未交增值税"
+      },
+      "amountFrom": "source.totalAmount",
+      "amountForFrom": "source.totalAmount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "222102",
+        "name": "应交税费_未交增值税"
+      },
+      "amountFrom": "source.totalAmount",
+      "amountForFrom": "source.totalAmount"
+    }
+  ],
+  "historicalEvidence": {
+    "period": "2026-01至2026-08",
+    "count": 6,
+    "monthCount": 6,
+    "months": [
+      "2026-03",
+      "2026-04",
+      "2026-05",
+      "2026-06",
+      "2026-07",
+      "2026-08"
+    ],
+    "voucherRefs": [
+      {
+        "period": "2026-03",
+        "voucher": "记-225",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1236,
+        "lastRow": 1237
+      },
+      {
+        "period": "2026-04",
+        "voucher": "记-197",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1796,
+        "lastRow": 1797
+      },
+      {
+        "period": "2026-05",
+        "voucher": "记-169",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 2278,
+        "lastRow": 2279
+      },
+      {
+        "period": "2026-06",
+        "voucher": "记-178",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 2869,
+        "lastRow": 2870
+      },
+      {
+        "period": "2026-07",
+        "voucher": "记-189",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 3442,
+        "lastRow": 3443
+      },
+      {
+        "period": "2026-08",
+        "voucher": "记-166",
+        "sourceFile": "20260918193311_凭证列表_【智轻云(上海)科技有限公司】_2026年第8期.xlsx",
+        "sheet": "凭证列表#2026年第8期",
+        "firstRow": 418,
+        "lastRow": 419
+      }
+    ],
+    "reason": "按完整凭证分录结构和金额关系复现，剔除显式纠错、补提、重分类；结构覆盖不等于OCR可自动分类。"
+  },
+  "usageNotes": "读取当月已核对结转金额，不根据收入自行推算税额。"
+}

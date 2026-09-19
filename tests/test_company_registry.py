@@ -296,7 +296,6 @@ class RegistryV8Tests(unittest.TestCase):
                     "filename_index_length": 8,
                     "filename_index_prefix": "T",
                 },
-                "remark_template_map": {},
             },
         }
         project["sources"]["bank"]["statement_columns"] = {
@@ -454,7 +453,7 @@ class RegistryV8Tests(unittest.TestCase):
             payload = self._project()
             payload["sources"]["bank"]["banks"]["testbank"].pop("split")
             path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
-            with self.assertRaisesRegex(CompanyRegistryError, "必须同时包含 enabled、bank_account_number、split 和 remark_template_map"):
+            with self.assertRaisesRegex(CompanyRegistryError, "必须同时包含 enabled、bank_account_number 和 split"):
                 load_company_jobs(path, self._company())
 
             payload = self._project()

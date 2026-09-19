@@ -26,7 +26,6 @@ def bank_config(
                 "filename_index_length": length,
                 "filename_index_prefix": prefix,
             },
-            "remark_template_map": {},
         }
     }
 
@@ -46,7 +45,6 @@ def bank_config(
                     "filename_index_length": 8,
                     "filename_index_prefix": "T",
                 },
-                "remark_template_map": {},
             }
         },
         {
@@ -58,7 +56,6 @@ def bank_config(
                     "filename_index_length": 5,
                     "filename_index_prefix": "T",
                 },
-                "remark_template_map": {},
             }
         },
         {
@@ -70,7 +67,6 @@ def bank_config(
                     "filename_index_length": 8,
                     "filename_index_prefix": "1",
                 },
-                "remark_template_map": {},
             }
         },
         {
@@ -98,14 +94,12 @@ def test_unified_bank_config_preserves_prefix_case_and_multiple_banks() -> None:
             "filename_index_length": 16,
             "filename_index_prefix": "V",
         },
-        "remark_template_map": {"运费": "bank/freight_template.json"},
     }
     normalized = validate_bank_configs(payload, "sources.bank.banks")
     assert set(normalized) == {"testbank", "secondbank"}
     assert normalized["testbank"]["split"]["filename_index_prefix"] == "c"
     assert normalized["secondbank"]["bank_account_number"] == "100204"
     assert normalized["secondbank"]["enabled"] is False
-    assert normalized["secondbank"]["remark_template_map"]["运费"] == "bank/freight_template.json"
 
 
 def test_statement_columns_are_separate_and_require_remark_column() -> None:
@@ -177,7 +171,7 @@ def test_bank_exception_receipts_are_normal_outputs_and_can_be_reused(
         bank_receipt_splitter,
         "_recognize_filename_index",
         lambda page, configured_length, configured_prefix: (
-            "", "test-no-number", "bank_exception"
+            "", "test-no-number", "bank_exception", False
         ),
     )
     output_root = tmp_path / "generated"

@@ -1,0 +1,2752 @@
+[
+  {
+    "url": "https://vip4-kj.kdzwy.com/accounting/index.html#inline-script-0",
+    "bytes": 899,
+    "sha256": "073f387820ff6cb4c307b11097c8666c230c5191b5c80582aceaf1b74aa54c95"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/accounting/index.html#inline-script-1",
+    "bytes": 281,
+    "sha256": "8751301beab9ea7e0a141cd6dc90cb49bd9576489271ce6541168bb964f55472"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/accounting/index.html#inline-script-2",
+    "bytes": 7242,
+    "sha256": "0e1b659ed4003a3a5a33fe453ed75e76714f65678aa689e8455ea0ae66439016"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/accounting/index.html#inline-script-3",
+    "bytes": 716,
+    "sha256": "96e9c94d38ec7e091656c5245c873e9a8ec4bb682eeee48593220f8dbb8e3a40"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/accounting/index.html#inline-script-4",
+    "bytes": 635,
+    "sha256": "516a0032e252576958d796e167eee52dae1616d3f6f229dcba44ab9c15046486"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/index.html#inline-script-0",
+    "bytes": 101,
+    "sha256": "94ce8b17c3c264484c8e8be45437a867e3161125bfbc9f0a2d8755ed1f5de36c"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/index.html#inline-script-1",
+    "bytes": 902,
+    "sha256": "22f63ba75e1c061e0c68e589ec386e0cf18ca3d7279034137b5fd9b0bd9854de"
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/20.8bbfb77f.chunk.js",
+    "bytes": 6213622,
+    "sha256": "4a54febff065ab45b1bf747608a3fd1ad56efc95b9b3caee93a57a73136d3843",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/main.606e9379.chunk.js",
+    "bytes": 3132175,
+    "sha256": "0332e2558f1191b157652dad842b93e2bd7571c9f43e50ec4fdc1d0f17364564",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/accountingStatic/pretreatment.js",
+    "bytes": 13727,
+    "sha256": "40a154049b926589df3208f89c6c6ee31d68b563b0fa81ec03d50a5dcedb2664",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/static/fi/libs/gt4.js",
+    "bytes": 14877,
+    "sha256": "4fef453c21cdefec2a33901e7f65639b4264fa73f6aede7f564dd410e4f3d0c1",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/0.6604972a.chunk.js",
+    "bytes": 26669,
+    "sha256": "26931ff7120c77f95a708015762915dc2da7dd01524912055de053e022c7c354",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/1.d75b38a6.chunk.js",
+    "bytes": 31938,
+    "sha256": "45d15e6b301d45941b452df41516d4f65b0940ab7a91910b75cea85af3a97f8d",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/2.e161a5a2.chunk.js",
+    "bytes": 12760,
+    "sha256": "937469bcd330fe087f6b168baad0d0a71085f1adf945aaedd7f53615693f8498",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/3.e78dde9a.chunk.js",
+    "bytes": 277235,
+    "sha256": "3a385865f5961961a28c7d6f95ee3dc15421fdee6fcef65a84e44ab96955562d",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/4.2d7d11c5.chunk.js",
+    "bytes": 25934,
+    "sha256": "334fe458db486cc7f54ab0d58213dce3137cabdea73eddc8fdb32dc4b383e967",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/5.73067b31.chunk.js",
+    "bytes": 23037,
+    "sha256": "4889065bb69854297d9adfba376935e3a656938d725f6daa4d948f207b68ce94",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/6.f11da42d.chunk.js",
+    "bytes": 121277,
+    "sha256": "a8d66f1d2bd792948654e866a8e53349fa7352d096cffaac78223fad88494188",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/7.c15730a1.chunk.js",
+    "bytes": 74054,
+    "sha256": "f9be3c67a17b6d952f9bd56e8084a8bee8392582322330d36f86006ba8d20702",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/8.c018ba49.chunk.js",
+    "bytes": 47187,
+    "sha256": "c35f1252a5754b0cadb42d016cde749ae24a37c1957d4f00f70bea13f28b1446",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/9.3a029b51.chunk.js",
+    "bytes": 64251,
+    "sha256": "6b303e6d015e401271d52db8a1a628f6952520c6cb38100d335a8b9ca0396611",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/10.0e91d4f5.chunk.js",
+    "bytes": 37046,
+    "sha256": "bf3f5304308ea6f842069e24d59e9f392595918fd1cfef22870cb562cc24a079",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/11.eb9201f7.chunk.js",
+    "bytes": 35385,
+    "sha256": "74fa388169f32654660adcaf850532a96974e2aa7a0f362e451f4fde714a31ac",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/12.79f7d856.chunk.js",
+    "bytes": 17950,
+    "sha256": "f2dc5d64df797466040608e993555612ef1140c1f17dc8cbfe507ae8ac57a3cf",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/13.5e35d626.chunk.js",
+    "bytes": 23229,
+    "sha256": "9cbf304059461ada33d65efcc28dc283cf31bc097388980f6e92bdb04cae482a",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/14.c0e878f0.chunk.js",
+    "bytes": 12999,
+    "sha256": "6579beee40d65f6c108fdef407f574517c60a498d16e09d70a07417343a53d4c",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/15.fd137551.chunk.js",
+    "bytes": 22979,
+    "sha256": "8ab28dd5111628daca61bee6a933a94b17707ba74a11aff5197892b7abb6f4a2",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/16.26fc42d7.chunk.js",
+    "bytes": 15060,
+    "sha256": "42adedc9c822d741438a5c8a3fb749744fb79e15c47465a3be1135a5aa2da5f4",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/17.f1dfecbb.chunk.js",
+    "bytes": 17581,
+    "sha256": "1640945f997e6029165f9658e66d7a1d46041e80c579586694be2457e5be88a5",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/21.9198e10d.chunk.js",
+    "bytes": 217647,
+    "sha256": "3baee1bce3d9e0bb3e5e1c26854db4c79001679bcd7d10323e47b288ccc10378",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/22.31ba7e7e.chunk.js",
+    "bytes": 190995,
+    "sha256": "00e90634d2329abecf9ff6e536e469864936f2bcc032e26bca8960a80dde5a7d",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/23.52a0151c.chunk.js",
+    "bytes": 133121,
+    "sha256": "5b18ece8c9af57240ff4235f1f2d41319b70f227537978d980ce050bb280b748",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/24.66cd9d93.chunk.js",
+    "bytes": 121884,
+    "sha256": "78589ed826bd6a0affe47624c4c57164edddfe78cd291fa4c076f4992692065b",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/25.8ddc7964.chunk.js",
+    "bytes": 89166,
+    "sha256": "66d837eec7540dc1e72d7821aae48b5766417a47cbef07104be4f9dfc70c9a91",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/26.fd51d44e.chunk.js",
+    "bytes": 87371,
+    "sha256": "31a1841fd8055eca4f1951d7961f73494df8a932ca4f28cba02deee068885cf0",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/27.e640e1d4.chunk.js",
+    "bytes": 148574,
+    "sha256": "97de31c3f39128c976d3e7fb26b2eb845cd53cfdefefe7c5590628a22e7501c5",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/28.ddec54f9.chunk.js",
+    "bytes": 60318,
+    "sha256": "c77f1b48aa82a2b38eba1ac93c581bc8134222fd33e3decfba61ed3b01c10096",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/29.262e5625.chunk.js",
+    "bytes": 131604,
+    "sha256": "9117ff694424cd5bcf4de52c1982917ef2413b31a4387635410b420ee9302d39",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/30.fd554321.chunk.js",
+    "bytes": 81786,
+    "sha256": "a982293a9197b4948f796997a6c3b78a8d209e158592b805cc33ef676e513898",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/31.9fd53a13.chunk.js",
+    "bytes": 83648,
+    "sha256": "ffb26608a6bf7c3de006935d23e8afea72bd0cb868698363e30733017a8d394c",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/32.93d0f568.chunk.js",
+    "bytes": 40721,
+    "sha256": "1362dc22b83049e722f13e06d9fd186f3a0b2c5224a73c1cc128a99646a1eb08",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/33.656a401f.chunk.js",
+    "bytes": 45280,
+    "sha256": "37faf155e116f90ccf263f7d4f6fde78e87c35609e458f707e8557a3d950900f",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/34.5d0a8c61.chunk.js",
+    "bytes": 25365,
+    "sha256": "20d0b23476488e8e3b0ade5163e2c493d2b6db06307048f5921ea9cb291ab484",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/35.aef491bf.chunk.js",
+    "bytes": 137107,
+    "sha256": "1b750707258dbdaf3d1e93ae871abedaecaa73ab90551f168eff69af590fc600",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/36.8c16b134.chunk.js",
+    "bytes": 61362,
+    "sha256": "f6d668a9781b506fb8e4df04cb4e96dbc5466c4dbdaf53a8dba927265c5270f1",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/37.8faf31ca.chunk.js",
+    "bytes": 74379,
+    "sha256": "268e3eb75089f6677f578abcf14a9b71de11a898a435398b555206e70e330d51",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/38.654f9bb3.chunk.js",
+    "bytes": 74746,
+    "sha256": "c132bc16072dccd63552d61eb0733b094cb76672b4319dc2053da1d80bd2b677",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/39.1815d2e5.chunk.js",
+    "bytes": 78183,
+    "sha256": "ec03a1b754f017f9df13193f3d0168b3e66013c0b7de6fede6e205a9fe3f162a",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/40.de9e30e1.chunk.js",
+    "bytes": 79271,
+    "sha256": "634b5d18c45a9dfb1767bf5604d3c053c0795d5b6fe60f45cd78785e54e0ea26",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/41.58270431.chunk.js",
+    "bytes": 36677,
+    "sha256": "3c8ecdf1828224e3da35070af4f65fe98912da6787be79b3749c87e2b81ad5c4",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/42.9b16857e.chunk.js",
+    "bytes": 88787,
+    "sha256": "3892ade4c9b0e64e19c7bbdbf94f901b4ad0dc546a9a974ad9e4e9a62a09954f",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/43.c48ed256.chunk.js",
+    "bytes": 78662,
+    "sha256": "726af43135d9bd526c945a7ca3394d803b58a25353c24ecce74a02fd14196af3",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/44.f0353c7e.chunk.js",
+    "bytes": 61347,
+    "sha256": "3d18b51b700e6840ef771def9a4c7f4318af38e05e66102604325e36811d9fe1",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/45.8a7c16a5.chunk.js",
+    "bytes": 78642,
+    "sha256": "505dab0d683f90fb7b60b2438bcba3a6d7cbd23495addc0846f0dc5fdb622428",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/46.e5c341f3.chunk.js",
+    "bytes": 43457,
+    "sha256": "cd112867cb0f6b4ee975d286809835fc47d7643eee01d7b22abc254e20534e5b",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/47.e892b82f.chunk.js",
+    "bytes": 43861,
+    "sha256": "164b954456cbb9cd70e3464b777da5e374b1897154a8be6c6286bb62a263f215",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/48.ba6c71e4.chunk.js",
+    "bytes": 38354,
+    "sha256": "9054b3cd5ffb8ff6e985b64fa089137342775fedac12dda40a78703fa8791c9d",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/49.fea3f807.chunk.js",
+    "bytes": 51180,
+    "sha256": "124f2dfd7e72de371958c046acb5ac916ab3a718ba3fe6b1f842ea7d46d93255",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/50.f9b9958d.chunk.js",
+    "bytes": 47066,
+    "sha256": "d18a06261c7dc65fcfe3341a08a019d0bbf9254500b74706e6f899b60b08d57d",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/51.60187568.chunk.js",
+    "bytes": 46765,
+    "sha256": "2faa3c5ba97b17f2cfc09bad92140b4baaa4011372fdcfcc40bd859a72f5a1dc",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/52.abd6ef46.chunk.js",
+    "bytes": 22535,
+    "sha256": "c5935c2e40c79b5e108252cea36333b199f8b94f12684e7f0e8b1b5c7d28ea62",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/53.ed1fd509.chunk.js",
+    "bytes": 40988,
+    "sha256": "005fc239bdfe06a1aaa650c51b93bafbb6ec502a7265a40f8dd8a73f8987504a",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/54.687400e1.chunk.js",
+    "bytes": 32372,
+    "sha256": "5627e3bdb4891a1eadc92212b1f9d45d665aa2c3bc188011a5515abfb23e0022",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/55.1ee1ba78.chunk.js",
+    "bytes": 34656,
+    "sha256": "38496e026773e72fb7637434c6357a42510d82d6244340df73c055b1338f89d9",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/56.b088d7dc.chunk.js",
+    "bytes": 25980,
+    "sha256": "805d67ad34855933c5050c0f103c945cd24a7a2b1a2035c98a4fa9368633ce3e",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/57.ae3efad8.chunk.js",
+    "bytes": 37178,
+    "sha256": "5e8d98f08bc45e7e01efc109494751bc8c820bb1ef6790808d71bdb9ce170dbe",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/58.cda7d53c.chunk.js",
+    "bytes": 83305,
+    "sha256": "97063317bff790b337774796536d2f9ecdddd006ee705713eebaf7da8db9585f",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/59.438d0efb.chunk.js",
+    "bytes": 47449,
+    "sha256": "587d988428888219b042c91a3b108dffd9ef63f67a7dbd9ff607ca985f91d8ef",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/60.fe39d594.chunk.js",
+    "bytes": 46960,
+    "sha256": "51be5b144833c0957e34cdb0c5018ecfe392f8b6ebb96a8d83957c9b19223e33",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/61.20412f05.chunk.js",
+    "bytes": 25090,
+    "sha256": "be6c552e44baba71735d7f0104751c8b1b2bd6d26982de99316abc3e8e6a39ad",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/62.0348e0bb.chunk.js",
+    "bytes": 39473,
+    "sha256": "22b75bd21276d50215bf0ba832144e56da144f7e78813dd723feafe7f7be511a",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/63.b0360a82.chunk.js",
+    "bytes": 39451,
+    "sha256": "91f7473ee0267e000ae1e721e63ca513fa32eb922292d78bef50c66534826d0b",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/64.5cd6b283.chunk.js",
+    "bytes": 43774,
+    "sha256": "817a315b2c2a01919d127b94f05283ce4e6e3745298969b62d71b093d3eb4b37",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/65.cf5ab194.chunk.js",
+    "bytes": 32952,
+    "sha256": "6f97a485a8fe1f2b93bbef5f3111a6cc30b081380823482d720b7551f910c6f3",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/66.232681e5.chunk.js",
+    "bytes": 23695,
+    "sha256": "2e3e5c97298d300dbb33c3f0b44e7a4f32ca8dc94b10c5852390ed55cf221a73",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/67.cca679d4.chunk.js",
+    "bytes": 33714,
+    "sha256": "47b4da2521e5091dfa27a5ea374352014b12b9b7c69960c73492d1b117a5d50f",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/68.efee6e59.chunk.js",
+    "bytes": 26456,
+    "sha256": "2195278547d09c67ff5ca356fb9f1dcb0ff74d0dc5d2928c1680fe8ceb273b26",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/69.7a038c11.chunk.js",
+    "bytes": 42335,
+    "sha256": "bdffef7d900005f89b3c5aa4e9c198799bd6b5cf1f6487d2112fbe57f2c728b6",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/70.f36ccf74.chunk.js",
+    "bytes": 16617,
+    "sha256": "604f6b2cf6ffc2e49f1754752e10bc886f5682c915f117eee5f1014cf7d5befa",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/71.57953869.chunk.js",
+    "bytes": 59309,
+    "sha256": "61455efa11e4e993c24fada66d8fbc062a961c516530aeafa8b906a6c47b8875",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/72.27beb941.chunk.js",
+    "bytes": 38847,
+    "sha256": "a07d5fb7b9ff54ab62d3bbfdaa881ed18839c96ef04b2b85d75ce1e599a8a463",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/73.521ffe7c.chunk.js",
+    "bytes": 44193,
+    "sha256": "5e0fed27d956a6cffc46816901045eac7f619ee11f5f8f1c1e86495bc0e72783",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/74.71a4e8e8.chunk.js",
+    "bytes": 13240,
+    "sha256": "537f65f768178a5e7a974a72350d2b3776a6bc72ce43122c6f45f9e331854a4a",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/75.4d472ee2.chunk.js",
+    "bytes": 41634,
+    "sha256": "1ec434ef3a33be0fef0b0a97b0686c2d8179f7cc5335b019f5843cad725dfa9f",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/76.fecd2bd2.chunk.js",
+    "bytes": 41895,
+    "sha256": "00598b67c4e7ca697e4d6a320d1035d0c38ef96a95c3009752db65fb3eabe94e",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/77.447dde27.chunk.js",
+    "bytes": 8421,
+    "sha256": "08b3e2518ec1f67ae356d8e5499be4392ff50ebe8714dcd6bd3de38ca30f5528",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/78.bc509e5d.chunk.js",
+    "bytes": 9778,
+    "sha256": "1838490148a7d7f5a22024800c2525819bf6b6884bd17300ae8c656ec531a749",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/79.6cb21606.chunk.js",
+    "bytes": 11237,
+    "sha256": "1cd381dc51174d35f5d0b443f28ef6c4a289687fe82ce25a628ab530538309bf",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/80.02c93856.chunk.js",
+    "bytes": 22968,
+    "sha256": "470a115c83cb77343b082bcf3295ceff7c8022b8402e7918873a836a4c9e6a33",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/81.20cf12f7.chunk.js",
+    "bytes": 29322,
+    "sha256": "846f6b14b900cebf173680c6c8190cf22c48caa7896198fb8c3612fe3694dc11",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/82.955b7af0.chunk.js",
+    "bytes": 17496,
+    "sha256": "d080601b239438d369f2e3325951201f7b32afbbcef1ff7ebc1de0568a00b3f5",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/83.6ef5361b.chunk.js",
+    "bytes": 17650,
+    "sha256": "03b1a2039803c4e53d49fae2bce6acb832590eebd802c39f7ca42a2a748584c2",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/84.fb49abe6.chunk.js",
+    "bytes": 33354,
+    "sha256": "e67c4e3a84da801ce80a6c826854da3f9073757b76929fdfe7afc24e5afae800",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/85.4495f6a7.chunk.js",
+    "bytes": 45415,
+    "sha256": "1bfff192c8d243dd55bf795173eb72718511300a265b797050bcdd7009dfd36b",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/86.3f9dfb14.chunk.js",
+    "bytes": 25680,
+    "sha256": "44a7d34d597d3a9449cb0dbb0f55b0008235df2fa796d0720ed1f41d8c64c3a5",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/87.b0c4e584.chunk.js",
+    "bytes": 20415,
+    "sha256": "795cfcdd19b18f3f4d490cb10fe91dd0dcd9aa88d9d2f50a445b18bbb4a1576e",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/88.55146e0a.chunk.js",
+    "bytes": 25099,
+    "sha256": "4c32f55974c85c7e3b76409b76cebca9b31491fb25b30ec5739860c5f26f2d73",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/89.cdeede98.chunk.js",
+    "bytes": 29580,
+    "sha256": "1545f1da8f365fb15d16b1c1d64cba565dfadadbeacdd52e4850469614cd3e62",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/90.a66e147e.chunk.js",
+    "bytes": 10079,
+    "sha256": "33f8f26b9a7badd96e3e7a0dc8c4832f6c440e370f328199dc355613d2c27069",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/91.642022d1.chunk.js",
+    "bytes": 15266,
+    "sha256": "acafce80601f39ee576c41992e7e3f89f3c6180d87d8b493b3e88514235461fa",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/92.2621f7d0.chunk.js",
+    "bytes": 56463,
+    "sha256": "7a992e2290d4134f1a3b5c02e5a74279d9dc80974855d0287f9fb11b4dcdb9d1",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/93.fc10b9b7.chunk.js",
+    "bytes": 21191,
+    "sha256": "2705216c6c5977c14c292275a68363ae39c4879563005bb2161174ee9f95a4f7",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/94.018a18d8.chunk.js",
+    "bytes": 24658,
+    "sha256": "447d562f0d3d4d5f9800e68c22b796bc9a97d137b8f01d17422671e9117c83df",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/95.b8f879af.chunk.js",
+    "bytes": 8181,
+    "sha256": "41de39efc792c51e22d5fda6818a4929f58081f7f17073991b43d1cff345c383",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/96.acbebc8d.chunk.js",
+    "bytes": 14057,
+    "sha256": "bcff69ccdbb56ddcac430e429112e78c2985eaa3ea51b0c1b800cd9d64d3683e",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/97.01e0f30a.chunk.js",
+    "bytes": 4397,
+    "sha256": "a935d3cdcd723ad3a78e13f617aa5fbcec16ed0f21edd8d78cfa1198e79dcdec",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/98.fd7d72c6.chunk.js",
+    "bytes": 5823,
+    "sha256": "7a97b930c185416a85f8fd618530be71afe48ad7793cf5d13617926d057452e9",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/99.31802f2a.chunk.js",
+    "bytes": 27633,
+    "sha256": "1e44d715c9fd287d036bd5dc10ab2032ae5acb19f46d91ddbc80e401a705a2fc",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/100.5916ea91.chunk.js",
+    "bytes": 26541,
+    "sha256": "f2b9fd7c7585db9e92d6d773028c29bc7482501eafc01cb3fb7b83ebed5a88ba",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/101.dd8b647f.chunk.js",
+    "bytes": 34803,
+    "sha256": "8492995324471ed8fcef148e11ed8f0a60b3c3e9d5d5fd20c6f98f846f8a6727",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/102.7e53f830.chunk.js",
+    "bytes": 10587,
+    "sha256": "9dffcb3ad8a8b0e6cc9052980b45443f541b820f3bdea0fe31937eb6aeb0a259",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/103.aa71f9d9.chunk.js",
+    "bytes": 36344,
+    "sha256": "b3024770f3c18d27895d46e45d6e30456ce5dcd57ab0f3bd0f0ed91c8851de64",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/104.d466fce2.chunk.js",
+    "bytes": 7403,
+    "sha256": "a732634d851dd7e83f62fab130645b90d589213c5114ff31611a2a22f732395a",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/105.4eacffe4.chunk.js",
+    "bytes": 12342,
+    "sha256": "9ed7160bd7b1b24b98aac52ee3c7b48ad2d0418d73cf8a0ddb19fd8cf5c7ce21",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/106.1026ea6c.chunk.js",
+    "bytes": 17526,
+    "sha256": "c3c2d28806827176b9db022502330c9b69dde8dc2699bd7bfba700dc9ed76f64",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/107.32857490.chunk.js",
+    "bytes": 1850,
+    "sha256": "38bef6b88851ced3e08209674291271b934c7b47b52f274848e4c181eb0a9c1d",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/108.4f923be6.chunk.js",
+    "bytes": 26720,
+    "sha256": "9a90cabc023b558b65ed12c1b93583e566c8f596724aa8cb3866bb99f3ea20cf",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/109.363e49d4.chunk.js",
+    "bytes": 12101,
+    "sha256": "a75c02c0e29977e2acd090c820dbf4a63da516522200ed7305bbcf3ae839ac5e",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/110.c0d3aa77.chunk.js",
+    "bytes": 6114,
+    "sha256": "4531ba048d1114461b3352c7cb493d0e022614e7a9c6072262f853900c6aab27",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/111.0828c8ea.chunk.js",
+    "bytes": 26334,
+    "sha256": "5004c80c1f7778e576c0c05c04227fda028b082b52b6ea91c252e7fc8efab1c4",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/112.8692a659.chunk.js",
+    "bytes": 514,
+    "sha256": "b6b1f9c8f830b6310f139b110f86da4b3f5348da3e66d8195ffb4ab52663cd69",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/113.631936bc.chunk.js",
+    "bytes": 25870,
+    "sha256": "a28803c69ed90ea32307f8a68502eb936755cb8b60e3182fdfd593953347524e",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/114.e65a8882.chunk.js",
+    "bytes": 8757,
+    "sha256": "5eb9c8501a3dd681b43b8b9e6a3119efc50edf0c9fbf435d76ef8a971af6607b",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/115.3b6a319b.chunk.js",
+    "bytes": 2903,
+    "sha256": "122411d074ef042e8c3e832d0e8cec49e108ba93eef89b19e96e7fa26b44394d",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/116.2a4ad2c6.chunk.js",
+    "bytes": 5682,
+    "sha256": "31b5cc2533f12ac27443cb4b7aad04a1ebed9beec9db6bbdd9bbe011bc3cbb48",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/117.5f89fbb8.chunk.js",
+    "bytes": 3253,
+    "sha256": "22c60a72d432f10afb2c2fe2528452a71dc5ed01d4e1878ec45a3e38f5633876",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/118.e4f32cd1.chunk.js",
+    "bytes": 331,
+    "sha256": "f22c134d1a7cc87534ae288ea22c659b9dc9d634d5941bf9a9c5eb4347baf4ca",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/119.988cb349.chunk.js",
+    "bytes": 20934,
+    "sha256": "a848c21cb61ba96ef1f70be5cbbb77d016faf99bac04d8fe638227b18d796104",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/120.29d74bb1.chunk.js",
+    "bytes": 5447,
+    "sha256": "45ab268f6dcf57f2dba2ca57592c6ec4e8eb5f2007a8312880dac639cb6255d9",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/121.29f2862a.chunk.js",
+    "bytes": 16593,
+    "sha256": "a18f0c3368fa2b964a280b74aa0d93588b22441100f8499ecd7bbe21f6f64caa",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/122.c6c49249.chunk.js",
+    "bytes": 132622,
+    "sha256": "2290a46b8a275d4c6daac79e344962e876c869781628f5742ca6d067407c18ca",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/123.0b744500.chunk.js",
+    "bytes": 931,
+    "sha256": "c5a8624cb300c6e9113eed4957fc9865b3f8b89d468bf828677aa60910b66859",
+    "status": 200
+  },
+  {
+    "url": "https://static.kdzwy.com/saas/vip1/accounting/static_production_20260915152836/js/124.a6f4e4eb.chunk.js",
+    "bytes": 9205,
+    "sha256": "835be70611648a7c905fc64b73b9c706accd1d631743b900a41a23f60b3ed00d",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/system.min.js",
+    "bytes": 9920,
+    "sha256": "42e1caf5e11a8a62e46aacfa73a57c7fe731a5a8e07f701b66d320e43b9f99aa",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-vendors.3d7e6381.js",
+    "bytes": 7033538,
+    "sha256": "090c0a9a0a806a24fefbd462ec811d470c08c5ade778bd24168f4d71358d5e6a",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/app.0833bc2f.js",
+    "bytes": 1302309,
+    "sha256": "d5654b8ac85b02790b7a6f11077528be34ac52cc53a528a77de3da56aaebedea",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/reports/cash-flow-sheets.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/reports/cash-flow-sheets.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/reports/cash-flow-sheets.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/teller/reimbursements.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/teller/reimbursements.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/teller/reimbursements.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/authority-inside.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/authority-inside.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/authority-inside.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/authority-inside.jsp#inline-script-3",
+    "bytes": 4583,
+    "sha256": "9fc381599e8cea1c5fab7b4d76dbcbc0bb877f12b56da9699424268f64211c53"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/authority.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/authority.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/authority.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/authority.jsp#inline-script-3",
+    "bytes": 541,
+    "sha256": "9cce1d0c643480555b23e3961b725dd27111f1646e2f6ec1adaaf9570a028076"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/authority.jsp#inline-script-4",
+    "bytes": 4481,
+    "sha256": "edd244e6c641bcd6eea6eb5b078b680f9e31c354af83b8d772fd73548f0dbc58"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/templateList.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/templateList.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/templateList.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pdf-print.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pdf-print.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pdf-print.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pdf-print.jsp#inline-script-3",
+    "bytes": 437,
+    "sha256": "7c521bb260c937df35d6e3e3abba12d1a6fc14b267e8977eab94cbf7905cefbc"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/voucher-scm.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/voucher-scm.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/voucher-scm.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/subsidiary-ledger.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/subsidiary-ledger.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/subsidiary-ledger.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/subsidiary-ledger.jsp#inline-script-3",
+    "bytes": 1455,
+    "sha256": "9aea7e95807e7bc4327bbe80aad42809201e3e9c9da46e13451c08f4c037e1af"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/accounting-ledger.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/accounting-ledger.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/accounting-ledger.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/accounting-combination.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/accounting-combination.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/accounting-combination.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/teller/BXSetting.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/teller/BXSetting.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/teller/BXSetting.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/associated-scm.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/associated-scm.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/associated-scm.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/scm-data.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/scm-data.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/scm-data.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/scm-data.jsp#inline-script-3",
+    "bytes": 883,
+    "sha256": "fb2f5ebaa7812112e252c1db6ae08d87bcb71eebce4b20fcefbeb8f53898407d"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/scm-parameter.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/scm-parameter.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/scm-parameter.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/scm-parameter.jsp#inline-script-3",
+    "bytes": 7981,
+    "sha256": "048924b25dbbb3abafef75c18e68247d74472c5609690e960430b6372482021a"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/print-templates.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/print-templates.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/print-templates.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/print-templates.jsp#inline-script-3",
+    "bytes": 101,
+    "sha256": "9c1872731f0781ef9f9416db40b4a6f6542a752baede85252ebfdfa630eccc87"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/operation-log-new.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/operation-log-new.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/operation-log-new.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-07ef0ba6.3bd55c12.js",
+    "bytes": 10701,
+    "sha256": "655d148a8bd741b3f2836e946bed904cdb8fa50f50bcc980cdf1c9b9ab1db5f1",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-02224858.4517b705.js",
+    "bytes": 71223,
+    "sha256": "3a52874e130ad812df0425a8a1eb3a4e2fd06bba45594936ff25aae3406c1da0",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-24160680.2cadb9de.js",
+    "bytes": 16943,
+    "sha256": "f55ae97b23eb422068e9ddeb678ab591b5b225ef6850b98495f454866892246a",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-2efc1f61.ea15139d.js",
+    "bytes": 16462,
+    "sha256": "aa9dda47ed50c73a92da1f7e10044a82481e7f39b123a0ab12b31f8f1ee2ceaf",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-3d2d42fe.a1e78ef3.js",
+    "bytes": 13480,
+    "sha256": "df6ef2c4a9db4d3a920c64a6e8b8af09350a5f043c65abeb900275453ea5a7cf",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-65bcb627.1e8352a5.js",
+    "bytes": 71873,
+    "sha256": "0a4a32008346ebc14df11ed2502763db7eb2c9fd6aa29d6aa60088d95b753168",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-3943d37f.98dba6f7.js",
+    "bytes": 15690,
+    "sha256": "a28b7b1b4b55fe77200744345bedb09d8b39f908767ea42b39f19b960523d7ea",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-94db2ec2.17ba2871.js",
+    "bytes": 16951,
+    "sha256": "451ae1ab8d4dca4f0953f1ebe96fd3ef679dcedfd673cb74156d32eb8cc625f1",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-26cc668c.aa7b01ec.js",
+    "bytes": 424474,
+    "sha256": "93c9d0e3e24b5650330bd01243edfe43ad06fce0b7c4b5387ddcbfc787128fc4",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-5efaa3d7.48f93388.js",
+    "bytes": 101152,
+    "sha256": "80168f69a7395a44f4d3ad8282dc58519ebc5243bca8b2d8a735926489bf7ea1",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-79ca2a7a.46fe8045.js",
+    "bytes": 6276,
+    "sha256": "a2d7e9e9c9f9480befef34a5d1a3d1ca1975c8be897e04037c858cd8781f57e1",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-56632b66.b67506ad.js",
+    "bytes": 16094,
+    "sha256": "ba000328a892f0b5bbb367dcb55c36d2bdf05df99daadbc695cc34fe8b084912",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-fa25ce94.e60775cf.js",
+    "bytes": 34577,
+    "sha256": "6174d3c91c1060054bbcb16906e8e8e51054a602c85e28e2cab29bff4279ca68",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-2d0b5dc8.b0848fb2.js",
+    "bytes": 447,
+    "sha256": "9940216eedd7226ebc23150f1704c9e45005b22a65b26124d2d1778dc33f4177",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-2d0da7ae.f5e240ae.js",
+    "bytes": 330,
+    "sha256": "acab7fdfd2f561d17c21278079f8be1f5018262c884b1aae326a76c0476954fd",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-2d0dd0cc.fedfcabf.js",
+    "bytes": 4502,
+    "sha256": "7b5b30136fc204ab8f74f10c6d3734b18c1f7cf13b38d7fbe1cd0a9c2bfd44fd",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-2d209b0f.1b252ac3.js",
+    "bytes": 708,
+    "sha256": "9ffd40dcaef83d1c937850605791bed543519f29130134d1a693e9c6a2516ab6",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-2fee63a6.1e55da2b.js",
+    "bytes": 12050,
+    "sha256": "21b118ac5b12f013bb9e60cd92a851cb68a898939c004531d10e978170194226",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-4f7e629c.0bac6518.js",
+    "bytes": 52817,
+    "sha256": "4d91362aa63295fca4161d95e3eacf22809634dfd7ec307679a5a9102999354c",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-a858b3c2.e346de74.js",
+    "bytes": 86180,
+    "sha256": "fbbd8bdf1e54861ca50dbe39b3b9bbec8003c3f27f587a1e36a33e3911120886",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-3a29e9dc.a718c1b7.js",
+    "bytes": 13682,
+    "sha256": "09e696883390de1d9c185c74bc477b1cac597f18853e0dccf6e5ec9eb606d31e",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-138375e1.507d6203.js",
+    "bytes": 25338,
+    "sha256": "0e2d0dbfc3a23a7f30cd45016468340225b4260d6e42e1fc1cc760759a6fcdb6",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-48858064.978c37b1.js",
+    "bytes": 25074,
+    "sha256": "4e8ecb126057f2da0dd9f748867a1ba92b169e024b429e5edc8ed70c6192a6e5",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-3df95db6.4fa65d0b.js",
+    "bytes": 14566,
+    "sha256": "b92435e4cc6b7a761ccc0b31ce7fc7250a15a6bccd519320831427a39a506c2b",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-427e2e15.b12f6ec9.js",
+    "bytes": 7381,
+    "sha256": "336b1007ceb169af2fd8e6fe54d69d6a863494f7d2ca1f1a01123764a6a40321",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-42c67f30.6d205cb1.js",
+    "bytes": 32150,
+    "sha256": "229289b2963cb0cb044794a0f14f4e90fe6c0a65ed4bca5377e4e47ee3dce3f9",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-46b70ac5.8b9643d7.js",
+    "bytes": 5793,
+    "sha256": "eb0834ce27186f8ae681c079ed0e1986d42471985ab05c6540536275f6701700",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-4cbe8788.eed28981.js",
+    "bytes": 273346,
+    "sha256": "cc90f8189cabc370dc7a9272995495365c184e247e962218737071184717b7c1",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-4f4d8e32.0b2bd6f4.js",
+    "bytes": 10162,
+    "sha256": "d275e57530bf9dd828624282f5008aa85d1d2983423cfe962448c57f349d3063",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-55f8aa04.991196ff.js",
+    "bytes": 30395,
+    "sha256": "3ef423d724cd1b5aca8553c34b290d24a2ac7b6f70a03eac801a3a67aaba5282",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-d419e7d0.39aff09f.js",
+    "bytes": 40159,
+    "sha256": "15f33359863e43058558bea696f1f238895ebcfd8e8ae7fda1a01dd5ebb66659",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-66523785.1ad48d80.js",
+    "bytes": 36900,
+    "sha256": "139359650f5c8167a0188e84d1c1721f7cb8926aa57e7561345fabdceb566074",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-ad1705fe.20bf29fe.js",
+    "bytes": 20299,
+    "sha256": "fcaa02f808830d0f0545d1d8d636d78c34a97b9593c4d7e8d3e238286b43e400",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-cd72fa7e.32b02a39.js",
+    "bytes": 26673,
+    "sha256": "88d2ac103734c90b93bd97229ef177e539e641b0e4b5414bd1372353b2e29d68",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-fa7edb9e.5c9a20a3.js",
+    "bytes": 89323,
+    "sha256": "ac119f9e2ee739bcadc0c6f7d171f951dac8cf85d9a4c0fea3510fb33e3d3a32",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-6aaa3391.8816d365.js",
+    "bytes": 83021,
+    "sha256": "428c5dbc8dc23a7ffa2c5dd3ca6b1bc2df37ef3b7261b5cf2344bb5a27ebb5eb",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-766fa4fa.20afed0d.js",
+    "bytes": 5251,
+    "sha256": "4d6d3fcff2016434723b8ec3e26014b0f8db87efc471f89f479a1ad10dc207d4",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-78c63e67.8c5a54bd.js",
+    "bytes": 40306,
+    "sha256": "a160aab6de52d5f6bc845b90c0ed7da22d3e51da3e7c1029411547f2b18706d7",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-dfb59488.5f1396bf.js",
+    "bytes": 13666,
+    "sha256": "96992be970c5f1f2945bd77760313c9d20cdebe51e036d73f45ee2c029d5ed5c",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-ed2d382a.73550454.js",
+    "bytes": 23306,
+    "sha256": "e2788c7792b278d489fabe1a2e5baec6f42331faccb16e55a06f6913203cbbc4",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-1fc83a1c.8cf9ba29.js",
+    "bytes": 21778,
+    "sha256": "5f3eb2e0b7f48aab32b95c8599b096c1db73d65e458fb3fb28473f79f16ad051",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-7e8f4e7e.148621bb.js",
+    "bytes": 22981,
+    "sha256": "5e3883647f091d98a3a773ecc4a75c6412c6c2b9c1fc79dc3b3ed4a8a9b6276d",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-96beb61c.ecb6b531.js",
+    "bytes": 16926,
+    "sha256": "b3571ee180d172fdd71c120566e65f07248f08251fd32cabbdfbcfc4ca4dbcb7",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-4f68d85a.02c3a1fd.js",
+    "bytes": 6424,
+    "sha256": "12a3239efcde9ce78d888fe503620c604e15deb4feb6729ae26bc583aa025509",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-69539adb.0021b651.js",
+    "bytes": 6553,
+    "sha256": "c269c003e66e9b08895f2dc195a65c2c4bf28470d227fb29d16357f766a82223",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-5c6e3060.54877754.js",
+    "bytes": 1069,
+    "sha256": "4c8dccc808965d6c66846a1219410dff8990963fa91af8781bbc58ad0e79cbeb",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-47e562c0.c7e21047.js",
+    "bytes": 5531,
+    "sha256": "2b52eff1d4945854b183731cc1263149967a916fc1df38c806fb92e238cdd5a1",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/static/js/chunk-6c19e097.b46c4c7e.js",
+    "bytes": 5402,
+    "sha256": "27251409490ec5f520e279b437293f610fa76ed495db87f2f4ab34c6fe61b3a9",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/voucher.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/voucher.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/voucher.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/voucher.jsp#inline-script-3",
+    "bytes": 454,
+    "sha256": "43ac311e5cfbf153ae951a354760fabd4bd28e0b08d7251f114b1ba69e9983d4"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/voucher.jsp#inline-script-4",
+    "bytes": 3797,
+    "sha256": "3e0fcf7086084c43d3e559be4f328c782e39a1b4eb9653c24ce02a68ccdcd5ee"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/voucher.jsp#inline-script-5",
+    "bytes": 719,
+    "sha256": "24c9cba4e7354631289dd0daf6a1b042b046019a8c9cbd13b2c3dfb3ce93f6b3"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/voucher.jsp#inline-script-6",
+    "bytes": 261,
+    "sha256": "c637799c9b5f71657f5fed3a502c7d5788067803f1d0b05ed09414b48e12c0a2"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/voucher.jsp#inline-script-7",
+    "bytes": 932,
+    "sha256": "07656eef54f8accd34851946cd2664866fd70a855c4d3cbeb131476035fd58ad"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/voucher-list.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/voucher-list.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/voucher-list.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/voucher-list.jsp#inline-script-3",
+    "bytes": 437,
+    "sha256": "1d1bf08522b9825eca1c95c6e77ef6eec28e2bba9a1624b2630da997427731e1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/voucher-summary.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/voucher-summary.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/voucher-summary.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/originalVoucher-list-new.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/originalVoucher-list-new.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/originalVoucher-list-new.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/originalVoucher-list-new.jsp#inline-script-3",
+    "bytes": 3797,
+    "sha256": "3e0fcf7086084c43d3e559be4f328c782e39a1b4eb9653c24ce02a68ccdcd5ee"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/originalVoucher-list-new.jsp#inline-script-4",
+    "bytes": 197,
+    "sha256": "177ebb21072b8c01156d254f4d663ae063e04352f9d979f48337eb3f9f7c39bc"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/general-ledger.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/general-ledger.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/general-ledger.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/subject-balance.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/subject-balance.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/subject-balance.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/subject-balance.jsp#inline-script-3",
+    "bytes": 858,
+    "sha256": "52c05ed8d59250a64611b2a1e6dd3b11cdecc4bd2e4f6be30dc3ed58957e1528"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/multicolacct.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/multicolacct.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/multicolacct.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/qtyAmount-detail.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/qtyAmount-detail.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/qtyAmount-detail.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/qtyAmount-general.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/qtyAmount-general.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/qtyAmount-general.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/accounting-balance.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/accounting-balance.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/accounting-balance.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/reports/balance-sheets.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/reports/balance-sheets.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/reports/balance-sheets.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/reports/profit-sheets.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/reports/profit-sheets.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/reports/profit-sheets.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/reports/item-profit-sheets.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/reports/item-profit-sheets.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/reports/item-profit-sheets.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/reports/cash-flow-std-sheets.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/reports/cash-flow-std-sheets.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/reports/cash-flow-std-sheets.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/reports/fee-detail-report.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/reports/fee-detail-report.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/reports/fee-detail-report.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pay/guide.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pay/guide.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pay/guide.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pay/salaryList.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pay/salaryList.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pay/salaryList.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pay/salaryReport.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pay/salaryReport.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pay/salaryReport.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pay/employee.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pay/employee.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pay/employee.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pay/salaryType.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pay/salaryType.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pay/salaryType.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pay/voucherRule.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pay/voucherRule.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pay/voucherRule.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/subject-list.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/subject-list.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/subject-list.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/subject-list.jsp#inline-script-3",
+    "bytes": 3797,
+    "sha256": "3e0fcf7086084c43d3e559be4f328c782e39a1b4eb9653c24ce02a68ccdcd5ee"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/voucher-word.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/voucher-word.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/voucher-word.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/currency.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/currency.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/currency.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/assisting-accouting.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/assisting-accouting.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/assisting-accouting.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/initial-balance.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/initial-balance.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/initial-balance.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/initial-balance.jsp#inline-script-3",
+    "bytes": 3797,
+    "sha256": "3e0fcf7086084c43d3e559be4f328c782e39a1b4eb9653c24ce02a68ccdcd5ee"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/cashflow-initial.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/cashflow-initial.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/cashflow-initial.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/system-parameter.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/system-parameter.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/system-parameter.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/system-parameter.jsp#inline-script-3",
+    "bytes": 135,
+    "sha256": "f73b5ba7f80d67bc6a5c0aad38c8747bf7d54cc73789b8c9f34f5f0138847d8c"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/common/libs/jquery/jquery.js",
+    "bytes": 93436,
+    "sha256": "f23d4b309b72743aa8afe1f8c98a25b3ee31246fa572c66d9d8cb1982cae4fbc",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/common/libs/coco-message.js",
+    "bytes": 15899,
+    "sha256": "5aae3e658d2a9a8e18831ebec0d6189cab6a39926ff092ffa471486d8d7e3d77",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/common/libs/json3.js",
+    "bytes": 44101,
+    "sha256": "cb7d6f4a9deaaed78232247f692b7e8ccb32f4691e9845328879edf07f72ee79",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/common/libs/lightbox2/dist/js/lightbox.min.js",
+    "bytes": 8590,
+    "sha256": "a72b21f66a06f1d570f80a3367125f163c298f7b6924dd6268e108fc35e4fc8f",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/common/common.js?ver=202609151511",
+    "bytes": 194222,
+    "sha256": "a5a41717c3e43d2d3c457f772a55f43fc495f1ee1b81277e1d82572380bc71e5",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/common/tabs.js?ver=202609151511",
+    "bytes": 50105,
+    "sha256": "874b4ef1077ea2f0b1c9d44346e744be1df0152b021791c33fda8951429e990d",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/common/plugins/webuploader/dist/webuploader.js?ver=202609151511",
+    "bytes": 283065,
+    "sha256": "7a4d69423e46db44582f32d04f71aec47a45b96f7ef34c749f443e6dadcc4a4b",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/common/plugins/jquery.rotate.js?ver=202609151511",
+    "bytes": 2095,
+    "sha256": "5782092bc276c15d1a509f47063aac9cde3310f107715eed5a73d50dd56cbed6",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/common/plugins/qrcode.min.js?ver=202609151511",
+    "bytes": 19927,
+    "sha256": "c541ef06327885a8415bca8df6071e14189b4855336def4f36db54bde8484f36",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/common/grid.js?ver=202609151511",
+    "bytes": 173298,
+    "sha256": "8e6b503b3cb062100e93b99c7ce3c652abbf859d93f9725de9ef68c539651645",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/common/plugins.js?ver=202609151511",
+    "bytes": 135098,
+    "sha256": "69a859ae9d4f367875e5b7ba7b30198c6f5341f3c1a16b758608e04ff3a0c248",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/common/plugins/jquery.dialog.js?self=true&ver=202609151511",
+    "bytes": 46223,
+    "sha256": "5e76bc7bceac1eddafe9901267b7705bc3ca84f792ccc6b53994f9142a7be8fb",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/cashFlowSheet.js?ver=202609151511",
+    "bytes": 14768,
+    "sha256": "16202d743179a6b5a13b866eed08ffb3c558086cbbd602616dc401c826b6293e",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/reimbursements.js",
+    "bytes": 9805,
+    "sha256": "c9ea390dff5feacaaa447a45abd41b7c1ece79e9abd2c39335fda135e61cfe38",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/gt.js?ver=202609151511",
+    "bytes": 3455,
+    "sha256": "1d945e9f4ae85286e10c9e507f9f34cbe35a8adc26d6628ba97ed901c7a05060",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/geetest_init.js?ver=202609151511",
+    "bytes": 691,
+    "sha256": "592e8441fab10d096e884e13816635ee6aca48204d50233a02fbd356b08d7bf9",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/apphost.js?ver=202609151511",
+    "bytes": 4503,
+    "sha256": "b08a7e3e7bbb9506ce7a7bbdf96e73786a21cd15e1ac78090783021c8efb26c3",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/authorityInside.js?ver=202609151511",
+    "bytes": 44270,
+    "sha256": "50eaa650516c5eb76fa39200b7a1b6784e639deecf780a5a3a9555da6c45ed14",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/templateList.js?ver=202609151511",
+    "bytes": 4277,
+    "sha256": "2c23022d09ef712512df04814756de3ebd16177a245040c2237825962c3a6982",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/voucherScm.js?ver=202609151511",
+    "bytes": 20096,
+    "sha256": "d1ed1fcedecac224a21434a78fbf5dd16517dc3be97a6e8c728369620d41c308",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/subsidiaryLedger.js?ver=202609151511",
+    "bytes": 29904,
+    "sha256": "d1c2acbe09c02cc1595f9f93796472f035880a7363e1e4071fd759b5f8726fa8",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/common/plugins/ligerui/ligerLayout.js",
+    "bytes": 35224,
+    "sha256": "f0927ea2777ce509c322c8f58f3c3519b2faf7566e7822946e0e480c37663afa",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/accountingLedger.js?ver=202609151511",
+    "bytes": 18074,
+    "sha256": "9c80a5f023b015ca4ea9c7a45ab8c0bf5c0e62454ce90cad10f31ee060a44c78",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/common/plugins/ag-grid/ag-grid-community.js",
+    "bytes": 2568810,
+    "sha256": "28aa96635626a178ebbf7217698a0ef1a8d51f2b503861faebb3d3fcf8298898",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/accountingCombination.js?ver=202609151511",
+    "bytes": 23455,
+    "sha256": "47bb40d23c2ecd05865a1abb386f15cfc7fc9eb78473f8842ca137a7a24dc44b",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/BXSetting.js",
+    "bytes": 13712,
+    "sha256": "a4cf2d13fd25094338ecf6aabf32d63080ebd20efcbae952ce1bdd73adcb0bce",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/associatedSCM.js?ver=202609151511",
+    "bytes": 2210,
+    "sha256": "afbc6e7d2f4c2d8058f022b718b9927ac17eb853bceb4e25ea18bfebcfe22d25",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/printTemplates.js?ver=202609151511",
+    "bytes": 8462,
+    "sha256": "fae109c502cf5f9dd2d22ac1c0f59917057f09e6fe2c3687e57f8f1eb0baf9ac",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/operationLogNew.js?ver=202609151511",
+    "bytes": 7007,
+    "sha256": "826fa478331b67bd17cf51ee47b9a202a5ea7cde5894d7c29b0df148fe1a0602",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/operation-log.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/operation-log.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/operation-log.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/calculator.js?ver=202609151511",
+    "bytes": 2544,
+    "sha256": "2f654f0e3bf4c97cf5af0da510435bb76dd3d6c4e102fdef2ffb8cf33033524d",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/voucher.js?ver=202609151511",
+    "bytes": 70131,
+    "sha256": "e6a5ec4bad84c0576aea0a28d66c81eb7cf690938a3ba967da1c7386c26c6b3d",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/voucherInit.js",
+    "bytes": 33953,
+    "sha256": "9ce15c5b69e26a9c5d488861e8ba2298e0b59f9ffa95971af4b7f5f655ed9e62",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/voucherList.js?ver=202609151511",
+    "bytes": 26242,
+    "sha256": "30f14a6aed752c4ec7525235b57c8c787789e5711632f99056183a41508f944f",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/voucherSummary.js?ver=202609151511",
+    "bytes": 6983,
+    "sha256": "2afb5a2b714376d2414c4f9e25e0540ef00ce69847d6dc548d4be7cc323992fd",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/originalVoucherListNew.js",
+    "bytes": 11734,
+    "sha256": "779f9bfb9c2b690a9e16210b058b8ea0cbd08a0d4948b6be53790c13383621ef",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/generalLedger.js?ver=202609151511",
+    "bytes": 16605,
+    "sha256": "c2d43c5edb311dff923fd1a63eaf089f8584b244b594600187e274f2237590ac",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/subjectBalance.js?ver=202609151511",
+    "bytes": 24006,
+    "sha256": "69169e9cea5c0862c6e0bae1a09a83f281d1bd7e410bbfc49ae414beea2e7465",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/multicolacct.js?ver=202609151511",
+    "bytes": 15297,
+    "sha256": "ec65e3f48fb8842140218481a2482e8684b7c3dc1dc455f7366fea28109514ea",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/qtyAmountDetail.js?ver=202609151511",
+    "bytes": 15350,
+    "sha256": "add2bff015b48c35f5bf929d3292c4abed7c5678e5731315c6d7f931466c3f48",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/qtyAmountGeneral.js?ver=202609151511",
+    "bytes": 10709,
+    "sha256": "03c9eb4d2efabeae67bbcbe8b6a9f157f05324299614d509e44650dfeb874ccd",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/accountingBalance.js?ver=202609151511",
+    "bytes": 14580,
+    "sha256": "fc1f81e25e22715e23d2d93ebf8178cbecc38d029ddaa8161312418cb4550367",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/balanceSheet.js?ver=202609151511",
+    "bytes": 14977,
+    "sha256": "07638f22c86f0608030ce81d19ee0be3b7d12b91ff1e9d7ad41ffb03b4b52dd0",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/profitSheet.js?ver=202609151511",
+    "bytes": 15760,
+    "sha256": "11eb03c5ecb1dc2396e7faa7b0032162dfdde1306b78f399e7324e9fcb6f8dcf",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/itemProfitSheet.js?ver=202609151511",
+    "bytes": 10666,
+    "sha256": "447dc80588583643e438bc6f69014ee108c8accf0d0df1afa61a77378a9b93cf",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/cashFlowStdSheet.js?ver=202609151511",
+    "bytes": 12507,
+    "sha256": "1c48e471ed6f44eba07685b45130351b5b4e253d814ee93fb549e2a0ab0b0f5f",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/common/plugins/echarts.min.js?ver=202609151511",
+    "bytes": 479408,
+    "sha256": "38d5f26ecd4629b505eefb6d8b6360e4be41f6064ad98d6d43e878218fd8dce1",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/feeDetailReport.js?ver=202609151511",
+    "bytes": 8914,
+    "sha256": "85aedaae35a9a12aadc1a95f108eb49e965fdb05f525c3267f1b3813ed8d9274",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/pay/guide.js",
+    "bytes": 3177,
+    "sha256": "35877c05c7766a070dea8b53fca95f26e173a2fe2434d76c87046a44c1545196",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pay/department.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pay/department.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pay/department.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/pay/salaryList.js",
+    "bytes": 8582,
+    "sha256": "3753aeb5280578cb860625daac94062481e508a9574c50886255585faa2c576c",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/pay/salaryReport.js",
+    "bytes": 5765,
+    "sha256": "52a15fb3189295ce9473a1ce9dcf5449024bccc1a9a37e74a31ebd119963a61b",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/pay/employee.js",
+    "bytes": 8425,
+    "sha256": "1cce65811726dfdf9f704ebc3c03de6087ab74d60021139ba250d3b902e3214b",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/pay/salaryType.js",
+    "bytes": 3602,
+    "sha256": "4ffa4fbcde45cd454f16bd278c8d43c7e0dc332d73091a49274697c9a2370960",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/pay/voucherRule.js",
+    "bytes": 4030,
+    "sha256": "b2fe5bb9b387dff1ac03999cbd885d6e79b60b4fd98ae633bf124f59be69e129",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/subjectList.js?ver=202609151511",
+    "bytes": 12715,
+    "sha256": "3c2ab27750b20cab0a5ca2240cb8d0177ac9ca5075a4c2a050cff7bdc1e0ceaa",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/voucherWord.js?ver=202609151511",
+    "bytes": 6122,
+    "sha256": "eeac70db00f25b42fecdac55fe851490291b37b204b5cb7b0c2c12b0d7d3227c",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/currency.js?ver=202609151511",
+    "bytes": 5564,
+    "sha256": "8a7d1f04c71848cd77f031e75bab88199cf9f7abbbbe12b3102d9f2e7cd95f87",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/settingAccounting.js?ver=202609151511",
+    "bytes": 4793,
+    "sha256": "585b0160de67789130093c13d86dddd84d2ba6b760c2d6012ae1985f02417636",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/initialBalance.js?ver=202609151511",
+    "bytes": 25996,
+    "sha256": "6750e13b3f038872b3228a3e45089cb60825f9e0a201d5500e92acc6a1d6f247",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/cashflowInitial.js?ver=202609151511",
+    "bytes": 7029,
+    "sha256": "16a92fa8b4f9a04eaf4d019ffe2f5f1c5f708630d73af622495c989206caf9aa",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/parameter.js?ver=202609151511",
+    "bytes": 18328,
+    "sha256": "2e18cc602ee8f39c15c744683205bdf698575b7a4c6c317198e1358ae518cd23",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/subject-manage.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/subject-manage.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/subject-manage.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/subject-manage.jsp#inline-script-3",
+    "bytes": 3797,
+    "sha256": "3e0fcf7086084c43d3e559be4f328c782e39a1b4eb9653c24ce02a68ccdcd5ee"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/assisting-category.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/assisting-category.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/assisting-category.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/guanYiLog.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/guanYiLog.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/guanYiLog.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/teller/bindBXApp.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/teller/bindBXApp.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/teller/bindBXApp.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/operationLog.js?ver=202609151511",
+    "bytes": 3649,
+    "sha256": "8ef708cd6942cfcada2248bc46bce7e6f0bf155a4655ece94907234c8433640e",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/voucher-tidy.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/voucher-tidy.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/voucher-tidy.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/voucher-tidy.jsp#inline-script-3",
+    "bytes": 4020,
+    "sha256": "65533cf641426ddb9f5b93eea2daa5b1ec481fff655b74904081125daf4493f4"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/originalVoucherNew.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/originalVoucherNew.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/originalVoucherNew.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/originalVoucherNew.jsp#inline-script-3",
+    "bytes": 3797,
+    "sha256": "3e0fcf7086084c43d3e559be4f328c782e39a1b4eb9653c24ce02a68ccdcd5ee"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/pay/department.js",
+    "bytes": 4557,
+    "sha256": "c68a64ee94a6496fc1aca568861a1932732b4593a9a22933667b19343fa9eb01",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/subject.js?ver=202609151511",
+    "bytes": 24839,
+    "sha256": "b8d8b867aa9fd15c13aa8806ef0b155b0a58bc757f1f11eeff482c7b0de27c3f",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/assisting-category.js?ver=202609151511",
+    "bytes": 12461,
+    "sha256": "2c84d05e21fe3160bcc83765855724177640c75fc36484dc7832224868887b4b",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/guanYiLog.js?ver=202609151511",
+    "bytes": 2895,
+    "sha256": "13612c55dcc8796da7294d2e94f2b1070827371aa27928943d983e46e48c547c",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/bindBXApp.js",
+    "bytes": 2012,
+    "sha256": "ca265d54dc03c5417d842585bf9752403801df15cfc92aa74486113db6fc0bd0",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/originalVoucherNew.js?ver=202609151511",
+    "bytes": 19396,
+    "sha256": "3928067c3aa500877516107c98fc26f319f7f1e54f69543f6af4555f70e4d4ff",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/subject-tree.jsp#inline-script-0",
+    "bytes": 1259,
+    "sha256": "a5019b1360b9e79c2cc904077fb9beaa8201eba00a7acd0158f7054c766ac306"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/subject-tree.jsp#inline-script-1",
+    "bytes": 1010,
+    "sha256": "bf371f2692a2d013d75ede53554d56255ed976a464a5b2a8fe818c8dbf8c8ae1"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/subject-tree.jsp#inline-script-2",
+    "bytes": 363,
+    "sha256": "d33053a214d180754a34952a5cf89eded76158e10a3155188ac106ea3d5ed56e"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/subject-tree.jsp#inline-script-3",
+    "bytes": 257,
+    "sha256": "4886fcab1b08077eb2bbe0dcd9fff40378e5568d39b94a6853ecf5b18fd0e6c7"
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/js/dist/subjectTree.js?ver=202609151511",
+    "bytes": 2654,
+    "sha256": "2f801bac9355a58d47b121c1e942719987dc4c3e31b965515dd0028c385b9d81",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/accounting/index.html",
+    "bytes": 12362,
+    "sha256": "d13d744fb741975e42c5534a09eb087d4f9426564090a84aa5ff4d946bb592e6",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/home/index.html",
+    "bytes": 3576,
+    "sha256": "446c039325b93b0c3149599d5e07874c1353fa9fd8060329c532f2f99fb1c9da",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/reports/cash-flow-sheets.jsp",
+    "bytes": 7787,
+    "sha256": "dae80b212db36ce405726696566e4a5a7db8e8234ac7e2f46696849eae03b634",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/teller/reimbursements.jsp",
+    "bytes": 8211,
+    "sha256": "95b24244c32f3af1cdce7270ed53a5a9801ef2e47c8dc0c3df7aca62ad866e0a",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/authority-inside.jsp",
+    "bytes": 27087,
+    "sha256": "f4f0b625a717de92bc47622686b6b3b4226c7c44a1697276d71dd75918673ba3",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/authority.jsp",
+    "bytes": 10470,
+    "sha256": "a3a24e45563b518979c8f60ace32e345eee2e4e6af2398af379c054f90da3e91",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/templateList.jsp",
+    "bytes": 5688,
+    "sha256": "6c0e4044a924c3f63e5a3d1f60a6e51cec6e748e439c977db090b60dbf936d30",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pdf-print.jsp",
+    "bytes": 5428,
+    "sha256": "7939019ea8dbd6d9a41476144d9618a8a52c46c519936f89cb90c7885fad7073",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/voucher-scm.jsp",
+    "bytes": 10767,
+    "sha256": "c8375dc598a6bf91c8623ccd5e8db181e4cb86ce23f5c1bd5dcad6f82e69d05a",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/subsidiary-ledger.jsp",
+    "bytes": 26276,
+    "sha256": "cd2dc548ffb8ba8d1bf2f0c5675a59e8ca779bb1c9fa5f04cec00d7c1a72df4e",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/accounting-ledger.jsp",
+    "bytes": 16932,
+    "sha256": "1912210b2524bacf0f10c31ce2478e0fb88fc4d10a12898bec4830542f3fe147",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/accounting-combination.jsp",
+    "bytes": 20812,
+    "sha256": "973c6dc8e489a2bae81b7505ffb17c7db79722118f2d6707da375c8cbd01ae58",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/teller/BXSetting.jsp",
+    "bytes": 12509,
+    "sha256": "0a44d536a0d745501c5b8ddb04e4609c6123dc618c46923024744a80707c0a2e",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/associated-scm.jsp",
+    "bytes": 10339,
+    "sha256": "e428e6b132bc38560267c55309ce873e6b5e0c8c154e1c7db243bd95d53c6d65",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/scm-data.jsp",
+    "bytes": 7689,
+    "sha256": "757bebbdfa67b462c44ceeb25c881df44b59485e6a5c35bf20bb2af9699e31fb",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/scm-parameter.jsp",
+    "bytes": 30948,
+    "sha256": "48d9d09092603f726f75773bb7e3ab650d28a60f45ab65c764c2bdc09972d7eb",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/print-templates.jsp",
+    "bytes": 6991,
+    "sha256": "982e18ea132baf39e38e1bb07d67bcf349d414be9e7a94c0512a822a909a23f0",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/operation-log-new.jsp",
+    "bytes": 8107,
+    "sha256": "98e218429070d1ae9b2d9b6ea1f5e65ffc2df7276307d070ea6d168cca45b270",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/voucher.jsp",
+    "bytes": 22943,
+    "sha256": "1f1b123f26cb06b5f78a234e7fd2e462be4650934092f193baf4d1477b9a73cd",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/voucher-list.jsp",
+    "bytes": 15538,
+    "sha256": "9a3302baa0bd5f2930a49da446394a9af6b6d9d9fe371626b49c110d1025432d",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/voucher-summary.jsp",
+    "bytes": 8344,
+    "sha256": "5871f4a0f32f2eaf46114f5b157db71cdd7189d9b8130aa353253ffeb7728de6",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/originalVoucher-list-new.jsp",
+    "bytes": 14313,
+    "sha256": "0747d159edf22b532d64a01d8d62f7e7219a8815b16f4a7940fc2e253b33b9ab",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/general-ledger.jsp",
+    "bytes": 9223,
+    "sha256": "19dd595b13671597912e3d7b87946c7b5b0583b51a3e4b1c998df8e4456b4c77",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/subject-balance.jsp",
+    "bytes": 9843,
+    "sha256": "de4b7ce80b18db20c808bc391650abf68003b52dbdd727dd308216cbda16f9b0",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/multicolacct.jsp",
+    "bytes": 7943,
+    "sha256": "ed4f6ca4475d9963023e8d85c070dfe87a36765071f91a363960dff2005a6c87",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/qtyAmount-detail.jsp",
+    "bytes": 12672,
+    "sha256": "5405e523fa46c52577e9cc9c643d96b0ca5ad66ae6d78510da96011bfc00f372",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/qtyAmount-general.jsp",
+    "bytes": 8817,
+    "sha256": "fa22c5493265d2c1bcaee4dedbf78477009c0f4154e55119ff69bdb12367617f",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/books/accounting-balance.jsp",
+    "bytes": 8990,
+    "sha256": "034c5eeacf3ca2994fc0d358df2ee17dffe4fafb53a1f91718a5f78a3a64260f",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/reports/balance-sheets.jsp",
+    "bytes": 13607,
+    "sha256": "a0a9a2dd552f5a6fc75d3a78876cd3aa2d79659995acec305e79fa3e698e6f9d",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/reports/profit-sheets.jsp",
+    "bytes": 12712,
+    "sha256": "27df23a23547f4691e81f839b860bfe055cb5ec56766df59bf865f7decae34d4",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/reports/item-profit-sheets.jsp",
+    "bytes": 9385,
+    "sha256": "f06d7cced482b5ceed7cfd357084f9a373f70c508395630dc27b3ed7ae2d47dc",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/reports/cash-flow-std-sheets.jsp",
+    "bytes": 9734,
+    "sha256": "a50adf88cd86a043fb10ed268d16430bb7c500c7dcff9fca4fecf8770d1a6b90",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/reports/fee-detail-report.jsp",
+    "bytes": 9418,
+    "sha256": "31735d9a7103a7affb42b2aef288f69cad9362c83e43b958590c32aaf2629df6",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pay/guide.jsp",
+    "bytes": 13298,
+    "sha256": "201f5a5c7b4816c6d15193a4fadb58bc83ff38deabbf4a04c687fc10f507d2ca",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pay/salaryList.jsp",
+    "bytes": 6741,
+    "sha256": "161aa5cffb756c046c66b5f1d6a3b7eb27579ae86a4b2dfb2f05790d8805241f",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pay/salaryReport.jsp",
+    "bytes": 7553,
+    "sha256": "f0ae670ed178017777eed204dab4b9db33e3caa8de93bbffd546deb47590e938",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pay/employee.jsp",
+    "bytes": 8414,
+    "sha256": "d62e44ddb54e1e652148c88f474fc062b4562d242f41cbb00d5b0b2662d94dc6",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pay/salaryType.jsp",
+    "bytes": 5475,
+    "sha256": "dc723e4637ead192a98fe7bc4f0ceaf43637f638184ff4736a390dc9328b067b",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pay/voucherRule.jsp",
+    "bytes": 5449,
+    "sha256": "2721d8046207d35854647217dc1cb48136491ad3a66b7b286070f5dc08e6c52a",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/subject-list.jsp",
+    "bytes": 11310,
+    "sha256": "c2583cb8bcd07031e141fc882af820b9940f36b65fb8e681def8e7b3bceb7347",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/voucher-word.jsp",
+    "bytes": 5295,
+    "sha256": "ead85e356e491fb37b4776d91994ca43f1c23c982a6eb31d68226a995e158c22",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/currency.jsp",
+    "bytes": 5401,
+    "sha256": "3f768eadf313b4182c3793a3d7579d581320b5e105b9b83cebe9c8a967a92447",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/assisting-accouting.jsp",
+    "bytes": 7520,
+    "sha256": "f02d81f9d1a1cc1c9ef13bce2dfb195664c6347092f13f47880fa1d0f2289844",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/initial-balance.jsp",
+    "bytes": 12214,
+    "sha256": "163d5af8c6e7fd9416588cf519fbf8ae3575c313bf95c40b027272abf3846434",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/cashflow-initial.jsp",
+    "bytes": 6171,
+    "sha256": "811e76841c989cc427e36221ac6047becedc765cc1b4d266c62e89773196d2b2",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/system-parameter.jsp",
+    "bytes": 19790,
+    "sha256": "05f9c768a28807ead1e40d1ea0e08f81eeb42257d42076b3bd9f9d5604217640",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/operation-log.jsp",
+    "bytes": 7502,
+    "sha256": "80b5fcfcedb9bf12741ed0cdcd50018bc14d1cd6e9806f657578b82b906fc20d",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/pay/department.jsp",
+    "bytes": 5514,
+    "sha256": "1949e0c189732a8c1f3502f3b48260faaff9cf696758444f4085f62ba4fc27dc",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/subject-manage.jsp",
+    "bytes": 18084,
+    "sha256": "addd69404320c6e83af112029304f66ef93c4c5d20aeb5068831529e74deb8f9",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/assisting-category.jsp",
+    "bytes": 6794,
+    "sha256": "bffabb812823bf3c8ef3808337181212039eb3860c8d8e84c97428c533c97baa",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/guanYiLog.jsp",
+    "bytes": 5423,
+    "sha256": "dbb6c704a7259eae71b4c4e02111ac49dc172017c878e148e1f28d906796771d",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/settings/teller/bindBXApp.jsp",
+    "bytes": 10482,
+    "sha256": "71d4ea77b083c956e4e37645002d4d8c1a513caa6720c245be69c88d846962d4",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/voucher-tidy.jsp",
+    "bytes": 12568,
+    "sha256": "fe78b06a797afd332d5c2de8a483227a74d2a1e79d7f8b165fb2e93e1dd0ec97",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/originalVoucherNew.jsp",
+    "bytes": 18497,
+    "sha256": "3e09702a2ba58a169a5876de617d0c38349a43c08deb875ea6a481931906c046",
+    "status": 200
+  },
+  {
+    "url": "https://vip4-kj.kdzwy.com/voucher/subject-tree.jsp",
+    "bytes": 6188,
+    "sha256": "4d4b6c38660ddf4194e6a2c32728ae230b6004e8ff6c231e7aabc245fa800b14",
+    "status": 200
+  }
+]

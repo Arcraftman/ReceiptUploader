@@ -327,9 +327,6 @@ def main() -> int:
                 "company_id": target_accountbook.company_id,
                 "company_name": target_accountbook.name,
             },
-            "cross_company_upload_enabled": safe_defaults[
-                "cross_company_upload_enabled"
-            ],
             "input": input_settings,
             "defaults": safe_defaults,
             "sources": source_settings,

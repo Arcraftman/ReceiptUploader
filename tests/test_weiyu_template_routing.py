@@ -12,7 +12,7 @@ from kdzwy_receipt_uploader.receipts_ocr import OcrArtifact, _rule_candidates
 from kdzwy_receipt_uploader.template_catalog import TemplateCatalog
 
 
-TEMPLATE_ROOT = PROJECT / "templates" / "weiyu"
+TEMPLATE_ROOT = PROJECT / "templates" / "company_17867515"
 
 
 def _records_for(source: str) -> list[dict[str, object]]:
@@ -91,8 +91,8 @@ def _route(
         return selected
 
 
-def _assert_one(source: str, text: str, expected_id: str) -> None:
-    selected = _route(source, text)
+def _assert_one(source: str, text: str, expected_id: str, values=None) -> None:
+    selected = _route(source, text, values)
     assert [item["id"] for item in selected] == [expected_id]
     assert str(selected[0]["decisionCode"]).count(".") == 4
 
@@ -124,12 +124,11 @@ def test_weiyu_kept_templates_use_their_own_source_and_verified_accounts() -> No
     catalog = TemplateCatalog.load(TEMPLATE_ROOT)
     expected_sources = {"sales": "sales_map", "purchase": "purchase_map", "bank": "source", "misc": "source"}
     expected_accounts = {
-        "expense-12": {"560107", "22210101", "2202"},
-        "bank-06": {"22210101", "100201"},
-        "bank-09": {"221102", "224108", "100201"},
-        "bank-10": {"221103", "224109", "100201"},
-        "bank-20": {"100201", "224105"},
-        "bank-23": {"100204", "2001"},
+        "expense-12": {"560107", "22210101", "220201"},
+        "bank-09": {"221102", "224108", "source.bankAccountNumber"},
+        "bank-10": {"221103", "224109", "source.bankAccountNumber"},
+        "bank-20": {"source.bankAccountNumber", "224105"},
+        "bank-23": {"source.bankAccountNumber", "2001"},
     }
     counts = {source: 0 for source in expected_sources}
     for record in catalog.records:
@@ -138,9 +137,9 @@ def test_weiyu_kept_templates_use_their_own_source_and_verified_accounts() -> No
         counts[source] += 1
         assert template["amountSource"] == expected_sources[source]
         if record["id"] in expected_accounts:
-            accounts = {str(entry["accountSelector"]["number"]) for entry in template["entries"]}
+            accounts = {str(entry["accountSelector"].get("number", entry["accountSelector"].get("numberFrom"))) for entry in template["entries"]}
             assert accounts == expected_accounts[str(record["id"])]
-    assert counts == {"sales": 1, "purchase": 5, "bank": 13, "misc": 6}
+    assert counts == {"sales": 1, "purchase": 6, "bank": 10, "misc": 6}
 
 
 def test_weiyu_ground_truth_manifest_covers_every_voucher() -> None:
@@ -176,17 +175,17 @@ def test_sales_and_misc_are_narrowed_to_one_template() -> None:
 
 
 def test_bank_routes_real_voucher_archetypes_and_blocks_generic_transfer() -> None:
-    _assert_one("bank", "招商银行电子回单 用途：付供应商款 货款", "bank-04")
-    _assert_one("bank", "招商银行电子回单 摘要：收客户款", "bank-01")
+    _assert_one("bank", "招商银行电子回单 用途：付供应商款 货款", "bank-04", {"flowDirection": "outflow", "counterpartyRoles": ["supplier"]})
+    _assert_one("bank", "招商银行电子回单 摘要：收客户款", "bank-01", {"flowDirection": "inflow", "counterpartyRoles": ["customer"]})
     _assert_one("bank", "招商银行电子回单 代发工资", "bank-12")
-    _assert_one("bank", "上海银行电子回单 缴增值税", "bank-06")
+    assert _route("bank", "上海银行电子回单 缴增值税") == []
     _assert_one("bank", "上海银行电子回单 缴社保", "bank-09")
     _assert_one("bank", "上海银行电子回单 缴公积金", "bank-10")
     _assert_one("bank", "招商银行电子回单 股东借款", "bank-20")
     _assert_one("bank", "招商银行电子回单 贷款发放 流动资金贷款", "bank-23")
     assert _route("bank", "招商银行电子回单 银行账户管理费") == []
     _assert_one("bank", "上海银行电子回单 应付账款 发票款 转账手续费", "bank-13")
-    _assert_one("bank", "缴增值税 城建税 教育费附加 地方教育费附加", "bank-tax-vat-surcharges-cny")
+    assert _route("bank", "缴增值税 城建税 教育费附加 地方教育费附加") == []
     assert _route("bank", "招商银行电子回单 转账") == []
     assert _route("bank", "上海银行电子回单 直接扣收转账手续费") == []
 
@@ -206,30 +205,16 @@ def test_bank_routes_jd_counterparty_to_dynamic_payables_exception_only() -> Non
             },
         },
     )
-    assert [item["id"] for item in selected] == ["bank-jd-dynamic-ap-cny"]
-    assert selected[0]["exception"]["allocationAccountNumber"] == "2202"
-    assert selected[0]["exception"]["disallowedAccountNumbers"] == ["1123"]
-
-    assert [
-        item["id"]
-        for item in _route(
-            "bank",
-            "上海银行业务回单 用途：采购货款",
-            {
-                "flowDirection": "outflow",
-                "counterpartyName": "其他供应商",
-                "invoiceNumbers": [],
-            },
-        )
-    ] == ["bank-04"]
+    assert selected == []
 
 
 def test_bank_routing_uses_statement_direction_as_a_hard_boundary() -> None:
     customer_values = {
         "flowDirection": "inflow",
+        "counterpartyRoles": ["customer"],
         "invoiceNumbers": ["26312000004664982496"],
     }
-    supplier_values = {"flowDirection": "outflow", "invoiceNumbers": []}
+    supplier_values = {"flowDirection": "outflow", "counterpartyRoles": ["supplier"], "invoiceNumbers": []}
     assert [
         item["id"]
         for item in _route("bank", "上海银行业务回单 用途：货款", customer_values)
@@ -257,7 +242,7 @@ def test_bank_routing_uses_statement_direction_as_a_hard_boundary() -> None:
                 "flowDirection": "inflow",
                 "invoiceNumbers": [],
                 "configCompany": "上海微誉信息技术有限公司",
-                "counterpartyName": "测试客户",
+                "counterpartyName": "测试客户", "counterpartyRoles": ["customer"],
             },
         )
     ] == ["bank-01"]
@@ -270,7 +255,7 @@ def test_bank_routing_uses_statement_direction_as_a_hard_boundary() -> None:
                 "flowDirection": "inflow",
                 "invoiceNumbers": ["26312000004664982496"],
                 "configCompany": "上海微誉信息技术有限公司",
-                "counterpartyName": "测试客户",
+                "counterpartyName": "测试客户", "counterpartyRoles": ["customer"],
             },
         )
     ] == ["bank-01"]

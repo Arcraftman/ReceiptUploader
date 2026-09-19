@@ -1,0 +1,164 @@
+{
+  "id": "company_20139879-misc-surtax",
+  "name": "杂项_内部单据_期间计提_税金及附加计提_人民币",
+  "version": "2.0",
+  "enabled": true,
+  "documentBlock": "杂项",
+  "documentType": "内部单据",
+  "settlementMethod": "期间计提",
+  "businessType": "税金及附加计提",
+  "currency": "人民币",
+  "keywords": [
+    "计提税金及附加",
+    "计提城建税"
+  ],
+  "when": {
+    "businessType": "税金及附加计提",
+    "settlementMethod": "期间计提"
+  },
+  "matchRules": {
+    "sourceFolders": [
+      "misc"
+    ],
+    "allowedDocumentBlocks": [
+      "杂项"
+    ],
+    "anyKeywords": [
+      "计提税金及附加",
+      "计提城建税"
+    ],
+    "excludeKeywords": [
+      "重分类",
+      "重复入账",
+      "多入调整",
+      "补计提",
+      "资产清理",
+      "换开专票"
+    ],
+    "expectedAccounts": [
+      "5403",
+      "222108",
+      "222113",
+      "222114"
+    ],
+    "priority": 300
+  },
+  "amountSource": "source",
+  "summary": {
+    "header": "税金及附加计提",
+    "body": "{source.period}",
+    "separator": " "
+  },
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "5403",
+        "name": "税金及附加"
+      },
+      "amountFrom": "source.totalAmount",
+      "amountForFrom": "source.totalAmount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "222108",
+        "name": "应交税费_应交城市维护建设税"
+      },
+      "amountFrom": "source.cityTax",
+      "amountForFrom": "source.cityTax"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "222113",
+        "name": "应交税费_教育费附加"
+      },
+      "amountFrom": "source.educationSurcharge",
+      "amountForFrom": "source.educationSurcharge"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "222114",
+        "name": "应交税费_地方教育费附加"
+      },
+      "amountFrom": "source.localEducationSurcharge",
+      "amountForFrom": "source.localEducationSurcharge"
+    }
+  ],
+  "historicalEvidence": {
+    "period": "2026-01至2026-08",
+    "count": 7,
+    "monthCount": 7,
+    "months": [
+      "2026-01",
+      "2026-02",
+      "2026-03",
+      "2026-05",
+      "2026-06",
+      "2026-07",
+      "2026-08"
+    ],
+    "voucherRefs": [
+      {
+        "period": "2026-08",
+        "voucher": "记-274",
+        "sourceFile": "20260918193017_凭证列表_【千云（上海）信息科技有限公司】_2026年第8期.xlsx",
+        "sheet": "凭证列表#2026年第8期",
+        "firstRow": 664,
+        "lastRow": 667
+      },
+      {
+        "period": "2026-01",
+        "voucher": "记-301",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 768,
+        "lastRow": 771
+      },
+      {
+        "period": "2026-02",
+        "voucher": "记-209",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1301,
+        "lastRow": 1304
+      },
+      {
+        "period": "2026-03",
+        "voucher": "记-301",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 2061,
+        "lastRow": 2064
+      },
+      {
+        "period": "2026-05",
+        "voucher": "记-257",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 3575,
+        "lastRow": 3578
+      },
+      {
+        "period": "2026-06",
+        "voucher": "记-323",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 4457,
+        "lastRow": 4460
+      },
+      {
+        "period": "2026-07",
+        "voucher": "记-267",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 5132,
+        "lastRow": 5135
+      }
+    ],
+    "reason": "按完整凭证分录结构和金额关系复现，剔除显式纠错、补提、重分类；结构覆盖不等于OCR可自动分类。"
+  },
+  "usageNotes": "使用当期税额明细，三项合计等于税金及附加；不固定税率或减免比例。"
+}

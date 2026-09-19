@@ -1,0 +1,63 @@
+{
+  "id": "company_21726397-bank-employee-reimbursement",
+  "name": "银行_银行回单_银行结算_费用报销_人民币",
+  "version": "2.0",
+  "enabled": true,
+  "documentBlock": "银行",
+  "documentType": "银行回单",
+  "settlementMethod": "银行结算",
+  "businessType": "费用报销",
+  "currency": "人民币",
+  "keywords": [
+    "费用报销"
+  ],
+  "when": {
+    "businessType": "费用报销",
+    "settlementMethod": "银行结算"
+  },
+  "matchRules": {
+    "sourceFolders": [
+      "bank"
+    ],
+    "allowedDocumentBlocks": [
+      "银行"
+    ],
+    "flowDirections": [
+      "outflow"
+    ],
+    "anyKeywords": [
+      "费用报销"
+    ],
+    "expectedAccounts": [
+      "560106",
+      "source.bankAccountNumber"
+    ]
+  },
+  "amountSource": "source",
+  "summary": {
+    "header": "费用报销",
+    "body": "",
+    "separator": " "
+  },
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "560106",
+        "name": "销售费用_差旅费"
+      },
+      "amountFrom": "source.amount",
+      "amountForFrom": "source.amount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "numberFrom": "source.bankAccountNumber",
+        "name": "银行存款（由project.json动态注入）"
+      },
+      "amountFrom": "source.amount",
+      "amountForFrom": "source.amount"
+    }
+  ],
+  "usageNotes": "用户确认：人名且备注含费用报销，全部暂记差旅费，上传后人工调整。"
+}

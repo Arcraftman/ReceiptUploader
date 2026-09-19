@@ -111,10 +111,10 @@ def test_full_five_step_chain(tmp_path: Path) -> None:
     assert [call[0] for call in api.calls] == [
         "/basedata/initParams?m=getSystemParams",
         "/default.jsp",
+        "/jdy-fi-rpt/fake-db/v1/invoice/discern",
         "/gl/voucher?m=getvchNum",
         "/jdy-fi/fake-db/gl/v1/voucher/save",
         "/jdy-fi/fake-db/gl/v1/voucher/voucher-88",
-        "/jdy-fi-rpt/fake-db/v1/invoice/discern",
         "/jdy-fi/fake-db/att/v1/file/bind-vch",
         "/jdy-fi/fake-db/gl/v1/voucher/voucher-88",
     ]

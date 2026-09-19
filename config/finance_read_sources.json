@@ -1,0 +1,177 @@
+{
+  "voucher_list": {
+    "id": "voucher_list",
+    "label": "凭证列表",
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/gl/v1/voucher/list",
+    "query": {
+      "page": "1",
+      "pageSize": 20,
+      "sidx": "date",
+      "sord": "asc",
+      "dateType": "1",
+      "groupId": "0",
+      "voucherSource": "0",
+      "remarkType": "0",
+      "itemClassId": "0",
+      "itemId": "0",
+      "isCur": "1",
+      "isQtyaux": "1",
+      "fromPeriod": "{period}",
+      "toPeriod": "{period}",
+      "voucherAccountItem": "false",
+      "aiMark": "-1"
+    },
+    "data_type": "dict",
+    "required_keys": [
+      "rows",
+      "records",
+      "totalPage",
+      "totalCredit",
+      "totalDebit",
+      "page",
+      "recycleSize"
+    ],
+    "list_fields": [
+      "rows"
+    ]
+  },
+  "subject_balance": {
+    "id": "subject_balance",
+    "label": "科目余额表",
+    "method": "POST",
+    "path": "/jdy-fi-rpt/{dbId}/v1/gl/balance-report",
+    "query": {},
+    "data_type": "dict",
+    "required_keys": [
+      "head",
+      "item",
+      "records"
+    ],
+    "list_fields": [
+      "item"
+    ],
+    "body": {
+      "fromSubject": "",
+      "toSubject": "",
+      "currency": "RMB",
+      "itemClassId": "0",
+      "itemId": "0",
+      "fromPeriod": "{period}",
+      "toPeriod": "{period}",
+      "fromLevel": 1,
+      "toLevel": 4,
+      "detailAccount": 0,
+      "isBalanceZero": false,
+      "isHappenAndBalanceZero": false,
+      "isAllSubject": false,
+      "isDisabledAccount": false,
+      "isMulCur": false,
+      "expandLevels": false,
+      "isIncludeItem": true,
+      "isSubjectFullName": false,
+      "isDisplaySubtotal": false
+    }
+  },
+  "auxiliary_balance": {
+    "id": "auxiliary_balance",
+    "label": "辅助核算余额表",
+    "method": "POST",
+    "path": "/jdy-fi-rpt/{dbId}/v1/balance-item-report/query",
+    "query": {},
+    "data_type": "list",
+    "required_keys": [],
+    "list_fields": [],
+    "body": {
+      "fromPeriod": "{period}",
+      "toPeriod": "{period}",
+      "itemClassIds": [
+        "1"
+      ],
+      "itemNumbers": [
+        ""
+      ],
+      "accountNumber": "",
+      "cur": "RMB",
+      "includeAccount": false,
+      "balance": false,
+      "happen": false,
+      "showQty": false,
+      "detail": true
+    }
+  },
+  "balance_sheet": {
+    "id": "balance_sheet",
+    "label": "资产负债表",
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/rpt/v1/balance",
+    "query": {
+      "yearPeriod": "{period}"
+    },
+    "data_type": "dict",
+    "required_keys": [
+      "rows",
+      "isBalance",
+      "isRepeat",
+      "isAbsent",
+      "isBeginBalance",
+      "absentAccounts",
+      "repeatedAccounts",
+      "isPlTrans",
+      "isPreBalByCache",
+      "needReload",
+      "latestPeriod"
+    ],
+    "list_fields": [
+      "rows"
+    ]
+  },
+  "profit_sheet": {
+    "id": "profit_sheet",
+    "label": "利润表",
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/rpt/v1/profit",
+    "query": {
+      "yearPeriod": "{period}",
+      "batchOperate": "{\"type\":\"\",\"value\":[]}",
+      "type": "1"
+    },
+    "data_type": "dict",
+    "required_keys": [
+      "rows",
+      "isBalance",
+      "isRepeat",
+      "isAbsent",
+      "isNonProfitBalance",
+      "absentAccounts",
+      "repeatedAccounts",
+      "nonProfitBalance",
+      "editable",
+      "isEmpty",
+      "needReload",
+      "latestPeriod"
+    ],
+    "list_fields": [
+      "rows"
+    ]
+  },
+  "cashflow": {
+    "id": "cashflow",
+    "label": "现金流量表",
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/rpt/v1/cashflow",
+    "query": {
+      "yearPeriod": "{period}"
+    },
+    "data_type": "dict",
+    "required_keys": [
+      "status",
+      "isBalance",
+      "main",
+      "addendum",
+      "checkRes",
+      "initCheckRes"
+    ],
+    "list_fields": []
+  }
+}

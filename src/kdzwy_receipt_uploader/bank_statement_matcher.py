@@ -18,54 +18,7 @@ class BankStatementMatchError(RuntimeError):
     pass
 
 
-_CHINESE_PERSON_NAME_PATTERN = re.compile(r"[\u3400-\u9fff]{2,4}")
-_COMMON_CHINESE_SURNAMES = set(
-    "赵钱孙李周吴郑王冯陈褚卫蒋沈韩杨朱秦尤许何吕施张孔曹严华金魏陶姜戚谢邹喻柏窦章云苏潘葛奚范彭郎鲁韦昌马苗方俞任袁柳鲍史唐费廉岑薛雷贺倪汤滕殷罗毕郝邬安常乐于时傅皮卞齐康伍余元卜顾孟平黄和穆萧尹姚邵汪祁毛禹狄米贝臧计伏成戴谈宋茅庞熊纪舒屈项祝董梁杜阮蓝闵席季麻强贾路娄危江童颜郭梅盛林刁钟徐邱骆高夏蔡田樊胡凌霍虞万柯管卢莫房裘缪解应宗丁宣邓郁单杭洪包诸左石崔吉龚程嵇邢裴陆荣翁荀羊惠甄曲家封芮储靳汲邴糜井段富巫乌焦巴弓牧山谷车侯全班仰秋仲伊宫宁仇栾甘厉戎祖武符刘景詹束龙叶幸司韶郜黎薄印宿白怀蒲从鄂索咸赖卓蔺屠蒙池乔胥苍双闻党翟谭贡劳姬申扶冉宰雍桑桂牛寿通边扈燕冀浦尚农温别庄晏柴瞿阎充慕连茹习宦艾鱼容向古易慎戈廖庾居衡步都耿满弘匡国文寇广东欧沃利蔚越隆师巩聂晁勾敖融冷辛那简饶空曾沙鞠须丰巢关相查后荆红游竺权盖益桓公"
-)
-_COMPOUND_CHINESE_SURNAMES = (
-    "欧阳",
-    "司马",
-    "上官",
-    "诸葛",
-    "东方",
-    "独孤",
-    "南宫",
-    "万俟",
-    "闻人",
-    "夏侯",
-    "皇甫",
-    "尉迟",
-    "公羊",
-    "赫连",
-    "澹台",
-    "公冶",
-    "宗政",
-    "濮阳",
-    "淳于",
-    "单于",
-    "太叔",
-    "申屠",
-    "公孙",
-    "仲孙",
-    "轩辕",
-    "令狐",
-    "钟离",
-    "宇文",
-    "长孙",
-    "慕容",
-    "司徒",
-    "司空",
-)
-
-
-def is_person_name(value: object) -> bool:
-    """Conservatively identify short Chinese personal names before bank OCR."""
-    name = str(value or "").strip()
-    if _CHINESE_PERSON_NAME_PATTERN.fullmatch(name) is None:
-        return False
-    return name[0] in _COMMON_CHINESE_SURNAMES or name.startswith(
-        _COMPOUND_CHINESE_SURNAMES
-    )
+from .bank_rules import employee_payment_kind, is_person_name
 
 
 def _person_name_marker(
@@ -303,10 +256,6 @@ def _read_statement_rows(
                 flow = _flow_fields(values[debit_col - 1], values[credit_col - 1])
                 counterparty_name = str(values[counterparty_col - 1] or "").strip()
                 remark = str(values[remark_col - 1] or "").strip()
-                remark_template_map = bank_config.get("remark_template_map")
-                if not isinstance(remark_template_map, Mapping):
-                    remark_template_map = {}
-                forced_template_path = str(remark_template_map.get(remark) or "").strip()
                 if flow["flowDirection"] == "outflow":
                     counterparty_type = "supplier"
                     item_class = "供应商"
@@ -326,8 +275,6 @@ def _read_statement_rows(
                     "itemClassHint": item_class,
                     "counterpartyRoleSource": "statement_direction_hint",
                     "remark": remark,
-                    "forcedTemplatePath": forced_template_path,
-                    "templateRouteSource": "statement_remark_exact" if forced_template_path else "standard_rules",
                     **({"supplierName": counterparty_name} if counterparty_type == "supplier" else {}),
                     **({"customerName": counterparty_name, "customName": counterparty_name} if counterparty_type == "customer" else {}),
                     "statement": {
@@ -408,7 +355,7 @@ def collect_person_name_exclusions(
         exclusions[bank_key] = {
             str(row["index"])
             for row in statement_rows
-            if is_person_name(row.get("counterpartyName"))
+            if is_person_name(row.get("counterpartyName")) and not employee_payment_kind(row)
         }
     return exclusions
 
@@ -482,13 +429,13 @@ def match_bank_statements(
             _person_name_marker(row, bank_account_number)
             for row in all_statement_rows
             if str(row.get("index")) not in exception_indexes
-            and is_person_name(row.get("counterpartyName"))
+            and is_person_name(row.get("counterpartyName")) and not employee_payment_kind(row)
         ]
         statement_rows = [
             row
             for row in all_statement_rows
             if str(row.get("index")) not in exception_indexes
-            and not is_person_name(row.get("counterpartyName"))
+            and (not is_person_name(row.get("counterpartyName")) or employee_payment_kind(row))
         ]
         receipts, bank_exception_receipts = _read_receipts(
             ocr_report, bank_key, bank_config
@@ -550,8 +497,6 @@ def match_bank_statements(
                 "itemClassHint": statement["itemClassHint"],
                 "counterpartyRoleSource": statement["counterpartyRoleSource"],
                 "remark": statement["remark"],
-                "forcedTemplatePath": statement["forcedTemplatePath"],
-                "templateRouteSource": statement["templateRouteSource"],
                 **({"supplierName": statement["supplierName"]} if statement.get("supplierName") else {}),
                 **({"customerName": statement["customerName"], "customName": statement["customName"]} if statement.get("customerName") else {}),
                 "bankDebitRaw": statement["bankDebitRaw"],

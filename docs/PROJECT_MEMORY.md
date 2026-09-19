@@ -1,6 +1,6 @@
 # 项目业务决策记忆
 
-更新日期：2026-09-07
+更新日期：2026-09-18
 
 ## 当前配置决策
 
@@ -36,14 +36,13 @@
 
 - `sources.bank.enabled` 是银行业务总开关；`sources.bank.banks.<bank_key>.enabled` 是单家银行开关。运行时只把双重启用的银行带入裁剪、OCR、匹配、辅助核算、模板分析、receipt 和上传；禁用银行不要求当月 PDF/XLSX。
 - 银行流水列配置已从单家银行主体抽离到 `sources.bank.statement_columns.<bank_key>`。它必须与 `banks` 使用相同 bank key，并精确包含流水号、银行借方、银行贷方、对手方名称、备注五列；启用银行五列均必填，禁用银行可为 `null`。
-- 每家银行主体配置 `remark_template_map`。流水备注列去除首尾空格后按完整文本精确匹配；命中时确定性锁定配置的 `bank/..._template.json`，不调用 LLM 选择模板，但仍执行方向、主体、币种、银行科目、动态科目、金额、日期、摘要与借贷平衡校验。备注、强制模板路径和路由来源必须写入 bank map/analysis，旧分析模板不一致时禁止复用。
 - 当月 `project.json.sources.bank.banks` 是银行唯一配置源；不再生成或读取 `bank_split.json`。
 - 银行交易对象身份由现有进销项 Excel 名称列和目标账套客户/供应商目录共同判断；资金方向只决定借贷方向，不得用于创建客户或供应商。
 - 当月 `project.json.sources.bank.exceptions` 是特殊对象名称的唯一配置；所有命中名称统一隔离普通下游。
 - 京东重庆供应链和各种缴税业务统一进入 `bank_exceptions` 单独处理，不保留普通银行模板，不进入常规 LLM、receipt 和自动上传链。
 - `config/bank_exception.defaults.json` 只保存跨公司通用的系统 PDF 关键词规则。
 - 对手方证据不足或客户、供应商证据冲突时必须进入异常处理，不允许按银行流入、流出猜测身份。
-- 多银行数量不写死；每个 bank key 对应同名 `<bank_key>.pdf` 和 `<bank_key>.xlsx`。银行主体包含 `enabled`、`bank_account_number`、`split`、`remark_template_map`，列定义放在独立的 `sources.bank.statement_columns`。
+- 多银行数量不写死；每个 bank key 对应同名 `<bank_key>.pdf` 和 `<bank_key>.xlsx`。银行主体包含 `enabled`、`bank_account_number`、`split`，列定义放在独立的 `sources.bank.statement_columns`。
 - 银行键名必须小写，原始 PDF 命名为 `<bank_key>.pdf`。
 - 每个银行规则必须包含 `parts_per_page`、`filename_index_length`、`filename_index_prefix`；旧的银行键直接映射整数格式不再接受。
 - 单张回单文件名优先使用交易流水号/交易流水/核心流水号，其次回单编号，最后使用独立字母数字索引；所有候选都必须符合该银行配置的长度和起始字母。起始字母大小写敏感，生成文件名保留识别文本中的原始大小写。
@@ -75,10 +74,92 @@
 ## 安全决策
 
 - 动态科目、客户、供应商等 ID 只能从当前目标账套获取。
-- `confirm` 只能从 `confirm_one.bat` 或 `confirm_all.bat` 进入，并要求二次确认。
+- `confirm` 只能从 `confirm_one.bat`、`confirm_all.bat` 或对应 Linux `.sh` 入口进入，并要求二次确认。
 - 跨主体运行必须由当月配置显式允许；跨主体真实上传还必须经过命令行安全门。
 - 上传后必须回读凭证和附件；失败或结果不明确时立即停止。
 - 状态文件只用于观察和恢复判断，不能自动授权或跳过真实上传。
 - purchase、bank、misc 在没有完成业务验证前不得扩大真实上传范围。
 
 完整操作步骤见 [USAGE.md](USAGE.md)，技术分层见 [ARCHITECTURE.md](ARCHITECTURE.md)。
+
+## Linux 与接口扫描
+
+- `commands` 的 16 个 BAT 均有同名 Linux `.sh`。Linux 登录、发现与安全菜单由 `scripts/commands/login_companies.py` 实现，不依赖未随仓库提供的 PowerShell 文件。
+- 官方登录入口为 `https://gj.kdzwy.com/`；管家域名由实际登录结果取得。账套跳转地址从当前账号公司列表对应的 `customer/accounturl` 获取，不猜测公司 ID。
+- 每个账套使用独立 Cookie jar，在保存会话前校验远端公司 ID 和 DBID。会话保存在 `http_sessions/accounts/<account>/companies/`，权限 `0600`，注册表位于 `runtime/registry/accountbooks.json`。
+- 2026-09-18 已完成当前账号 18 个账套的登录验证和当前发布前端的读取接口扫描，结果见 [KDZwy_READ_API_REPORT.md](KDZwy_READ_API_REPORT.md)。扫描结果是部署版本快照，不是服务端全部接口或全部账号权限的保证。
+- 接口清单区分静态候选、实测业务成功、动作/含义不明。GET 也可能删除数据，发现的接口不得自动批量重放。正式业务仍沿用原有上传和校验流程。
+
+- 主要读取接口的固定集成测试入口为 `commands/test_read_apis.sh` / `.bat`，必须指定公司 key 和月份。`unittest` 联网用例默认跳过，仅在显式配置公司及月份环境变量时启用。
+- 2026-09-18 以微誉 `company_17867515`、`2026-07` 实测，33 项通过，电子附件链接因采样无 `fileIds` 跳过；结果见 [READ_API_TESTS.md](READ_API_TESTS.md)。只读测试不生成或上传凭证。
+
+## 2026-09-18 两家公司8月历史模板
+
+- 用户要求暂搁接口探测，改按提供的2026年8月凭证分析常用做账范式；不要建立生僻模板。
+- 千云 company_20139879 独立13模板（覆盖244/277张历史凭证），智轻云 company_21726397 独立17模板（覆盖118/171张）。配置已分别绑定同名模板目录，不复制微誉业务科目。
+- 分析与未纳入清单：`docs/template_analysis/2026-08_两家公司模板分析.md`。千云导出全部未审核；智轻云导出填写审核人。覆盖率只是分录结构回放，不代表自动分类成功率。
+- 两家应收/应付使用1122/2202及运行时客户/供应商辅助核算；导出下划线后缀不是应复制的固定科目号。千云城建税222108，智轻云222118；千云物业560219，智轻云水电560211。
+- 智轻云项目收入500101和研发收入500102必须有明确归属依据，不能只根据软件服务费决定；研发结转保留负数红字。
+- 公积金必须有当期公司/个人金额，不固定各半；复杂工资折旧按各公司当期分项表取数。千云8月没有工资计提完整样本，不新增推测模板。
+- 历史纠错、重分类、资产处置、内部划转、混合报销、偶发硬件和费用转进项等未建普通模板。按原有规则，银行缴税仍走例外流程。
+- 新增测试`tests/test_august_company_templates.py`回放362张历史凭证并测试路由/阻断；源文件未修改，没有上传。
+
+## 2026-09-18 以1—8月历史重建（替代8月初版选型）
+
+- 新增1—7月两份凭证，结合原8月重建：千云18模板、完整结构覆盖2084/2261张；智轻云25模板、覆盖832/1309张。总3570张逐张借贷平衡。
+- 千云新增房租、运杂费、管理服务费、退客户款、工资社保公积金计提；智轻云新增商品销售及成本、销售差旅、办公、汽车费用、房租、供应商退款、社保公司个人分拆。
+- 智轻云单科目社保不是默认，必须明确仅公司部分；普通社保需分拆金额，否则阻断。研发福利4月和6月科目归属不同，不自动推广。
+- 不合并Excel按月份+凭证号归组；不得按每行重复凭证号新建凭证，也不得跨月合并同号凭证。
+- `docs/template_analysis/2026-01_08_两家公司模板重建.md`为当前依据，8月报告留作历史。模板version 2.0，有按月历史证据。
+- 新历史回放2916张，原8月362张回归仍保留。混合凭证、内部转账、纠错和生僻业务不为覆盖率而硬套模板。未改原Excel或上传。
+
+- 用户已删除银行备注强制模板功能；`remark_column`保留为业务证据，银行主体仅包含enabled、bank_account_number、split。旧备注强制分析必须重新执行llm，不得复用。
+
+## 2026-09-18 健壮性修复
+
+- month初始化不再输出顶层cross_company_upload_enabled，仅保留defaults中的正式字段；新建公司按模板注册表default_base_template选择基础模板，不再硬编码weiyu旧目录。
+- 银行金额必须有限、正数，transactionAmount与statementAmount一致。公积金/社保显式分项必须非负、分币精度且合计等于流水。显式金额优先；仅微誉允许沿用已有公积金各半规则，千云/智轻云缺明细阻断。
+- 分析保存bankSourceAmounts快照。LLM复用前重新校验全部银行分析规则；旧分析或金额来源改变必须重跑，prepare同样拦截。
+- 预加载客户/供应商不再按借贷金额方向创建角色，必须依据实际业务资料或当前账套目录；未知企业也不得自动当供应商。
+- 微誉采购模板排除明确自用业务，防止办公费用被默认计库存；requests列入运行依赖以支持Linux登录。
+- 已更新过期测试：公司模板路径、已验证银行金额、动态银行科目、单候选仍调用模型、缴税/京东例外隔离、附件先于凭证保存等。
+- 新增Linux实际sh初始化→PDF拆分→模拟OCR→流水匹配→模拟LLM→prepare回归，包括跨账套月份和重复初始化保留配置。测试未使用真实线上写接口。
+
+
+## 2026-09-19 员工工资与费用报销
+
+用户确认：以 `counterparty_name_column` 识别人名，再读取 `remark_column`。
+仅付款方向且备注包含“工资”或“费用报销”其中一种时，直接使用该公司的工资/报销模板，不调用模型。两种同时出现、收款或未命中备注仍按人员待处理；显式 exceptions 名单继续优先。
+微誉、千云、智轻云均已设置：工资借记 221101，费用报销全额暂记 560106 销售费用—差旅费，贷记当前银行配置的 bank_account_number。金额、日期及目标科目正常校验；人员不预建为客户/供应商。
+通过校验后沿用 `stage=all` / `send` 提交流程，无需逐张人工确认；上传后用户自行调整费用科目。`ocr` / `llm` 不上传。备注、人员、方向或银行科目变化时禁止复用旧分析。
+
+
+## 2026-09-19 Windows Excel 财务工作簿
+
+用户新增目标：联网寻找全面财务模板，最终在 Excel 内点击刷新按钮读取账无忧只读接口；明确最终客户端为 Windows 桌面 Microsoft Excel，后台仍在 Linux。
+已比较 Vertex42、Smartsheet；采用自建中文工作簿和 Windows VBA 刷新按钮。实现 `finance_snapshot.py`、`scripts/finance/serve.py`、`commands/finance_server.sh/.bat`、`excel/FinanceRefresh.bas`、`excel/Install-Finance.ps1`。Windows 使用 SSH 本地转发访问 Linux loopback 服务，独立访问令牌不嵌入工作簿，金蝶会话只在后台。
+17张表的样本位于 `outputs/finance_refresh_20260919/财务管理模板.xlsx`。财务读取使用独立只读白名单和 `config/finance_read_sources.json`。实测微誉2026-08：524张凭证、1443分录、201现金银行分录；获取1—8月利润趋势。往来去重合计/子行，并补入无辅助核算往来科目，与总账勾稽。
+边界：账龄尚缺核销和到期日已验证接口，首版人工补充未核销单据，未分配余额单列；出纳为总账1001/1002口径；现金流字段期间含义保留原名称；Windows按钮安装/实际点击还未在Windows环境验收。不得宣称全自动账龄或一键刷新终端已完成验收。
+详情见 `docs/finance/README.md`，HTTP实测 `docs/finance/live_smoke.json`。
+
+
+## 2026-09-19 框架整理（保持功能）
+
+用户暂停 Excel 后续工作，要求优化整个 Python 项目的框架和模块划分，保持现有功能。OCR 拆为 `ocr/` 下的 models、fields、engine、selector、rules、rendering、memory、service；`receipts_ocr.py` 保留兼容导出。银行与发票流程拆入 `application/`，通过冻结字段的 PipelineContext 明确传递根目录和运行输入，原 pipeline_runner 保留命令和配置入口。
+只读白名单、身份校验与传输移入 `integrations/read_client.py`，财务功能不再导入测试模块；姓名识别和工资/报销分类移入纯规则 `bank_rules.py`，原导入继续兼容。配置、模板、产物格式、缓存版本、业务规则和提交顺序未改变。
+新增包依赖 / 开发与 OCR extras、Ruff 基础检查、Python 3.10/3.13 离线 CI 配置及架构测试。Linux/Python3.13 本地208测试、3697历史分录子测试通过，34真实接口测试跳过；wheel构建和安装导入通过，远端CI与Windows尚未运行。没有真实上传。详见 `docs/ARCHITECTURE.md`。银行/发票流程内部仍较长，后续按阶段契约逐步细化，不引入复杂工作流框架。
+
+
+## 2026-09-19 四项工程保障落地
+
+用户要求补齐故障恢复、覆盖率、可复现/跨平台安装和类型契约。新增 UploadJournal：正常 CLI 在 runtime/processing/uploads 按账套+receiptId 存储内容哈希、已上传fileIds、保存意图、凭证ID和完成结果；使用内核互斥锁、fsync、原子替换。保存结果未知禁止重提；已知ID的回读/绑定故障允许原命令继续核验，不能再保存凭证。恢复绑定时不把声明attachments当绑定证据；要求usedAttachments，否则留待核对。并发竞争不移动原文件或写阻断台账。
+补充保存超时/中断/磁盘失败/损坏日志/跨账套/重复执行等测试，修复非有限金额、整数尾零序列化及空会话JSON异常处理；正常会计规则不变。两份旧main式测试已纳入pytest。
+新增覆盖率JSON/HTML和config/quality/coverage.json门槛、scripts/maintenance/check_project.py统一检查入口。严格mypy覆盖workflow、提交日志及结果、应用context/options、app/month配置、银行纯规则8个模块，其余模块逐步收紧。
+uv.lock是版本及哈希来源，requirements.txt与requirements-dev.txt从锁导出。干净安装发现onnxruntime新版本无Python3.10 wheel，增加py310的<1.24约束。CI为Linux/Windows×Python3.10/3.13，包含原生sh/bat初始化与完整OCR推理任务；Windows尚未实际执行，不能宣称已验收。
+本地Linux：干净Python3.10.21与3.13.15均342测试通过、3697历史子测试通过；默认35跳过（34真实接口+1单独运行的OCR冒烟）。真实OCR两个版本均单独1项通过；mypy/Ruff/覆盖率门槛/sdist与wheel构建通过。未调用真实上传接口。说明见docs/QUALITY_AND_RECOVERY.md。
+
+
+## 2026-09-19 财务模板源码分发与提交
+
+用户要求提交全部更改，并明确Windows拿到源码后如何得到xlsx。源码新增不含公司数据的excel/finance-template.xlsx，17张表和公式保留，无需运行依赖制作环境的Node脚本。原带实测数据样本仍只在outputs本地。Install-Finance.ps1现在有默认路径，无参数运行生成excel/finance.xlsm，不覆盖已有文件。
+明确当前边界：只读采集、单月快照/年初至当月趋势和模板已实现；Windows宏与安装源码存在但尚未实机验收。账号密码表单登录、公司名选择、任意起止月份、本地组件一键部署尚未实现。生成xlsm仍需已登录会话、服务和令牌，不能宣称简化登录刷新已完成。文档docs/finance/README.md已更新。

@@ -78,7 +78,6 @@ def test_matches_multiple_banks_and_maps_bank_direction(tmp_path: Path) -> None:
                 "counterparty_name_column": "H",
                 "remark_column": "I",
             },
-            "remark_template_map": {"运费": "bank/freight_template.json"},
         },
         "beta": {
             "bank_account_number": "100204",
@@ -90,7 +89,6 @@ def test_matches_multiple_banks_and_maps_bank_direction(tmp_path: Path) -> None:
                 "counterparty_name_column": "K",
                 "remark_column": "I",
             },
-            "remark_template_map": {},
         },
     }
     map_path = tmp_path / "maps" / "bank_map.json"
@@ -130,8 +128,8 @@ def test_matches_multiple_banks_and_maps_bank_direction(tmp_path: Path) -> None:
     assert outflow["counterpartyType"] == "supplier"
     assert outflow["supplierName"] == "甲供应商"
     assert outflow["remark"] == "运费"
-    assert outflow["forcedTemplatePath"] == "bank/freight_template.json"
-    assert outflow["templateRouteSource"] == "statement_remark_exact"
+    assert "forcedTemplatePath" not in outflow
+    assert "templateRouteSource" not in outflow
     inflow = result["banks"]["alpha"]["entries"]["A23456"]
     assert inflow["flowDirection"] == "inflow"
     assert inflow["ourDebitAmount"] == "25.00"
@@ -184,7 +182,6 @@ def test_configured_exception_is_removed_before_person_and_normal_matching(tmp_p
                 "counterparty_name_column": "H",
                 "remark_column": "I",
             },
-            "remark_template_map": {},
         }
     }
     report = match_bank_statements(
@@ -237,7 +234,6 @@ def test_rejects_missing_statement_column_configuration(tmp_path: Path) -> None:
                 "counterparty_name_column": "H",
                 "remark_column": "I",
             },
-            "remark_template_map": {},
         }
     }
     with pytest.raises(BankStatementMatchError, match="bank_debit_column 尚未配置"):
@@ -272,7 +268,6 @@ def test_duplicate_statement_index_is_partial(tmp_path: Path) -> None:
                 "counterparty_name_column": "H",
                 "remark_column": "I",
             },
-            "remark_template_map": {},
         }
     }
     report = match_bank_statements(

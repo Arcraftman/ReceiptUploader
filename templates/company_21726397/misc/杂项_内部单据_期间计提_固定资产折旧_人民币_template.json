@@ -1,0 +1,148 @@
+{
+  "id": "company_21726397-misc-depreciation",
+  "name": "杂项_内部单据_期间计提_固定资产折旧_人民币",
+  "version": "2.0",
+  "enabled": true,
+  "documentBlock": "杂项",
+  "documentType": "内部单据",
+  "settlementMethod": "期间计提",
+  "businessType": "固定资产折旧",
+  "currency": "人民币",
+  "keywords": [
+    "固定资产折旧",
+    "累计折旧"
+  ],
+  "when": {
+    "businessType": "固定资产折旧",
+    "settlementMethod": "期间计提"
+  },
+  "matchRules": {
+    "sourceFolders": [
+      "misc"
+    ],
+    "allowedDocumentBlocks": [
+      "杂项"
+    ],
+    "anyKeywords": [
+      "固定资产折旧",
+      "累计折旧"
+    ],
+    "excludeKeywords": [
+      "重分类",
+      "重复入账",
+      "多入调整",
+      "补计提",
+      "资产清理",
+      "换开专票"
+    ],
+    "expectedAccounts": [
+      "560202",
+      "221105",
+      "221105",
+      "43010108",
+      "560212",
+      "1602"
+    ],
+    "priority": 300
+  },
+  "amountSource": "source",
+  "summary": {
+    "header": "固定资产折旧",
+    "body": "{source.period}",
+    "separator": " "
+  },
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "560202",
+        "name": "管理费用_福利费"
+      },
+      "amountFrom": "source.welfareDepreciation",
+      "amountForFrom": "source.welfareDepreciation"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "221105",
+        "name": "应付职工薪酬_员工福利费"
+      },
+      "amountFrom": "source.welfareDepreciation",
+      "amountForFrom": "source.welfareDepreciation"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "221105",
+        "name": "应付职工薪酬_员工福利费"
+      },
+      "amountFrom": "source.welfareDepreciation",
+      "amountForFrom": "source.welfareDepreciation"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "43010108",
+        "name": "研发支出_费用化支出_折旧费"
+      },
+      "amountFrom": "source.researchDepreciation",
+      "amountForFrom": "source.researchDepreciation"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "560212",
+        "name": "管理费用_折旧费"
+      },
+      "amountFrom": "source.managementDepreciation",
+      "amountForFrom": "source.managementDepreciation"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "1602",
+        "name": "累计折旧"
+      },
+      "amountFrom": "source.totalAmount",
+      "amountForFrom": "source.totalAmount"
+    }
+  ],
+  "historicalEvidence": {
+    "period": "2026-01至2026-08",
+    "count": 3,
+    "monthCount": 3,
+    "months": [
+      "2026-06",
+      "2026-07",
+      "2026-08"
+    ],
+    "voucherRefs": [
+      {
+        "period": "2026-06",
+        "voucher": "记-177",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 2863,
+        "lastRow": 2868
+      },
+      {
+        "period": "2026-07",
+        "voucher": "记-147",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 3412,
+        "lastRow": 3417
+      },
+      {
+        "period": "2026-08",
+        "voucher": "记-165",
+        "sourceFile": "20260918193311_凭证列表_【智轻云(上海)科技有限公司】_2026年第8期.xlsx",
+        "sheet": "凭证列表#2026年第8期",
+        "firstRow": 412,
+        "lastRow": 417
+      }
+    ],
+    "reason": "按完整凭证分录结构和金额关系复现，剔除显式纠错、补提、重分类；结构覆盖不等于OCR可自动分类。"
+  },
+  "usageNotes": "按资产折旧表区分福利、研发、管理；三部分合计等于累计折旧贷方。福利通过221105过渡，不简化为千云两分录。"
+}

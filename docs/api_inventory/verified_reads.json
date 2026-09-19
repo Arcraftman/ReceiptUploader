@@ -1,0 +1,2052 @@
+[
+  {
+    "method": "GET",
+    "path": "/basedata/initParams",
+    "query": {
+      "m": [
+        "getSystemParams"
+      ]
+    },
+    "page": "bootstrap",
+    "http_status": 200,
+    "response_keys": [
+      "msg",
+      "data",
+      "status"
+    ],
+    "business_status": {
+      "status": 200
+    },
+    "message": "操作成功",
+    "data_type": "dict",
+    "data_keys": [
+      "resourcesRUL",
+      "CURPERIOD",
+      "DBID",
+      "queryTypeId",
+      "companyCoid",
+      "isFree",
+      "vchCreateAuditAllowSameOne",
+      "curDate",
+      "geetestCaptchaId",
+      "isMobile",
+      "weekDate",
+      "companyServiceType",
+      "hasOriginalVoucher",
+      "paymentAccountNumber",
+      "siRecycleDateRemainingDay",
+      "siId",
+      "isShowNgoAccountLimit",
+      "isAdmin",
+      "isNewQtyAmountDetail",
+      "isMulti",
+      "isFCO2023",
+      "productIds",
+      "siTotalUserNum",
+      "adminRealName",
+      "payUp",
+      "shortName",
+      "deficitWarn",
+      "myCompany",
+      "queryTypeRemainingDay",
+      "isReadSite",
+      "AllowAttNameRepeat",
+      "OpCashReport",
+      "uid",
+      "isThirdImportAndUnSetBal",
+      "closePeriodAfterCheck",
+      "rights",
+      "taxpayerName",
+      "MAXPERIOD",
+      "isMulItem",
+      "fromKis",
+      "isGuanYi",
+      "isBindEBXV7",
+      "createDate",
+      "alipayAuthCallBack",
+      "isFixedVoucherControl",
+      "isWarning",
+      "collectVatFile",
+      "isNewSubjectBalance",
+      "enableQty",
+      "isGoKDBlockChain",
+      "EndDate",
+      "Mobile",
+      "loginCount",
+      "queryType",
+      "promptPDFDig",
+      "REGIME",
+      "isPrice",
+      "siRecycleDate",
+      "OpQty",
+      "newhome_time",
+      "dc",
+      "serviceType",
+      "queryService",
+      "adminUserName",
+      "vchNotAllowOptOthersBill",
+      "siExpiredFreeQueryRemainingDay",
+      "firstTrial",
+      "isBindEBX",
+      "acctUrl",
+      "isDemo",
+      "isScmStarted",
+      "siEndDate",
+      "acctTotalNum",
+      "StartDate",
+      "cashflowAddendumSwitch",
+      "queryTypeExpired",
+      "taxpayerType",
+      "firstSwitch",
+      "ysdomainIDC",
+      "isshortUser",
+      "UDRport",
+      "CannotSwitchOldAcct",
+      "offsetAccountNumber",
+      "VchCount",
+      "siExpiredDay",
+      "siExpiredFreeQueryEndDate",
+      "appCenterSecret",
+      "level",
+      "siExpired",
+      "OpItem",
+      "hasOpenRoles",
+      "companyId",
+      "PERIOD",
+      "queryTypeExpiredDay",
+      "isNGO2026",
+      "CASHIERPERIOD",
+      "showCashflowAddendumSwitch",
+      "cashflowUpgraded",
+      "isTril",
+      "isHideKDBlockChainTip",
+      "openId",
+      "isCloseBeginnerGuide",
+      "taxpayerNumber",
+      "queryTypeEndDate",
+      "isDebug",
+      "miniNewHomeTime",
+      "SERVICE_URL",
+      "vchAuditMustSameOne",
+      "RULE",
+      "scmList",
+      "isCash",
+      "wps_app_type",
+      "isFixed",
+      "isHangxin",
+      "CURRENCY",
+      "UserName",
+      "enableCur",
+      "enableItem",
+      "isNew",
+      "creditAccountNumber",
+      "wpsMarketEventText",
+      "productTypeId",
+      "scmUrl",
+      "beginDate",
+      "OpCur",
+      "NEW_HOMEPAGE_FORCE_UP_ENABLE",
+      "UserId",
+      "isShowSimpleCashFlow",
+      "serviceList",
+      "isCompleteInfo",
+      "myServiceUrl",
+      "RealName",
+      "shareUser"
+    ],
+    "counts": {
+      "UDRport": 1,
+      "scmList": 0,
+      "serviceList": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/basedata/initParams",
+    "query": {
+      "m": [
+        "getCommonFunctions"
+      ]
+    },
+    "page": "bootstrap",
+    "http_status": 200,
+    "response_keys": [
+      "msg",
+      "data",
+      "status"
+    ],
+    "business_status": {
+      "status": 200
+    },
+    "message": "操作成功",
+    "data_type": "dict",
+    "data_keys": [
+      "fiSwitch",
+      "balReportExchange",
+      "cashflowSimpleExchange",
+      "wizard",
+      "cashflowStdExchange",
+      "profitReportExchange",
+      "order"
+    ],
+    "counts": {}
+  },
+  {
+    "method": "GET",
+    "path": "/bs/assist.do",
+    "query": {
+      "m": [
+        "list"
+      ],
+      "type": [
+        "salarykind"
+      ]
+    },
+    "page": "/voucher/voucherList",
+    "http_status": 200,
+    "response_keys": [
+      "msg",
+      "data",
+      "status"
+    ],
+    "business_status": {
+      "status": 200
+    },
+    "message": "操作成功",
+    "data_type": "dict",
+    "data_keys": [
+      "totalsize",
+      "items"
+    ],
+    "counts": {
+      "items": 28
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/bs/currency",
+    "query": {
+      "m": [
+        "findAll"
+      ]
+    },
+    "page": "/voucher/voucherList",
+    "http_status": 200,
+    "response_keys": [
+      "msg",
+      "data",
+      "status"
+    ],
+    "business_status": {
+      "status": 200
+    },
+    "message": "操作成功",
+    "data_type": "dict",
+    "data_keys": [
+      "totalsize",
+      "items"
+    ],
+    "counts": {
+      "items": 1
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/gl/cashier/cashTypeAction",
+    "query": {
+      "m": [
+        "list1"
+      ]
+    },
+    "page": "/voucher/voucherList",
+    "http_status": 200,
+    "response_keys": [
+      "msg",
+      "data",
+      "status"
+    ],
+    "business_status": {
+      "status": 200
+    },
+    "message": "操作成功",
+    "data_type": "dict",
+    "data_keys": [],
+    "counts": {}
+  },
+  {
+    "method": "GET",
+    "path": "/gl/cashier/cashierAccountAction",
+    "query": {
+      "m": [
+        "list"
+      ]
+    },
+    "page": "/voucher/voucherList",
+    "http_status": 200,
+    "response_keys": [
+      "msg",
+      "data",
+      "status"
+    ],
+    "business_status": {
+      "status": 200
+    },
+    "message": "操作成功",
+    "data_type": "dict",
+    "data_keys": [
+      "totalsize",
+      "items"
+    ],
+    "counts": {
+      "items": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/gl/generatecode",
+    "query": {
+      "m": [
+        "findAll"
+      ]
+    },
+    "page": "/voucher/voucherList",
+    "http_status": 200,
+    "response_keys": [
+      "msg",
+      "data",
+      "status"
+    ],
+    "business_status": {
+      "status": 200
+    },
+    "message": "操作成功",
+    "data_type": "dict",
+    "data_keys": [
+      "totalsize",
+      "items"
+    ],
+    "counts": {
+      "items": 1
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/gl/voucher",
+    "query": {
+      "m": [
+        "findUsedVchNO"
+      ]
+    },
+    "page": "/voucher/voucherList",
+    "http_status": 200,
+    "response_keys": [
+      "msg",
+      "data",
+      "status"
+    ],
+    "business_status": {
+      "status": 200
+    },
+    "message": "操作成功",
+    "data_type": "dict",
+    "data_keys": [
+      "totalsize",
+      "items"
+    ],
+    "counts": {
+      "items": 1
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi-bd/{dbId}/v1/account/",
+    "query": {
+      "expand": [
+        "true"
+      ]
+    },
+    "page": "/voucher/voucherList",
+    "http_status": 200,
+    "response_keys": [
+      "errcode",
+      "description",
+      "data",
+      "success",
+      "code",
+      "errorCode",
+      "ok",
+      "msg"
+    ],
+    "business_status": {
+      "code": "0",
+      "errcode": 0,
+      "success": true
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "rows"
+    ],
+    "counts": {
+      "rows": 280
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/jdy-fi-rpt/{dbId}/v1/balance-item-report/query",
+    "query": {},
+    "page": "/books/accounting-balance",
+    "http_status": 200,
+    "body": {
+      "fromPeriod": "202601",
+      "toPeriod": "202601",
+      "itemClassIds": [
+        "1"
+      ],
+      "itemNumbers": [
+        ""
+      ],
+      "accountNumber": "",
+      "cur": "RMB",
+      "includeAccount": false,
+      "balance": false,
+      "happen": false,
+      "showQty": false,
+      "detail": true
+    },
+    "response_keys": [
+      "errcode",
+      "description",
+      "data",
+      "code",
+      "success",
+      "errorCode",
+      "ok",
+      "msg"
+    ],
+    "business_status": {
+      "code": "0",
+      "errcode": 0,
+      "success": true
+    },
+    "message": "success",
+    "data_type": "list",
+    "count": 1
+  },
+  {
+    "method": "POST",
+    "path": "/jdy-fi-rpt/{dbId}/v1/cost-detail/list",
+    "query": {},
+    "page": "/report/fee-detail-report",
+    "http_status": 200,
+    "body": {
+      "periodFrom": "202601",
+      "periodTo": "202601",
+      "accountNo": "",
+      "accountType": "3",
+      "showItem": false,
+      "showYtdAmount": true,
+      "showFullName": false,
+      "classIds": null,
+      "showProp": false,
+      "showZero": false
+    },
+    "response_keys": [
+      "errcode",
+      "description",
+      "data",
+      "code",
+      "success",
+      "errorCode",
+      "ok",
+      "msg"
+    ],
+    "business_status": {
+      "code": "0",
+      "errcode": 0,
+      "success": true
+    },
+    "message": "success",
+    "data_type": "list",
+    "count": 0
+  },
+  {
+    "method": "POST",
+    "path": "/jdy-fi-rpt/{dbId}/v1/gl/balance-report",
+    "query": {},
+    "page": "/books/subject-balance",
+    "http_status": 200,
+    "body": {
+      "fromSubject": "",
+      "toSubject": "",
+      "currency": "RMB",
+      "itemClassId": "0",
+      "itemId": "0",
+      "fromPeriod": "202601",
+      "toPeriod": "202601",
+      "fromLevel": 1,
+      "toLevel": 4,
+      "detailAccount": 0,
+      "isBalanceZero": false,
+      "isHappenAndBalanceZero": false,
+      "isAllSubject": false,
+      "isDisabledAccount": false,
+      "isMulCur": false,
+      "expandLevels": false,
+      "isIncludeItem": true,
+      "isSubjectFullName": false,
+      "isDisplaySubtotal": false
+    },
+    "response_keys": [
+      "errcode",
+      "description",
+      "data",
+      "code",
+      "success",
+      "errorCode",
+      "ok",
+      "msg"
+    ],
+    "business_status": {
+      "code": "0",
+      "errcode": 0,
+      "success": true
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "head",
+      "item",
+      "records"
+    ],
+    "counts": {
+      "head": 6,
+      "item": 1
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/jdy-fi-rpt/{dbId}/v1/gl/general/query-total",
+    "query": {},
+    "page": "/books/general-ledger",
+    "http_status": 200,
+    "body": {
+      "fromPeriod": "202601",
+      "toPeriod": "202601",
+      "currency": "RMB",
+      "fromSubject": "",
+      "toSubject": "",
+      "fromLevel": "1",
+      "toLevel": "1",
+      "includeItem": false,
+      "balance": false,
+      "happen": false,
+      "noHappen": false,
+      "queryString": null,
+      "detailAccount": 0
+    },
+    "response_keys": [
+      "errcode",
+      "description",
+      "data",
+      "success",
+      "code",
+      "errorCode",
+      "ok",
+      "msg"
+    ],
+    "business_status": {
+      "code": "0",
+      "errcode": 0,
+      "success": true
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "item",
+      "records"
+    ],
+    "counts": {
+      "item": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi-rpt/{dbId}/v1/qtyDetailAccount/isNewPurchase",
+    "query": {},
+    "page": "/books/qty-amount-detail",
+    "http_status": 200,
+    "response_keys": [
+      "errcode",
+      "description",
+      "data",
+      "success",
+      "code",
+      "errorCode",
+      "ok",
+      "msg"
+    ],
+    "business_status": {
+      "code": "0",
+      "errcode": 0,
+      "success": true
+    },
+    "message": "success",
+    "data_type": "bool"
+  },
+  {
+    "method": "POST",
+    "path": "/jdy-fi-rpt/{dbId}/v1/qtyTotalAccount/detail",
+    "query": {},
+    "page": "/books/qtyAmount-general",
+    "http_status": 200,
+    "body": {
+      "fromPeriod": "202601",
+      "toPeriod": "202601",
+      "fromAccountId": "",
+      "toAccountId": "",
+      "fromLevel": "1",
+      "toLevel": "9",
+      "includeItem": true,
+      "balance": false,
+      "happen": false,
+      "noHappen": false,
+      "detail": false,
+      "detailByPeriod": false,
+      "qtyFormat": "2",
+      "priceFormat": "2",
+      "showNoHappenPeriod": false
+    },
+    "response_keys": [
+      "errcode",
+      "description",
+      "data",
+      "success",
+      "code",
+      "errorCode",
+      "ok",
+      "msg"
+    ],
+    "business_status": {
+      "code": "0",
+      "errcode": 0,
+      "success": true
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "rows",
+      "size"
+    ],
+    "counts": {}
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi-tp/{dbId}/ai/v1/review-status",
+    "query": {
+      "yearPeriod": [
+        "202601"
+      ]
+    },
+    "page": "/invoice/manage",
+    "http_status": 200,
+    "response_keys": [
+      "errcode",
+      "description",
+      "data",
+      "code",
+      "errorCode",
+      "success",
+      "ok",
+      "msg"
+    ],
+    "business_status": {
+      "code": "0",
+      "errcode": 0,
+      "success": true
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "yearPeriod",
+      "reviewStatus",
+      "showPrompt",
+      "outInvoiceReviewCount",
+      "inInvoiceReviewCount",
+      "bankBillReviewCount"
+    ],
+    "counts": {}
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi-tp/{dbId}/follow/kJFactory/isCorpFileBeta",
+    "query": {},
+    "page": "/voucher/voucherList",
+    "http_status": 200,
+    "response_keys": [
+      "errcode",
+      "description",
+      "data",
+      "code",
+      "success",
+      "errorCode",
+      "ok",
+      "msg"
+    ],
+    "business_status": {
+      "code": "0",
+      "errcode": 0,
+      "success": true
+    },
+    "message": "success",
+    "data_type": "bool"
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi-tp/{dbId}/vat/v1/invoice-stampItems",
+    "query": {},
+    "page": "/voucher/voucherList",
+    "http_status": 200,
+    "response_keys": [
+      "errcode",
+      "description",
+      "data",
+      "code",
+      "errorCode",
+      "success",
+      "ok",
+      "msg"
+    ],
+    "business_status": {
+      "code": "0",
+      "errcode": 0,
+      "success": true
+    },
+    "message": "success",
+    "data_type": "list",
+    "count": 0
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/ai/v1/ai-match/beta",
+    "query": {},
+    "page": "/voucher/voucherList",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "journalBeta",
+      "invoiceBeta"
+    ],
+    "counts": {}
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/bs/v1/account-class",
+    "query": {},
+    "page": "/settings/subject-list",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "rows"
+    ],
+    "counts": {
+      "rows": 5
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/bs/v1/currency",
+    "query": {},
+    "page": "/books/accounting-balance",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "rows"
+    ],
+    "counts": {
+      "rows": 1
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/bs/v1/dept",
+    "query": {},
+    "page": "/pay/employee",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "depts",
+      "totalsize"
+    ],
+    "counts": {
+      "depts": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/bs/v1/employee",
+    "query": {
+      "page": [
+        "1"
+      ],
+      "pageSize": [
+        "500"
+      ]
+    },
+    "page": "/pay/employee",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "rows",
+      "records",
+      "totalPage",
+      "page"
+    ],
+    "counts": {
+      "rows": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/bs/v1/guide-setting/list",
+    "query": {
+      "scope": [
+        "0"
+      ]
+    },
+    "page": "/voucher/voucherList",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "total",
+      "data"
+    ],
+    "counts": {
+      "data": 5
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/bs/v1/sp/CardVchOption",
+    "query": {
+      "key": [
+        "CardVchOption"
+      ]
+    },
+    "page": "/assets/fixed-assets-cards",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "str"
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/bs/v1/sp/InvoiceVchOption1",
+    "query": {
+      "key": [
+        "InvoiceVchOption1"
+      ]
+    },
+    "page": "/invoice/manage",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "str"
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/bs/v1/sp/runtime",
+    "query": {
+      "dbId": "{dbId}"
+    },
+    "page": "/voucher/voucherList",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "book",
+      "ebxV7",
+      "module",
+      "product",
+      "scm"
+    ],
+    "counts": {}
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/bs/v1/user-setting/user",
+    "query": {
+      "key": [
+        "reviewGuide"
+      ]
+    },
+    "page": "/voucher/voucherList",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "dbId",
+      "key",
+      "userId",
+      "value",
+      "remark"
+    ],
+    "counts": {}
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/bs/v1/vch-group",
+    "query": {},
+    "page": "/settings/voucher-word",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "rows"
+    ],
+    "counts": {
+      "rows": 1
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/ca/v1/cashier-account",
+    "query": {
+      "showForbid": [
+        "false"
+      ]
+    },
+    "page": "/home/index.html#/cashier/journal?keepRoute=true",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "naturalCur",
+      "mCur",
+      "rows",
+      "isAllBind"
+    ],
+    "counts": {
+      "rows": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/ca/v1/yqy/getBankList",
+    "query": {
+      "type": [
+        "2"
+      ]
+    },
+    "page": "/home/index.html#/cashier/checkTotal?keepRoute=true",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "yqyBanks"
+    ],
+    "counts": {
+      "yqyBanks": 220
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/jdy-fi/{dbId}/fa/v1/card/list",
+    "query": {},
+    "page": "/assets/fixed-assets-cards",
+    "http_status": 200,
+    "body": {
+      "addPeriodBefore": 202601,
+      "showClean": false,
+      "number": "",
+      "name": "",
+      "deptIds": [],
+      "typeIds": [],
+      "beginDateFrom": null,
+      "beginDateTo": null,
+      "addPeriodFrom": 0,
+      "addPeriodTo": 0,
+      "deprMethod": 0,
+      "addVoucher": 0,
+      "state": 1,
+      "clearPeriodFrom": null,
+      "clearPeriodTo": null,
+      "clearVch": 0,
+      "page": 1,
+      "pageSize": 500
+    },
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "totalPage",
+      "records",
+      "page",
+      "rows",
+      "depreVoucher"
+    ],
+    "counts": {
+      "rows": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/fa/v1/change-record",
+    "query": {
+      "periodFrom": [
+        "202601"
+      ],
+      "periodTo": [
+        "202601"
+      ],
+      "page": [
+        "1"
+      ],
+      "pageSize": [
+        "500"
+      ]
+    },
+    "page": "/assets/fixed-assets-change-record",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "totalPage",
+      "records",
+      "page",
+      "rows"
+    ],
+    "counts": {
+      "rows": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/fa/v1/report/depreciation-detail",
+    "query": {
+      "periodFrom": [
+        "202601"
+      ],
+      "periodTo": [
+        "202601"
+      ],
+      "showChange": [
+        "false"
+      ],
+      "showClean": [
+        "false"
+      ],
+      "dept": [
+        "false"
+      ],
+      "page": [
+        "1"
+      ],
+      "pageSize": [
+        "500"
+      ]
+    },
+    "page": "/assets/depreciation-detail-sheets",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "totalPage",
+      "records",
+      "page",
+      "rows",
+      "hasShare"
+    ],
+    "counts": {
+      "rows": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/fa/v1/report/depreciation-sum",
+    "query": {
+      "periodFrom": [
+        "202601"
+      ],
+      "periodTo": [
+        "202601"
+      ],
+      "showChange": [
+        "false"
+      ],
+      "showClean": [
+        "false"
+      ],
+      "dept": [
+        "false"
+      ]
+    },
+    "page": "/assets/depreciation-summary-sheets",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "totalPage",
+      "records",
+      "page",
+      "rows",
+      "hasShare"
+    ],
+    "counts": {
+      "rows": 1
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/fa/v1/type",
+    "query": {},
+    "page": "/assets/fixed-assets-cards",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "rows"
+    ],
+    "counts": {
+      "rows": 6
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/gl/v1/finance/balance",
+    "query": {
+      "expand": [
+        "false"
+      ],
+      "classId": [
+        "1"
+      ],
+      "showCur": [
+        "false"
+      ]
+    },
+    "page": "/settings/fin-initial",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "isQtyAux",
+      "rows"
+    ],
+    "counts": {
+      "rows": 32
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/gl/v1/item/page",
+    "query": {
+      "itemClassId": [
+        "6"
+      ],
+      "effective": [
+        "1"
+      ],
+      "page": [
+        "1"
+      ],
+      "pageSize": [
+        "100000"
+      ]
+    },
+    "page": "/assets/fixed-assets-cards",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "rows",
+      "records",
+      "totalPage",
+      "page"
+    ],
+    "counts": {
+      "rows": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/gl/v1/itemClass",
+    "query": {},
+    "page": "/voucher/voucherList",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "rows"
+    ],
+    "counts": {
+      "rows": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/gl/v1/recent-vouchers",
+    "query": {
+      "clearCache": [
+        "0"
+      ]
+    },
+    "page": "/voucher/voucherList",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "rows"
+    ],
+    "counts": {
+      "rows": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/gl/v1/voucher/list",
+    "query": {
+      "page": [
+        "1"
+      ],
+      "pageSize": [
+        "100"
+      ],
+      "sidx": [
+        "date"
+      ],
+      "sord": [
+        "asc"
+      ],
+      "dateType": [
+        "1"
+      ],
+      "groupId": [
+        "0"
+      ],
+      "voucherSource": [
+        "0"
+      ],
+      "remarkType": [
+        "0"
+      ],
+      "itemClassId": [
+        "0"
+      ],
+      "itemId": [
+        "0"
+      ],
+      "isCur": [
+        "1"
+      ],
+      "isQtyaux": [
+        "1"
+      ],
+      "fromPeriod": [
+        "202601"
+      ],
+      "toPeriod": [
+        "202601"
+      ],
+      "voucherAccountItem": [
+        "false"
+      ],
+      "aiMark": [
+        "-1"
+      ]
+    },
+    "page": "/voucher/voucherList",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "rows",
+      "records",
+      "totalPage",
+      "totalCredit",
+      "totalDebit",
+      "page",
+      "recycleSize"
+    ],
+    "counts": {
+      "rows": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/gl/v1/voucherTotal/list",
+    "query": {
+      "groupId": [
+        "0"
+      ],
+      "fromDate": [
+        "2026-01-01"
+      ],
+      "toDate": [
+        "2026-01-31"
+      ],
+      "fromLevel": [
+        "1"
+      ],
+      "toLevel": [
+        "1"
+      ]
+    },
+    "page": "/voucher/voucherSummary",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "vchs",
+      "totalCount",
+      "attachmentCount",
+      "dmountTotal",
+      "cmountTotal"
+    ],
+    "counts": {
+      "vchs": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/index/v1/upgrade",
+    "query": {},
+    "page": "/voucher/voucherList",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "url",
+      "isUpgrade"
+    ],
+    "counts": {}
+  },
+  {
+    "method": "POST",
+    "path": "/jdy-fi/{dbId}/pay/v1/sheet-list",
+    "query": {},
+    "page": "/pay/salary-list",
+    "http_status": 200,
+    "body": {
+      "page": 1,
+      "pageSize": 500,
+      "matchCon": "",
+      "fromPeriod": "202601",
+      "toPeriod": "202601"
+    },
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "rows",
+      "records",
+      "totalPage",
+      "page",
+      "salaryTotal",
+      "realSalaryTotal",
+      "hasOld"
+    ],
+    "counts": {
+      "rows": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/pay/v1/sheet/getVchOption",
+    "query": {},
+    "page": "/pay/salary-list",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "value",
+      "lastMonth"
+    ],
+    "counts": {}
+  },
+  {
+    "method": "POST",
+    "path": "/jdy-fi/{dbId}/pay/v1/sheet/statMonthPay",
+    "query": {},
+    "page": "/pay/salary-report",
+    "http_status": 200,
+    "body": {
+      "matchCon": "",
+      "yearPeriod": "202601"
+    },
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "dbId",
+      "yearPeriod",
+      "items",
+      "colName"
+    ],
+    "counts": {
+      "items": 0,
+      "colName": 7
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/rpt/v1/balance",
+    "query": {
+      "yearPeriod": [
+        "202601"
+      ]
+    },
+    "page": "direct_read_query",
+    "http_status": 200,
+    "business_status": {
+      "errcode": 0
+    },
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "message": "",
+    "data_type": "dict",
+    "data_keys": [
+      "rows",
+      "isBalance",
+      "isRepeat",
+      "isAbsent",
+      "isBeginBalance",
+      "absentAccounts",
+      "repeatedAccounts",
+      "isPlTrans",
+      "isPreBalByCache",
+      "needReload",
+      "latestPeriod"
+    ],
+    "counts": {
+      "rows": 32,
+      "absentAccounts": 0,
+      "repeatedAccounts": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/rpt/v1/balance/item",
+    "query": {
+      "yearPeriod": [
+        "202601"
+      ]
+    },
+    "page": "direct_read_query",
+    "http_status": 200,
+    "business_status": {
+      "errcode": 0
+    },
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "message": "",
+    "data_type": "dict",
+    "data_keys": [
+      "rows"
+    ],
+    "counts": {
+      "rows": 44
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/rpt/v1/cashflow",
+    "query": {
+      "yearPeriod": [
+        "202601"
+      ]
+    },
+    "page": "direct_read_query",
+    "http_status": 200,
+    "business_status": {
+      "errcode": 0
+    },
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "message": "",
+    "data_type": "dict",
+    "data_keys": [
+      "status",
+      "isBalance",
+      "main",
+      "addendum",
+      "checkRes",
+      "initCheckRes"
+    ],
+    "counts": {
+      "main": 0,
+      "addendum": 0,
+      "checkRes": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/rpt/v1/cashflow/item",
+    "query": {
+      "yearPeriod": [
+        "202601"
+      ]
+    },
+    "page": "direct_read_query",
+    "http_status": 200,
+    "business_status": {
+      "errcode": 0
+    },
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "message": "",
+    "data_type": "dict",
+    "data_keys": [
+      "rows"
+    ],
+    "counts": {
+      "rows": 3
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/rpt/v1/item/profit/params",
+    "query": {},
+    "page": "/report/item-profit-sheets",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "itemClassId",
+      "itemClassName",
+      "items",
+      "periodTypes",
+      "noHappen"
+    ],
+    "counts": {
+      "items": 0,
+      "periodTypes": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/rpt/v1/profit",
+    "query": {
+      "yearPeriod": [
+        "202601"
+      ],
+      "batchOperate": [
+        "{\"type\":\"\",\"value\":[]}"
+      ],
+      "type": [
+        "1"
+      ]
+    },
+    "page": "/report/profit-sheets",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "rows",
+      "isBalance",
+      "isRepeat",
+      "isAbsent",
+      "isNonProfitBalance",
+      "absentAccounts",
+      "repeatedAccounts",
+      "nonProfitBalance",
+      "editable",
+      "isEmpty",
+      "needReload",
+      "latestPeriod"
+    ],
+    "counts": {
+      "rows": 32,
+      "absentAccounts": 0,
+      "repeatedAccounts": 0,
+      "nonProfitBalance": 0
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/jdy-fi/{dbId}/vat/v1/invoice-list",
+    "query": {},
+    "page": "/invoice/manage",
+    "http_status": 200,
+    "body": {
+      "showEntry": true,
+      "spreadEntry": true,
+      "date": null,
+      "type": "",
+      "status": "",
+      "includeVch": 2,
+      "number": "",
+      "code": "",
+      "electCode": "",
+      "customName": {
+        "type": 1,
+        "value": ""
+      },
+      "checkStatus": [],
+      "remark": "",
+      "fileName": "",
+      "batchRemark": "",
+      "productName": "",
+      "keyType": 1,
+      "keyVal": "",
+      "page": 1,
+      "pageSize": 100,
+      "periodType": "2",
+      "feature": 1,
+      "periodFrom": 20260101,
+      "periodTo": 20260131
+    },
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "totalPage",
+      "records",
+      "page",
+      "rows",
+      "total",
+      "allTotal"
+    ],
+    "counts": {
+      "rows": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/vat/v1/invoice/zyw/collect-state",
+    "query": {},
+    "page": "/invoice/manage",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "bool"
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/vat/v1/order/info/",
+    "query": {},
+    "page": "/invoice/manage",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "base"
+    ],
+    "counts": {}
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/vat/v1/order/zwy/tax-auth-status-new",
+    "query": {},
+    "page": "/invoice/manage",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "verifyStatus",
+      "verifyMsg",
+      "collectionStatus",
+      "collectionMsg",
+      "invoiceStatus"
+    ],
+    "counts": {}
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/vat/v1/tax-burden",
+    "query": {
+      "yearPeriod": [
+        "202601"
+      ]
+    },
+    "page": "/invoice/tax-burden",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "cal",
+      "out",
+      "int",
+      "increment",
+      "attach"
+    ],
+    "counts": {}
+  },
+  {
+    "method": "GET",
+    "path": "/jdy-fi/{dbId}/vat/v1/voucher-temp-simple",
+    "query": {
+      "feature": [
+        "1"
+      ],
+      "includeDiyType": [
+        "true"
+      ]
+    },
+    "page": "/invoice/manage",
+    "http_status": 200,
+    "response_keys": [
+      "data",
+      "description",
+      "errcode"
+    ],
+    "business_status": {
+      "errcode": 0
+    },
+    "message": "success",
+    "data_type": "dict",
+    "data_keys": [
+      "rows",
+      "records"
+    ],
+    "counts": {
+      "rows": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/pay/employee.do",
+    "query": {
+      "m": [
+        "getEmpSign"
+      ]
+    },
+    "page": "/voucher/voucherList",
+    "http_status": 200,
+    "response_keys": [
+      "msg",
+      "data",
+      "status"
+    ],
+    "business_status": {
+      "status": 200
+    },
+    "message": "操作成功",
+    "data_type": "dict",
+    "data_keys": [
+      "jobNum",
+      "idenCard",
+      "name",
+      "mobile"
+    ],
+    "counts": {}
+  },
+  {
+    "method": "GET",
+    "path": "/pay/salaryKind.do",
+    "query": {
+      "m": [
+        "list"
+      ]
+    },
+    "page": "/voucher/voucherList",
+    "http_status": 200,
+    "response_keys": [
+      "msg",
+      "data",
+      "status"
+    ],
+    "business_status": {
+      "status": 200
+    },
+    "message": "操作成功",
+    "data_type": "dict",
+    "data_keys": [
+      "items"
+    ],
+    "counts": {
+      "items": 0
+    }
+  }
+]

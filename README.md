@@ -2,6 +2,10 @@
 
 当前唯一操作说明已精简并迁移到 [docs/USAGE.md](docs/USAGE.md)。请以该文档为准；旧的 `datasets.json`、`month.conf`、`config/accountbooks.json` 和 `project.json` v5 及更早版本均已移除且不兼容。
 
+财务工作簿直接打开 `excel/finance-template.xlsx`；按钮安装与当前功能边界见 [财务工作簿说明](docs/finance/README.md)。
+
+开发与维护说明见 [项目架构与开发约定](docs/ARCHITECTURE.md) 和 [质量检查与故障恢复](docs/QUALITY_AND_RECOVERY.md)。
+
 <details>
 <summary>已废弃的历史手册（仅供追溯，不可用于当前版本）</summary>
 

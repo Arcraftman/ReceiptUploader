@@ -1,0 +1,702 @@
+{
+  "version": 1,
+  "source": "docs/api_inventory/verified_reads.json (2026-09-18); fixed reviewed read requests",
+  "cases": [
+    {
+      "id": "subjects",
+      "label": "科目树",
+      "method": "GET",
+      "path": "/jdy-fi-bd/{dbId}/v1/account/",
+      "query": {
+        "expand": "true"
+      },
+      "data_type": "dict",
+      "required_keys": [
+        "rows"
+      ],
+      "list_fields": [
+        "rows"
+      ]
+    },
+    {
+      "id": "account_classes",
+      "label": "科目分类",
+      "method": "GET",
+      "path": "/jdy-fi/{dbId}/bs/v1/account-class",
+      "query": {},
+      "data_type": "dict",
+      "required_keys": [
+        "rows"
+      ],
+      "list_fields": [
+        "rows"
+      ]
+    },
+    {
+      "id": "voucher_groups",
+      "label": "凭证字",
+      "method": "GET",
+      "path": "/jdy-fi/{dbId}/bs/v1/vch-group",
+      "query": {},
+      "data_type": "dict",
+      "required_keys": [
+        "rows"
+      ],
+      "list_fields": [
+        "rows"
+      ]
+    },
+    {
+      "id": "currencies",
+      "label": "币别",
+      "method": "GET",
+      "path": "/jdy-fi/{dbId}/bs/v1/currency",
+      "query": {},
+      "data_type": "dict",
+      "required_keys": [
+        "rows"
+      ],
+      "list_fields": [
+        "rows"
+      ]
+    },
+    {
+      "id": "item_classes",
+      "label": "自定义辅助核算类别",
+      "method": "GET",
+      "path": "/jdy-fi/{dbId}/gl/v1/itemClass",
+      "query": {},
+      "data_type": "dict",
+      "required_keys": [
+        "rows"
+      ],
+      "list_fields": [
+        "rows"
+      ]
+    },
+    {
+      "id": "customers",
+      "label": "客户目录",
+      "method": "GET",
+      "path": "/jdy-fi/{dbId}/gl/v1/item/page",
+      "query": {
+        "itemClassId": "{customerClassId}",
+        "page": 1,
+        "pageSize": 20,
+        "matchCon": ""
+      },
+      "data_type": "dict",
+      "required_keys": [
+        "rows",
+        "records",
+        "totalPage",
+        "page"
+      ],
+      "list_fields": [
+        "rows"
+      ]
+    },
+    {
+      "id": "suppliers",
+      "label": "供应商目录",
+      "method": "GET",
+      "path": "/jdy-fi/{dbId}/gl/v1/item/page",
+      "query": {
+        "itemClassId": "{supplierClassId}",
+        "page": 1,
+        "pageSize": 20,
+        "matchCon": ""
+      },
+      "data_type": "dict",
+      "required_keys": [
+        "rows",
+        "records",
+        "totalPage",
+        "page"
+      ],
+      "list_fields": [
+        "rows"
+      ]
+    },
+    {
+      "id": "voucher_list",
+      "label": "凭证列表",
+      "method": "GET",
+      "path": "/jdy-fi/{dbId}/gl/v1/voucher/list",
+      "query": {
+        "page": "1",
+        "pageSize": 20,
+        "sidx": "date",
+        "sord": "asc",
+        "dateType": "1",
+        "groupId": "0",
+        "voucherSource": "0",
+        "remarkType": "0",
+        "itemClassId": "0",
+        "itemId": "0",
+        "isCur": "1",
+        "isQtyaux": "1",
+        "fromPeriod": "{period}",
+        "toPeriod": "{period}",
+        "voucherAccountItem": "false",
+        "aiMark": "-1"
+      },
+      "data_type": "dict",
+      "required_keys": [
+        "rows",
+        "records",
+        "totalPage",
+        "totalCredit",
+        "totalDebit",
+        "page",
+        "recycleSize"
+      ],
+      "list_fields": [
+        "rows"
+      ]
+    },
+    {
+      "id": "voucher_summary",
+      "label": "凭证汇总",
+      "method": "GET",
+      "path": "/jdy-fi/{dbId}/gl/v1/voucherTotal/list",
+      "query": {
+        "groupId": "0",
+        "fromDate": "{dateFrom}",
+        "toDate": "{dateTo}",
+        "fromLevel": "1",
+        "toLevel": "1"
+      },
+      "data_type": "dict",
+      "required_keys": [
+        "vchs",
+        "totalCount",
+        "attachmentCount",
+        "dmountTotal",
+        "cmountTotal"
+      ],
+      "list_fields": [
+        "vchs"
+      ]
+    },
+    {
+      "id": "general_ledger",
+      "label": "总账",
+      "method": "POST",
+      "path": "/jdy-fi-rpt/{dbId}/v1/gl/general/query-total",
+      "query": {},
+      "data_type": "dict",
+      "required_keys": [
+        "item",
+        "records"
+      ],
+      "list_fields": [
+        "item"
+      ],
+      "body": {
+        "fromPeriod": "{period}",
+        "toPeriod": "{period}",
+        "currency": "RMB",
+        "fromSubject": "",
+        "toSubject": "",
+        "fromLevel": "1",
+        "toLevel": "1",
+        "includeItem": false,
+        "balance": false,
+        "happen": false,
+        "noHappen": false,
+        "queryString": null,
+        "detailAccount": 0
+      },
+      "row_layouts": {
+        "item": "groups"
+      }
+    },
+    {
+      "id": "subject_balance",
+      "label": "科目余额表",
+      "method": "POST",
+      "path": "/jdy-fi-rpt/{dbId}/v1/gl/balance-report",
+      "query": {},
+      "data_type": "dict",
+      "required_keys": [
+        "head",
+        "item",
+        "records"
+      ],
+      "list_fields": [
+        "item"
+      ],
+      "body": {
+        "fromSubject": "",
+        "toSubject": "",
+        "currency": "RMB",
+        "itemClassId": "0",
+        "itemId": "0",
+        "fromPeriod": "{period}",
+        "toPeriod": "{period}",
+        "fromLevel": 1,
+        "toLevel": 4,
+        "detailAccount": 0,
+        "isBalanceZero": false,
+        "isHappenAndBalanceZero": false,
+        "isAllSubject": false,
+        "isDisabledAccount": false,
+        "isMulCur": false,
+        "expandLevels": false,
+        "isIncludeItem": true,
+        "isSubjectFullName": false,
+        "isDisplaySubtotal": false
+      }
+    },
+    {
+      "id": "auxiliary_balance",
+      "label": "辅助核算余额表",
+      "method": "POST",
+      "path": "/jdy-fi-rpt/{dbId}/v1/balance-item-report/query",
+      "query": {},
+      "data_type": "list",
+      "required_keys": [],
+      "list_fields": [],
+      "body": {
+        "fromPeriod": "{period}",
+        "toPeriod": "{period}",
+        "itemClassIds": [
+          "1"
+        ],
+        "itemNumbers": [
+          ""
+        ],
+        "accountNumber": "",
+        "cur": "RMB",
+        "includeAccount": false,
+        "balance": false,
+        "happen": false,
+        "showQty": false,
+        "detail": true
+      }
+    },
+    {
+      "id": "quantity_ledger",
+      "label": "数量金额总账",
+      "method": "POST",
+      "path": "/jdy-fi-rpt/{dbId}/v1/qtyTotalAccount/detail",
+      "query": {},
+      "data_type": "dict",
+      "required_keys": [
+        "rows",
+        "size"
+      ],
+      "list_fields": [
+        "rows"
+      ],
+      "body": {
+        "fromPeriod": "{period}",
+        "toPeriod": "{period}",
+        "fromAccountId": "",
+        "toAccountId": "",
+        "fromLevel": "1",
+        "toLevel": "9",
+        "includeItem": true,
+        "balance": false,
+        "happen": false,
+        "noHappen": false,
+        "detail": false,
+        "detailByPeriod": false,
+        "qtyFormat": "2",
+        "priceFormat": "2",
+        "showNoHappenPeriod": false
+      },
+      "nullable_lists": {
+        "rows": "size"
+      }
+    },
+    {
+      "id": "balance_sheet",
+      "label": "资产负债表",
+      "method": "GET",
+      "path": "/jdy-fi/{dbId}/rpt/v1/balance",
+      "query": {
+        "yearPeriod": "{period}"
+      },
+      "data_type": "dict",
+      "required_keys": [
+        "rows",
+        "isBalance",
+        "isRepeat",
+        "isAbsent",
+        "isBeginBalance",
+        "absentAccounts",
+        "repeatedAccounts",
+        "isPlTrans",
+        "isPreBalByCache",
+        "needReload",
+        "latestPeriod"
+      ],
+      "list_fields": [
+        "rows"
+      ]
+    },
+    {
+      "id": "profit_sheet",
+      "label": "利润表",
+      "method": "GET",
+      "path": "/jdy-fi/{dbId}/rpt/v1/profit",
+      "query": {
+        "yearPeriod": "{period}",
+        "batchOperate": "{\"type\":\"\",\"value\":[]}",
+        "type": "1"
+      },
+      "data_type": "dict",
+      "required_keys": [
+        "rows",
+        "isBalance",
+        "isRepeat",
+        "isAbsent",
+        "isNonProfitBalance",
+        "absentAccounts",
+        "repeatedAccounts",
+        "nonProfitBalance",
+        "editable",
+        "isEmpty",
+        "needReload",
+        "latestPeriod"
+      ],
+      "list_fields": [
+        "rows"
+      ]
+    },
+    {
+      "id": "cashflow",
+      "label": "现金流量表",
+      "method": "GET",
+      "path": "/jdy-fi/{dbId}/rpt/v1/cashflow",
+      "query": {
+        "yearPeriod": "{period}"
+      },
+      "data_type": "dict",
+      "required_keys": [
+        "status",
+        "isBalance",
+        "main",
+        "addendum",
+        "checkRes",
+        "initCheckRes"
+      ],
+      "list_fields": []
+    },
+    {
+      "id": "cost_detail",
+      "label": "费用明细",
+      "method": "POST",
+      "path": "/jdy-fi-rpt/{dbId}/v1/cost-detail/list",
+      "query": {},
+      "data_type": "list",
+      "required_keys": [],
+      "list_fields": [],
+      "body": {
+        "periodFrom": "{period}",
+        "periodTo": "{period}",
+        "accountNo": "",
+        "accountType": "3",
+        "showItem": false,
+        "showYtdAmount": true,
+        "showFullName": false,
+        "classIds": null,
+        "showProp": false,
+        "showZero": false
+      }
+    },
+    {
+      "id": "asset_types",
+      "label": "固定资产类别",
+      "method": "GET",
+      "path": "/jdy-fi/{dbId}/fa/v1/type",
+      "query": {},
+      "data_type": "dict",
+      "required_keys": [
+        "rows"
+      ],
+      "list_fields": [
+        "rows"
+      ]
+    },
+    {
+      "id": "asset_cards",
+      "label": "固定资产卡片",
+      "method": "POST",
+      "path": "/jdy-fi/{dbId}/fa/v1/card/list",
+      "query": {},
+      "data_type": "dict",
+      "required_keys": [
+        "totalPage",
+        "records",
+        "page",
+        "rows",
+        "depreVoucher"
+      ],
+      "list_fields": [
+        "rows"
+      ],
+      "body": {
+        "addPeriodBefore": "{periodInt}",
+        "showClean": false,
+        "number": "",
+        "name": "",
+        "deptIds": [],
+        "typeIds": [],
+        "beginDateFrom": null,
+        "beginDateTo": null,
+        "addPeriodFrom": 0,
+        "addPeriodTo": 0,
+        "deprMethod": 0,
+        "addVoucher": 0,
+        "state": 1,
+        "clearPeriodFrom": null,
+        "clearPeriodTo": null,
+        "clearVch": 0,
+        "page": 1,
+        "pageSize": 20
+      }
+    },
+    {
+      "id": "depreciation_detail",
+      "label": "折旧明细",
+      "method": "GET",
+      "path": "/jdy-fi/{dbId}/fa/v1/report/depreciation-detail",
+      "query": {
+        "periodFrom": "{period}",
+        "periodTo": "{period}",
+        "showChange": "false",
+        "showClean": "false",
+        "dept": "false",
+        "page": "1",
+        "pageSize": 20
+      },
+      "data_type": "dict",
+      "required_keys": [
+        "totalPage",
+        "records",
+        "page",
+        "rows",
+        "hasShare"
+      ],
+      "list_fields": [
+        "rows"
+      ]
+    },
+    {
+      "id": "depreciation_summary",
+      "label": "折旧汇总",
+      "method": "GET",
+      "path": "/jdy-fi/{dbId}/fa/v1/report/depreciation-sum",
+      "query": {
+        "periodFrom": "{period}",
+        "periodTo": "{period}",
+        "showChange": "false",
+        "showClean": "false",
+        "dept": "false"
+      },
+      "data_type": "dict",
+      "required_keys": [
+        "totalPage",
+        "records",
+        "page",
+        "rows",
+        "hasShare"
+      ],
+      "list_fields": [
+        "rows"
+      ]
+    },
+    {
+      "id": "asset_changes",
+      "label": "资产变动记录",
+      "method": "GET",
+      "path": "/jdy-fi/{dbId}/fa/v1/change-record",
+      "query": {
+        "periodFrom": "{period}",
+        "periodTo": "{period}",
+        "page": "1",
+        "pageSize": 20
+      },
+      "data_type": "dict",
+      "required_keys": [
+        "totalPage",
+        "records",
+        "page",
+        "rows"
+      ],
+      "list_fields": [
+        "rows"
+      ]
+    },
+    {
+      "id": "salary_list",
+      "label": "工资表",
+      "method": "POST",
+      "path": "/jdy-fi/{dbId}/pay/v1/sheet-list",
+      "query": {},
+      "data_type": "dict",
+      "required_keys": [
+        "rows",
+        "records",
+        "totalPage",
+        "page",
+        "salaryTotal",
+        "realSalaryTotal",
+        "hasOld"
+      ],
+      "list_fields": [
+        "rows"
+      ],
+      "body": {
+        "page": 1,
+        "pageSize": 20,
+        "matchCon": "",
+        "fromPeriod": "{period}",
+        "toPeriod": "{period}"
+      }
+    },
+    {
+      "id": "salary_stats",
+      "label": "月度工资统计",
+      "method": "POST",
+      "path": "/jdy-fi/{dbId}/pay/v1/sheet/statMonthPay",
+      "query": {},
+      "data_type": "dict",
+      "required_keys": [
+        "dbId",
+        "yearPeriod",
+        "items",
+        "colName"
+      ],
+      "list_fields": [
+        "items"
+      ],
+      "body": {
+        "matchCon": "",
+        "yearPeriod": "{period}"
+      }
+    },
+    {
+      "id": "departments",
+      "label": "部门目录",
+      "method": "GET",
+      "path": "/jdy-fi/{dbId}/bs/v1/dept",
+      "query": {},
+      "data_type": "dict",
+      "required_keys": [
+        "depts",
+        "totalsize"
+      ],
+      "list_fields": [
+        "depts"
+      ]
+    },
+    {
+      "id": "employees",
+      "label": "职员目录",
+      "method": "GET",
+      "path": "/jdy-fi/{dbId}/bs/v1/employee",
+      "query": {
+        "page": "1",
+        "pageSize": 20
+      },
+      "data_type": "dict",
+      "required_keys": [
+        "rows",
+        "records",
+        "totalPage",
+        "page"
+      ],
+      "list_fields": [
+        "rows"
+      ]
+    },
+    {
+      "id": "invoices",
+      "label": "发票列表",
+      "method": "POST",
+      "path": "/jdy-fi/{dbId}/vat/v1/invoice-list",
+      "query": {},
+      "data_type": "dict",
+      "required_keys": [
+        "totalPage",
+        "records",
+        "page",
+        "rows",
+        "total",
+        "allTotal"
+      ],
+      "list_fields": [
+        "rows"
+      ],
+      "body": {
+        "showEntry": true,
+        "spreadEntry": true,
+        "date": null,
+        "type": "",
+        "status": "",
+        "includeVch": 2,
+        "number": "",
+        "code": "",
+        "electCode": "",
+        "customName": {
+          "type": 1,
+          "value": ""
+        },
+        "checkStatus": [],
+        "remark": "",
+        "fileName": "",
+        "batchRemark": "",
+        "productName": "",
+        "keyType": 1,
+        "keyVal": "",
+        "page": 1,
+        "pageSize": 20,
+        "periodType": "2",
+        "feature": 1,
+        "periodFrom": "{dateFromInt}",
+        "periodTo": "{dateToInt}"
+      }
+    },
+    {
+      "id": "tax_burden",
+      "label": "税负数据",
+      "method": "GET",
+      "path": "/jdy-fi/{dbId}/vat/v1/tax-burden",
+      "query": {
+        "yearPeriod": "{period}"
+      },
+      "data_type": "dict",
+      "required_keys": [
+        "cal",
+        "out",
+        "int",
+        "increment",
+        "attach"
+      ],
+      "list_fields": []
+    },
+    {
+      "id": "cashier_accounts",
+      "label": "出纳账户",
+      "method": "GET",
+      "path": "/jdy-fi/{dbId}/ca/v1/cashier-account",
+      "query": {
+        "showForbid": "false"
+      },
+      "data_type": "dict",
+      "required_keys": [
+        "naturalCur",
+        "mCur",
+        "rows",
+        "isAllBind"
+      ],
+      "list_fields": [
+        "rows"
+      ]
+    }
+  ]
+}

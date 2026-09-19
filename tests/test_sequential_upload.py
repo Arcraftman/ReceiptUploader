@@ -13,12 +13,16 @@ from kdzwy_receipt_uploader.models import ApiError, Receipt
 
 class FakeApi:
     def __init__(self) -> None:
+        self.dbid = "123"
+        self.session_company_id = "1"
+        self.accounting_origin = "https://example.test"
         self.calls: list[str] = []
         self.count = 0
 
 
 class FakePaths:
     def __init__(self, root: Path) -> None:
+        self.processing = root / "processing"
         self.logs = root / "logs"
         self.submitted = root / "submitted"
         self.failed = root / "failed"
@@ -47,13 +51,13 @@ def make_receipt(receipt_id: str) -> Receipt:
     )
 
 
-def main() -> None:
+def test_sequential_upload_stops_after_failure() -> None:
     import kdzwy_receipt_uploader.cli as cli
 
     original = cli.process_one
     calls: list[str] = []
 
-    def fake_process(receipt: Receipt, api: FakeApi) -> dict[str, str]:
+    def fake_process(receipt: Receipt, api: FakeApi, journal=None) -> dict[str, str]:
         calls.append(receipt.receipt_id)
         if receipt.receipt_id == "r2":
             raise ApiError("模拟失败")
@@ -67,7 +71,7 @@ def main() -> None:
             valid = [(root / "r1.json", make_receipt("r1")), (root / "r2.json", make_receipt("r2")), (root / "r3.json", make_receipt("r3"))]
             for path, _ in valid:
                 path.write_text("{}", encoding="utf-8")
-            failed, processed = run_confirm_sequential(valid, FakeApi(), paths)
+            failed, processed = run_confirm_sequential(valid, FakeApi(), paths, root / "exceptions.json", "sales")
             assert failed is True
             assert processed == 1
             assert calls == ["r1", "r2"]
@@ -78,4 +82,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    test_sequential_upload_stops_after_failure()

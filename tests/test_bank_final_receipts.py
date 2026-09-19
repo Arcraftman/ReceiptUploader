@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from src.kdzwy_receipt_uploader.bank_final_receipts import (
+from kdzwy_receipt_uploader.bank_final_receipts import (
     BankFinalReceiptError,
     generate_bank_final_receipts,
     source_values,
@@ -12,11 +12,23 @@ from src.kdzwy_receipt_uploader.bank_final_receipts import (
 import pytest
 
 
+def verified_record(amount="12.30", **extra):
+    return {"transactionAmount": amount, "statementAmount": amount,
+            "amountSource": "bank_statement.ourCreditAmount", "amountValidated": True, **extra}
+
+
+def stamp_analysis(record, analysis):
+    from kdzwy_receipt_uploader.receipts_ocr import bank_amount_snapshot
+    analysis["bankSourceAmounts"] = bank_amount_snapshot(source_values(record))
+    analysis.setdefault("extractedFields", {}).update(verified_record(record["transactionAmount"]))
+
+
 def test_statement_counterparty_is_not_overwritten_by_ocr(tmp_path: Path) -> None:
     ocr_text = tmp_path / "ocr.txt"
     ocr_text.write_text("对方户名：OCR识别出的其他名称", encoding="utf-8")
     values = source_values(
         {
+            **verified_record(),
             "counterpartyName": "Excel指定列供应商",
             "counterpartyType": "supplier",
             "supplierName": "Excel指定列供应商",
@@ -32,6 +44,7 @@ def test_statement_counterparty_is_not_overwritten_by_ocr(tmp_path: Path) -> Non
 def test_bank_source_values_split_housing_fund_from_verified_history() -> None:
     values = source_values(
         {
+            **verified_record("2632.00", configCompany="上海微誉信息技术有限公司"),
             "ourCreditAmount": "2632.00",
             "invoiceNumbers": [],
         }
@@ -51,6 +64,7 @@ def test_prepare_existing_generates_final_drafts_and_preserves_edits(tmp_path: P
             "flowDirection": "outflow",
             "bankAccountNumber": "100201",
             "invoiceNumbers": [],
+            **verified_record(),
             "ourCreditAmount": "12.30",
             "receipt": {"pdf": str(pdf)},
         },
@@ -61,6 +75,7 @@ def test_prepare_existing_generates_final_drafts_and_preserves_edits(tmp_path: P
             "flowDirection": "outflow",
             "bankAccountNumber": "100201",
             "invoiceNumbers": [],
+            **verified_record("9.90"),
             "ourCreditAmount": "9.90",
             "receipt": {"pdf": str(pdf)},
         },
@@ -78,6 +93,7 @@ def test_prepare_existing_generates_final_drafts_and_preserves_edits(tmp_path: P
             ],
         }
     }
+    stamp_analysis(matched["bank_a__V001"], analysis["bank_a__V001"])
     output = tmp_path / "receipts" / "bank"
     report = generate_bank_final_receipts(
         matched,
@@ -124,6 +140,7 @@ def test_prepare_existing_rejects_wrong_bank_account_number(tmp_path: Path) -> N
             "bankKey": "bank_a",
             "index": "V001",
             "bankAccountNumber": "100204",
+            **verified_record(),
             "ourCreditAmount": "12.30",
             "receipt": {},
         }
@@ -141,6 +158,10 @@ def test_prepare_existing_rejects_wrong_bank_account_number(tmp_path: Path) -> N
             ],
         }
     }
+    analysis["bank_a__V001"]["filledEntries"].insert(0, {
+        "dc": 1, "accountNumber": "560303", "accountName": "财务费用", "amount": "12.30",
+    })
+    stamp_analysis(matched["bank_a__V001"], analysis["bank_a__V001"])
     with pytest.raises(BankFinalReceiptError, match="配置=100204，分析=100201"):
         generate_bank_final_receipts(
             matched,
@@ -152,7 +173,7 @@ def test_prepare_existing_rejects_wrong_bank_account_number(tmp_path: Path) -> N
         )
 
 
-def test_prepare_rejects_analysis_that_ignores_remark_template_route() -> None:
+def test_prepare_rejects_legacy_remark_forced_analysis() -> None:
     record = {
         "bankKey": "alpha",
         "index": "A12345",
@@ -164,8 +185,8 @@ def test_prepare_rejects_analysis_that_ignores_remark_template_route() -> None:
         "remark": "运费",
         "forcedTemplatePath": "bank/freight_template.json",
     }
-    with pytest.raises(BankFinalReceiptError, match="备注指定模板与分析不一致"):
+    with pytest.raises(BankFinalReceiptError, match="旧备注强制模板分析已失效"):
         validate_bank_analysis_rules(
             record,
-            {"templatePath": "bank/other_template.json"},
+            {"templatePath": "bank/other_template.json", "selectionMode": "statement_remark_exact"},
         )

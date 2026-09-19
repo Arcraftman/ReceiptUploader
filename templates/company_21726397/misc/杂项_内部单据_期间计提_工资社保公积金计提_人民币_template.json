@@ -1,0 +1,255 @@
+{
+  "id": "company_21726397-misc-payroll",
+  "name": "杂项_内部单据_期间计提_工资社保公积金计提_人民币",
+  "version": "2.0",
+  "enabled": true,
+  "documentBlock": "杂项",
+  "documentType": "内部单据",
+  "settlementMethod": "期间计提",
+  "businessType": "工资社保公积金计提",
+  "currency": "人民币",
+  "keywords": [
+    "计提工资",
+    "工资社保公积金计提",
+    "工资表"
+  ],
+  "when": {
+    "businessType": "工资社保公积金计提",
+    "settlementMethod": "期间计提"
+  },
+  "matchRules": {
+    "sourceFolders": [
+      "misc"
+    ],
+    "allowedDocumentBlocks": [
+      "杂项"
+    ],
+    "anyKeywords": [
+      "工资表",
+      "工资社保公积金计提",
+      "工资"
+    ],
+    "excludeKeywords": [
+      "重分类",
+      "重复入账",
+      "多入调整",
+      "补计提",
+      "资产清理",
+      "换开专票",
+      "发放工资",
+      "补发工资"
+    ],
+    "expectedAccounts": [
+      "43010103",
+      "560201",
+      "221101",
+      "221101",
+      "22410305",
+      "22410304",
+      "222112",
+      "43010105",
+      "43010104",
+      "560215",
+      "560214",
+      "22110201",
+      "221103"
+    ],
+    "priority": 300,
+    "keywordGroups": [
+      [
+        "计提",
+        "工资表"
+      ]
+    ]
+  },
+  "amountSource": "source",
+  "summary": {
+    "header": "工资社保公积金计提",
+    "body": "{source.period}",
+    "separator": " "
+  },
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "43010103",
+        "name": "研发支出_费用化支出_研发人员工资"
+      },
+      "amountFrom": "source.researchSalary",
+      "amountForFrom": "source.researchSalary"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "560201",
+        "name": "管理费用_工资"
+      },
+      "amountFrom": "source.managementSalary",
+      "amountForFrom": "source.managementSalary"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "221101",
+        "name": "应付职工薪酬_工资"
+      },
+      "amountFrom": "source.grossSalary",
+      "amountForFrom": "source.grossSalary"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "221101",
+        "name": "应付职工薪酬_工资"
+      },
+      "amountFrom": "source.employeeDeductions",
+      "amountForFrom": "source.employeeDeductions"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "22410305",
+        "name": "其他应付款_代扣代缴_社保（个人）"
+      },
+      "amountFrom": "source.employeeSocialSecurity",
+      "amountForFrom": "source.employeeSocialSecurity"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "22410304",
+        "name": "其他应付款_代扣代缴_公积金（个人）"
+      },
+      "amountFrom": "source.employeeHousingFund",
+      "amountForFrom": "source.employeeHousingFund"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "222112",
+        "name": "应交税费_应交个人所得税"
+      },
+      "amountFrom": "source.incomeTax",
+      "amountForFrom": "source.incomeTax"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "43010105",
+        "name": "研发支出_费用化支出_研发人员社保"
+      },
+      "amountFrom": "source.researchSocialSecurity",
+      "amountForFrom": "source.researchSocialSecurity"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "43010104",
+        "name": "研发支出_费用化支出_研发人员公积金"
+      },
+      "amountFrom": "source.researchHousingFund",
+      "amountForFrom": "source.researchHousingFund"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "560215",
+        "name": "管理费用_社保"
+      },
+      "amountFrom": "source.managementSocialSecurity",
+      "amountForFrom": "source.managementSocialSecurity"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "560214",
+        "name": "管理费用_公积金"
+      },
+      "amountFrom": "source.managementHousingFund",
+      "amountForFrom": "source.managementHousingFund"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "22110201",
+        "name": "应付职工薪酬_社会保险费_保险费（公司）"
+      },
+      "amountFrom": "source.companySocialSecurity",
+      "amountForFrom": "source.companySocialSecurity"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "221103",
+        "name": "应付职工薪酬_住房公积金（公司）"
+      },
+      "amountFrom": "source.companyHousingFund",
+      "amountForFrom": "source.companyHousingFund"
+    }
+  ],
+  "historicalEvidence": {
+    "period": "2026-01至2026-08",
+    "count": 6,
+    "monthCount": 6,
+    "months": [
+      "2026-03",
+      "2026-04",
+      "2026-05",
+      "2026-06",
+      "2026-07",
+      "2026-08"
+    ],
+    "voucherRefs": [
+      {
+        "period": "2026-03",
+        "voucher": "记-223",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1220,
+        "lastRow": 1232
+      },
+      {
+        "period": "2026-04",
+        "voucher": "记-194",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1774,
+        "lastRow": 1786
+      },
+      {
+        "period": "2026-05",
+        "voucher": "记-164",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 2253,
+        "lastRow": 2265
+      },
+      {
+        "period": "2026-06",
+        "voucher": "记-168",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 2825,
+        "lastRow": 2837
+      },
+      {
+        "period": "2026-07",
+        "voucher": "记-148",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 3418,
+        "lastRow": 3430
+      },
+      {
+        "period": "2026-08",
+        "voucher": "记-164",
+        "sourceFile": "20260918193311_凭证列表_【智轻云(上海)科技有限公司】_2026年第8期.xlsx",
+        "sheet": "凭证列表#2026年第8期",
+        "firstRow": 399,
+        "lastRow": 411
+      }
+    ],
+    "reason": "按完整凭证分录结构和金额关系复现，剔除显式纠错、补提、重分类；结构覆盖不等于OCR可自动分类。"
+  },
+  "usageNotes": "当期工资表须分别提供研发/管理工资及公司社保公积金、个人扣款。四组总额分别核对：工资、个人扣款、公司社保、公司公积金。不得复用8月比例。"
+}

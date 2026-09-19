@@ -7,6 +7,19 @@ name = "kdzwy-receipt-uploader"
 version = "0.1.0"
 description = "Authorized Kdzwy voucher and PDF attachment uploader"
 requires-python = ">=3.10"
+dependencies = [
+    "openpyxl>=3.1,<4",
+    "pymupdf>=1.24,<2",
+    "requests>=2.31,<3",
+]
+
+[project.optional-dependencies]
+discovery = ["requests>=2.31", "playwright>=1.40"]
+ocr = [
+    "rapidocr-onnxruntime==1.2.3",
+    "onnxruntime<1.24; python_version < '3.11'",
+]
+dev = ["pytest>=8,<10", "ruff>=0.11,<1", "build>=1,<2", "coverage[toml]>=7.10,<8", "mypy>=1.14,<2", "setuptools>=68", "wheel>=0.45"]
 
 [project.scripts]
 kdzwy-receipts = "kdzwy_receipt_uploader.cli:main"
@@ -16,3 +29,34 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
+
+[tool.ruff]
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E9", "F821", "F822", "F823"]
+
+[tool.coverage.run]
+branch = true
+source = ["kdzwy_receipt_uploader"]
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.coverage.json]
+output = "coverage.json"
+
+[tool.mypy]
+python_version = "3.10"
+files = [
+  "src/kdzwy_receipt_uploader/workflow.py",
+  "src/kdzwy_receipt_uploader/upload_journal.py",
+  "src/kdzwy_receipt_uploader/upload_contracts.py",
+  "src/kdzwy_receipt_uploader/application/contracts.py",
+  "src/kdzwy_receipt_uploader/application/context.py",
+  "src/kdzwy_receipt_uploader/config.py",
+  "src/kdzwy_receipt_uploader/month_config.py",
+  "src/kdzwy_receipt_uploader/bank_rules.py",
+]
+strict = true
+follow_imports = "silent"

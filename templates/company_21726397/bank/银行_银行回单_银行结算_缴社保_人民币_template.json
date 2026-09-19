@@ -1,0 +1,94 @@
+{
+  "id": "company_21726397-bank-social",
+  "name": "银行_银行回单_银行结算_缴社保_人民币",
+  "version": "2.0",
+  "enabled": true,
+  "documentBlock": "银行",
+  "documentType": "银行回单",
+  "settlementMethod": "银行结算",
+  "businessType": "缴社保",
+  "currency": "人民币",
+  "keywords": [
+    "仅公司部分社保",
+    "公司承担社保单独缴纳"
+  ],
+  "when": {
+    "businessType": "缴社保",
+    "settlementMethod": "银行结算"
+  },
+  "matchRules": {
+    "sourceFolders": [
+      "bank"
+    ],
+    "allowedDocumentBlocks": [
+      "银行"
+    ],
+    "anyKeywords": [
+      "仅公司部分社保",
+      "公司承担社保单独缴纳"
+    ],
+    "excludeKeywords": [
+      "重分类",
+      "重复入账",
+      "多入调整",
+      "补计提",
+      "资产清理",
+      "换开专票"
+    ],
+    "expectedAccounts": [
+      "22110201",
+      "source.bankAccountNumber"
+    ],
+    "priority": 300,
+    "flowDirections": [
+      "outflow"
+    ],
+    "excludeCounterpartyEqualsConfigCompany": true
+  },
+  "amountSource": "source",
+  "summary": {
+    "header": "缴社保",
+    "body": "",
+    "separator": " "
+  },
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "22110201",
+        "name": "应付职工薪酬_社会保险费_保险费（公司）"
+      },
+      "amountFrom": "source.amount",
+      "amountForFrom": "source.amount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "numberFrom": "source.bankAccountNumber",
+        "name": "银行存款（由project.json动态注入）"
+      },
+      "amountFrom": "source.amount",
+      "amountForFrom": "source.amount"
+    }
+  ],
+  "historicalEvidence": {
+    "period": "2026-01至2026-08",
+    "count": 1,
+    "monthCount": 1,
+    "months": [
+      "2026-08"
+    ],
+    "voucherRefs": [
+      {
+        "period": "2026-08",
+        "voucher": "记-51",
+        "sourceFile": "20260918193311_凭证列表_【智轻云(上海)科技有限公司】_2026年第8期.xlsx",
+        "sheet": "凭证列表#2026年第8期",
+        "firstRow": 130,
+        "lastRow": 131
+      }
+    ],
+    "reason": "按完整凭证分录结构和金额关系复现，剔除显式纠错、补提、重分类；结构覆盖不等于OCR可自动分类。"
+  },
+  "usageNotes": "仅8月记51支持单科目结构。须人工明确当期仅冲公司部分科目方可使用；普通“缴社保”优先进入公司/个人分拆候选，缺明细阻断。"
+}

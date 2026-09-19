@@ -1,0 +1,266 @@
+{
+  "id": "company_21726397-purchase-property",
+  "name": "费用_增值税发票_往来结算_物业水电费_人民币",
+  "version": "2.0",
+  "enabled": true,
+  "documentBlock": "费用",
+  "documentType": "增值税发票",
+  "settlementMethod": "往来结算",
+  "businessType": "物业水电费",
+  "currency": "人民币",
+  "keywords": [
+    "物业",
+    "水电费",
+    "电费",
+    "水费"
+  ],
+  "when": {
+    "businessType": "物业水电费",
+    "settlementMethod": "往来结算"
+  },
+  "matchRules": {
+    "sourceFolders": [
+      "purchase"
+    ],
+    "allowedDocumentBlocks": [
+      "费用"
+    ],
+    "anyKeywords": [
+      "物业",
+      "水电费",
+      "电费",
+      "水费"
+    ],
+    "excludeKeywords": [
+      "重分类",
+      "重复入账",
+      "多入调整",
+      "补计提",
+      "资产清理",
+      "换开专票"
+    ],
+    "expectedAccounts": [
+      "560211",
+      "22210101",
+      "2202"
+    ],
+    "priority": 300
+  },
+  "amountSource": "purchase_map",
+  "summary": {
+    "header": "物业水电费",
+    "body": "{invoiceCode}",
+    "separator": " "
+  },
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "560211",
+        "name": "管理费用_水电费"
+      },
+      "amountFrom": "purchase_map.amount",
+      "amountForFrom": "purchase_map.amount"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "22210101",
+        "name": "应交税费_应交增值税_进项税额"
+      },
+      "amountFrom": "purchase_map.taxAmount",
+      "amountForFrom": "purchase_map.taxAmount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "2202",
+        "name": "应付账款"
+      },
+      "amountFrom": "purchase_map.totalAmount",
+      "amountForFrom": "purchase_map.totalAmount",
+      "auxiliary": {
+        "field": "supplierId",
+        "itemClassId": 5,
+        "selector": "auxiliaryItem"
+      }
+    }
+  ],
+  "historicalEvidence": {
+    "period": "2026-01至2026-08",
+    "count": 20,
+    "monthCount": 6,
+    "months": [
+      "2026-03",
+      "2026-04",
+      "2026-05",
+      "2026-06",
+      "2026-07",
+      "2026-08"
+    ],
+    "voucherRefs": [
+      {
+        "period": "2026-03",
+        "voucher": "记-56",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 749,
+        "lastRow": 751
+      },
+      {
+        "period": "2026-03",
+        "voucher": "记-57",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 752,
+        "lastRow": 754
+      },
+      {
+        "period": "2026-04",
+        "voucher": "记-40",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1464,
+        "lastRow": 1466
+      },
+      {
+        "period": "2026-04",
+        "voucher": "记-41",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1467,
+        "lastRow": 1469
+      },
+      {
+        "period": "2026-04",
+        "voucher": "记-45",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1500,
+        "lastRow": 1502
+      },
+      {
+        "period": "2026-04",
+        "voucher": "记-51",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1595,
+        "lastRow": 1597
+      },
+      {
+        "period": "2026-05",
+        "voucher": "记-21",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1873,
+        "lastRow": 1875
+      },
+      {
+        "period": "2026-05",
+        "voucher": "记-27",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1891,
+        "lastRow": 1893
+      },
+      {
+        "period": "2026-05",
+        "voucher": "记-30",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1949,
+        "lastRow": 1951
+      },
+      {
+        "period": "2026-05",
+        "voucher": "记-32",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1955,
+        "lastRow": 1957
+      },
+      {
+        "period": "2026-05",
+        "voucher": "记-53",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 2182,
+        "lastRow": 2184
+      },
+      {
+        "period": "2026-06",
+        "voucher": "记-136",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 2488,
+        "lastRow": 2490
+      },
+      {
+        "period": "2026-06",
+        "voucher": "记-138",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 2548,
+        "lastRow": 2550
+      },
+      {
+        "period": "2026-06",
+        "voucher": "记-147",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 2668,
+        "lastRow": 2670
+      },
+      {
+        "period": "2026-07",
+        "voucher": "记-160",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 3145,
+        "lastRow": 3147
+      },
+      {
+        "period": "2026-07",
+        "voucher": "记-161",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 3148,
+        "lastRow": 3150
+      },
+      {
+        "period": "2026-07",
+        "voucher": "记-165",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 3160,
+        "lastRow": 3162
+      },
+      {
+        "period": "2026-08",
+        "voucher": "记-147",
+        "sourceFile": "20260918193311_凭证列表_【智轻云(上海)科技有限公司】_2026年第8期.xlsx",
+        "sheet": "凭证列表#2026年第8期",
+        "firstRow": 350,
+        "lastRow": 352
+      },
+      {
+        "period": "2026-08",
+        "voucher": "记-150",
+        "sourceFile": "20260918193311_凭证列表_【智轻云(上海)科技有限公司】_2026年第8期.xlsx",
+        "sheet": "凭证列表#2026年第8期",
+        "firstRow": 357,
+        "lastRow": 359
+      },
+      {
+        "period": "2026-08",
+        "voucher": "记-151",
+        "sourceFile": "20260918193311_凭证列表_【智轻云(上海)科技有限公司】_2026年第8期.xlsx",
+        "sheet": "凭证列表#2026年第8期",
+        "firstRow": 360,
+        "lastRow": 362
+      }
+    ],
+    "reason": "按完整凭证分录结构和金额关系复现，剔除显式纠错、补提、重分类；结构覆盖不等于OCR可自动分类。"
+  },
+  "usageNotes": "采用本公司历史费用科目；需本期可抵扣进项依据。"
+}

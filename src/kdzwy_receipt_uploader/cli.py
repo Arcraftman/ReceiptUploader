@@ -16,6 +16,7 @@ from .map_lookup import InvoicePdfMap
 from .models import ApiError, ReceiptError
 from .paths import ProjectPaths
 from .workflow import archive, find_receipts, preview, process_one
+from .upload_journal import UploadJournal, UploadInProgress
 from .responsibility_chain import run_selected_sources_safe
 from .source_profile import source_from_folder_name, normalize_source_key
 from .simple_logging import configure_pipeline_logger, install_console_transcript
@@ -83,9 +84,12 @@ def run_confirm_sequential(
     """Process receipts in order; stop only on an API/workflow failure."""
     completed = 0
     for index, (path, receipt) in enumerate(valid, start=1):
+        journal = None
         try:
             print(f"提交第 {index}/{len(valid)} 张：{receipt.receipt_id}；上一张未成功不会进入本张")
-            result = process_one(receipt, api)
+            tenant = f"{api.accounting_origin}/{api.session_company_id}/{api.dbid}"
+            journal = UploadJournal(paths.processing / "uploads", tenant, receipt.receipt_id)
+            result = process_one(receipt, api, journal)
             result["unresolvedInvoiceCodes"] = receipt.unresolved_invoice_codes
             audit(paths, result)
             resolve_document_stage(
@@ -103,14 +107,19 @@ def run_confirm_sequential(
             if index < len(valid):
                 print("等待 3 秒后提交下一张，降低连续请求压力...")
                 time.sleep(3.0)
+        except UploadInProgress as exc:
+            print(f"批次停止：{receipt.receipt_id} -> {exc}", file=sys.stderr)
+            return True, completed
         except (ApiError, ReceiptError, ValueError, OSError) as exc:
             error_message = str(exc)
             failed_before_save = (
                 "尚未保存凭证" in error_message
                 or "未调用保存接口" in error_message
             )
+            resumable = journal is not None and journal.path.is_file() and journal.state.phase in {"saved", "binding", "verified"}
             result = {
                 "status": (
+                    "recovery_pending" if resumable else
                     "failed_before_save"
                     if failed_before_save
                     else "failed_or_ambiguous"
@@ -122,7 +131,7 @@ def run_confirm_sequential(
                 "stoppedBeforeNext": True,
             }
             audit(paths, result)
-            if not failed_before_save:
+            if not failed_before_save and not resumable:
                 append_exception(
                     exception_ledger_path,
                     source,

@@ -1,0 +1,153 @@
+{
+  "id": "company_20139879-misc-depreciation",
+  "name": "杂项_内部单据_期间计提_固定资产折旧_人民币",
+  "version": "2.0",
+  "enabled": true,
+  "documentBlock": "杂项",
+  "documentType": "内部单据",
+  "settlementMethod": "期间计提",
+  "businessType": "固定资产折旧",
+  "currency": "人民币",
+  "keywords": [
+    "固定资产折旧",
+    "累计折旧"
+  ],
+  "when": {
+    "businessType": "固定资产折旧",
+    "settlementMethod": "期间计提"
+  },
+  "matchRules": {
+    "sourceFolders": [
+      "misc"
+    ],
+    "allowedDocumentBlocks": [
+      "杂项"
+    ],
+    "anyKeywords": [
+      "固定资产折旧",
+      "累计折旧"
+    ],
+    "excludeKeywords": [
+      "重分类",
+      "重复入账",
+      "多入调整",
+      "补计提",
+      "资产清理",
+      "换开专票"
+    ],
+    "expectedAccounts": [
+      "560212",
+      "1602"
+    ],
+    "priority": 300
+  },
+  "amountSource": "source",
+  "summary": {
+    "header": "固定资产折旧",
+    "body": "{source.period}",
+    "separator": " "
+  },
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "560212",
+        "name": "管理费用_折旧费"
+      },
+      "amountFrom": "source.totalAmount",
+      "amountForFrom": "source.totalAmount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "number": "1602",
+        "name": "累计折旧"
+      },
+      "amountFrom": "source.totalAmount",
+      "amountForFrom": "source.totalAmount"
+    }
+  ],
+  "historicalEvidence": {
+    "period": "2026-01至2026-08",
+    "count": 8,
+    "monthCount": 8,
+    "months": [
+      "2026-01",
+      "2026-02",
+      "2026-03",
+      "2026-04",
+      "2026-05",
+      "2026-06",
+      "2026-07",
+      "2026-08"
+    ],
+    "voucherRefs": [
+      {
+        "period": "2026-08",
+        "voucher": "记-275",
+        "sourceFile": "20260918193017_凭证列表_【千云（上海）信息科技有限公司】_2026年第8期.xlsx",
+        "sheet": "凭证列表#2026年第8期",
+        "firstRow": 668,
+        "lastRow": 669
+      },
+      {
+        "period": "2026-01",
+        "voucher": "记-297",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 748,
+        "lastRow": 749
+      },
+      {
+        "period": "2026-02",
+        "voucher": "记-206",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1286,
+        "lastRow": 1287
+      },
+      {
+        "period": "2026-03",
+        "voucher": "记-302",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 2065,
+        "lastRow": 2066
+      },
+      {
+        "period": "2026-04",
+        "voucher": "记-299",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 2867,
+        "lastRow": 2868
+      },
+      {
+        "period": "2026-05",
+        "voucher": "记-255",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 3562,
+        "lastRow": 3563
+      },
+      {
+        "period": "2026-06",
+        "voucher": "记-320",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 4442,
+        "lastRow": 4443
+      },
+      {
+        "period": "2026-07",
+        "voucher": "记-268",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 5136,
+        "lastRow": 5137
+      }
+    ],
+    "reason": "按完整凭证分录结构和金额关系复现，剔除显式纠错、补提、重分类；结构覆盖不等于OCR可自动分类。"
+  },
+  "usageNotes": "以当月折旧表为依据，仅管理费用折旧。"
+}

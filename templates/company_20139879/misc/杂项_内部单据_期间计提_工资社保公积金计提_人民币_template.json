@@ -1,0 +1,235 @@
+{
+  "id": "company_20139879-misc-payroll",
+  "name": "杂项_内部单据_期间计提_工资社保公积金计提_人民币",
+  "version": "2.0",
+  "enabled": true,
+  "documentBlock": "杂项",
+  "documentType": "内部单据",
+  "settlementMethod": "期间计提",
+  "businessType": "工资社保公积金计提",
+  "currency": "人民币",
+  "keywords": [
+    "计提工资",
+    "工资表",
+    "工资社保公积金计提"
+  ],
+  "when": {
+    "businessType": "工资社保公积金计提",
+    "settlementMethod": "期间计提"
+  },
+  "matchRules": {
+    "sourceFolders": [
+      "misc"
+    ],
+    "allowedDocumentBlocks": [
+      "杂项"
+    ],
+    "anyKeywords": [
+      "工资表",
+      "工资社保公积金计提",
+      "工资"
+    ],
+    "excludeKeywords": [
+      "重分类",
+      "重复入账",
+      "多入调整",
+      "补计提",
+      "资产清理",
+      "换开专票",
+      "发放工资",
+      "补发工资"
+    ],
+    "expectedAccounts": [
+      "560201",
+      "560101",
+      "221101",
+      "224102",
+      "224105",
+      "222112",
+      "221101",
+      "560201",
+      "560101",
+      "221102",
+      "221103"
+    ],
+    "priority": 300,
+    "keywordGroups": [
+      [
+        "计提",
+        "工资表"
+      ]
+    ]
+  },
+  "amountSource": "source",
+  "summary": {
+    "header": "工资社保公积金计提",
+    "body": "{source.period}",
+    "separator": " "
+  },
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "name": "管理费用_工资",
+        "number": "560201"
+      },
+      "amountFrom": "source.managementSalary",
+      "amountForFrom": "source.managementSalary"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "name": "销售费用_工资",
+        "number": "560101"
+      },
+      "amountFrom": "source.salesSalary",
+      "amountForFrom": "source.salesSalary"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "name": "应付职工薪酬_职工薪酬",
+        "number": "221101"
+      },
+      "amountFrom": "source.grossSalary",
+      "amountForFrom": "source.grossSalary"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "name": "其他应付款_社保（个人部分）",
+        "number": "224102"
+      },
+      "amountFrom": "source.employeeSocialSecurity",
+      "amountForFrom": "source.employeeSocialSecurity"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "name": "其他应付款_公积金（个人部分）",
+        "number": "224105"
+      },
+      "amountFrom": "source.employeeHousingFund",
+      "amountForFrom": "source.employeeHousingFund"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "name": "应交税费_应交个人所得税",
+        "number": "222112"
+      },
+      "amountFrom": "source.incomeTax",
+      "amountForFrom": "source.incomeTax"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "name": "应付职工薪酬_职工薪酬",
+        "number": "221101"
+      },
+      "amountFrom": "source.employeeDeductions",
+      "amountForFrom": "source.employeeDeductions"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "name": "管理费用_工资",
+        "number": "560201"
+      },
+      "amountFrom": "source.managementCompanyBenefits",
+      "amountForFrom": "source.managementCompanyBenefits"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "name": "销售费用_工资",
+        "number": "560101"
+      },
+      "amountFrom": "source.salesCompanyBenefits",
+      "amountForFrom": "source.salesCompanyBenefits"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "name": "应付职工薪酬_社保（公司部分）",
+        "number": "221102"
+      },
+      "amountFrom": "source.companySocialSecurity",
+      "amountForFrom": "source.companySocialSecurity"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "name": "应付职工薪酬_公积金（公司部分）",
+        "number": "221103"
+      },
+      "amountFrom": "source.companyHousingFund",
+      "amountForFrom": "source.companyHousingFund"
+    }
+  ],
+  "historicalEvidence": {
+    "period": "2026-01至2026-08",
+    "count": 6,
+    "monthCount": 6,
+    "months": [
+      "2026-01",
+      "2026-02",
+      "2026-03",
+      "2026-04",
+      "2026-05",
+      "2026-06"
+    ],
+    "voucherRefs": [
+      {
+        "period": "2026-01",
+        "voucher": "记-298",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 750,
+        "lastRow": 760
+      },
+      {
+        "period": "2026-02",
+        "voucher": "记-207",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1288,
+        "lastRow": 1298
+      },
+      {
+        "period": "2026-03",
+        "voucher": "记-303",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 2067,
+        "lastRow": 2077
+      },
+      {
+        "period": "2026-04",
+        "voucher": "记-300",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 2869,
+        "lastRow": 2879
+      },
+      {
+        "period": "2026-05",
+        "voucher": "记-256",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 3564,
+        "lastRow": 3574
+      },
+      {
+        "period": "2026-06",
+        "voucher": "记-321",
+        "sourceFile": "20260918195341_凭证列表_【千云（上海）信息科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 4444,
+        "lastRow": 4454
+      }
+    ],
+    "reason": "按完整凭证分录结构和金额关系复现，剔除显式纠错、补提、重分类；结构覆盖不等于OCR可自动分类。"
+  },
+  "usageNotes": "依据当期工资表区分管理/销售工资及公司承担社保公积金；同一费用科目两条分录分别表示工资与单位承担福利。工资、个人扣款、公司承担福利三组总额各自核对。"
+}

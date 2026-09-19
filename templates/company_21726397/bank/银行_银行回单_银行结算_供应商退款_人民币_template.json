@@ -1,0 +1,178 @@
+{
+  "id": "company_21726397-bank-supplier-refund",
+  "name": "银行_银行回单_银行结算_供应商退款_人民币",
+  "version": "2.0",
+  "enabled": true,
+  "documentBlock": "银行",
+  "documentType": "银行回单",
+  "settlementMethod": "银行结算",
+  "businessType": "供应商退款",
+  "currency": "人民币",
+  "keywords": [
+    "供应商退款",
+    "供应商退回",
+    "收到退款"
+  ],
+  "when": {
+    "businessType": "供应商退款",
+    "settlementMethod": "银行结算"
+  },
+  "matchRules": {
+    "sourceFolders": [
+      "bank"
+    ],
+    "allowedDocumentBlocks": [
+      "银行"
+    ],
+    "anyKeywords": [
+      "供应商退款",
+      "供应商退回",
+      "收到退款"
+    ],
+    "excludeKeywords": [
+      "保险",
+      "借款",
+      "内部划转",
+      "重分类"
+    ],
+    "expectedAccounts": [
+      "source.bankAccountNumber",
+      "2202"
+    ],
+    "priority": 300,
+    "flowDirections": [
+      "inflow"
+    ],
+    "excludeCounterpartyEqualsConfigCompany": true,
+    "counterpartyRoles": [
+      "supplier"
+    ]
+  },
+  "amountSource": "source",
+  "summary": {
+    "header": "供应商退款",
+    "body": "",
+    "separator": " "
+  },
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "name": "银行存款（由project.json动态注入）",
+        "numberFrom": "source.bankAccountNumber"
+      },
+      "amountFrom": "source.amount",
+      "amountForFrom": "source.amount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "name": "应付账款",
+        "number": "2202"
+      },
+      "amountFrom": "source.amount",
+      "amountForFrom": "source.amount",
+      "auxiliary": {
+        "field": "supplierId",
+        "itemClassId": 5,
+        "selector": "auxiliaryItem"
+      }
+    }
+  ],
+  "historicalEvidence": {
+    "period": "2026-01至2026-08",
+    "count": 10,
+    "monthCount": 5,
+    "months": [
+      "2026-03",
+      "2026-04",
+      "2026-05",
+      "2026-07",
+      "2026-08"
+    ],
+    "voucherRefs": [
+      {
+        "period": "2026-03",
+        "voucher": "记-180",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1053,
+        "lastRow": 1054
+      },
+      {
+        "period": "2026-03",
+        "voucher": "记-190",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1118,
+        "lastRow": 1119
+      },
+      {
+        "period": "2026-03",
+        "voucher": "记-193",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1124,
+        "lastRow": 1125
+      },
+      {
+        "period": "2026-04",
+        "voucher": "记-73",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1336,
+        "lastRow": 1337
+      },
+      {
+        "period": "2026-04",
+        "voucher": "记-102",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1459,
+        "lastRow": 1460
+      },
+      {
+        "period": "2026-05",
+        "voucher": "记-156",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 1999,
+        "lastRow": 2000
+      },
+      {
+        "period": "2026-05",
+        "voucher": "记-159",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 2101,
+        "lastRow": 2102
+      },
+      {
+        "period": "2026-07",
+        "voucher": "记-133",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 3366,
+        "lastRow": 3367
+      },
+      {
+        "period": "2026-07",
+        "voucher": "记-184",
+        "sourceFile": "20260918195233_凭证列表（不合并）_【智轻云(上海)科技有限公司】_2026年第1期至2026年第7期.xlsx",
+        "sheet": "凭证列表#2026年第1期 至 第2026年第7期",
+        "firstRow": 3434,
+        "lastRow": 3435
+      },
+      {
+        "period": "2026-08",
+        "voucher": "记-34",
+        "sourceFile": "20260918193311_凭证列表_【智轻云(上海)科技有限公司】_2026年第8期.xlsx",
+        "sheet": "凭证列表#2026年第8期",
+        "firstRow": 92,
+        "lastRow": 93
+      }
+    ],
+    "reason": "按完整凭证分录结构和金额关系复现，剔除显式纠错、补提、重分类；结构覆盖不等于OCR可自动分类。"
+  },
+  "usageNotes": "已核实供应商退款且应付账款冲回，借银行贷应付；不套客户回款、保险退款或借款归还。"
+}

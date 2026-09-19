@@ -7,7 +7,8 @@ import re
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any, Mapping
 
-from .receipts_ocr import OcrArtifact
+from .ocr.models import OcrArtifact
+from .ocr.rendering import bank_amount_snapshot
 
 
 class BankFinalReceiptError(RuntimeError):
@@ -72,24 +73,41 @@ def source_values(record: Mapping[str, Any]) -> dict[str, Any]:
             "银行 transactionAmount 不是有效金额："
             f"{record.get('bankKey')} / {record.get('index')} / {amount}"
         ) from exc
-    if normalized_amount <= 0:
+    if not normalized_amount.is_finite() or normalized_amount <= 0:
         raise BankFinalReceiptError(
             "银行 transactionAmount 必须大于零："
             f"{record.get('bankKey')} / {record.get('index')} / {amount}"
         )
     amount = format(normalized_amount, "f")
-    company_housing_fund = None
-    employee_housing_fund = None
+    statement_amount = record.get("statementAmount")
     try:
-        total = Decimal(str(amount)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        company_half = (total / Decimal("2")).quantize(
-            Decimal("0.01"), rounding=ROUND_HALF_UP
-        )
-        employee_half = total - company_half
-        company_housing_fund = format(company_half, "f")
-        employee_housing_fund = format(employee_half, "f")
-    except (InvalidOperation, TypeError, ValueError):
-        pass
+        statement = Decimal(str(statement_amount)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    except (InvalidOperation, TypeError, ValueError) as exc:
+        raise BankFinalReceiptError("银行记录缺少有效 statementAmount") from exc
+    if not statement.is_finite() or statement != normalized_amount:
+        raise BankFinalReceiptError("银行 transactionAmount 与 statementAmount 不一致")
+    splits: dict[str, str | None] = {}
+    for company_field, employee_field in (
+        ("companyHousingFund", "employeeHousingFund"),
+        ("companySocialSecurity", "employeeSocialSecurity"),
+    ):
+        raw = [record.get(company_field), record.get(employee_field)]
+        if all(value in (None, "") for value in raw):
+            # The historical 50/50 policy belongs to this company only.
+            if company_field == "companyHousingFund" and record.get("configCompany") == "上海微誉信息技术有限公司":
+                company_part = (normalized_amount / 2).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                raw = [company_part, normalized_amount - company_part]
+            else:
+                splits.update({company_field: None, employee_field: None})
+                continue
+        try:
+            parts = [Decimal(str(value)) for value in raw]
+            valid = all(value.is_finite() and value >= 0 and value == value.quantize(Decimal("0.01")) for value in parts)
+        except (InvalidOperation, TypeError, ValueError):
+            valid = False
+        if not valid or sum(parts) != normalized_amount:
+            raise BankFinalReceiptError(f"{company_field}/{employee_field} 必须提供非负分项金额且合计等于流水金额")
+        splits.update({company_field: format(parts[0], ".2f"), employee_field: format(parts[1], ".2f")})
     values = {
         "amount": amount,
         "totalAmount": amount,
@@ -103,17 +121,12 @@ def source_values(record: Mapping[str, Any]) -> dict[str, Any]:
         "statementIndex": record.get("index"),
         "flowDirection": record.get("flowDirection"),
         "remark": record.get("remark"),
-        "forcedTemplatePath": record.get("forcedTemplatePath"),
-        "templateRouteSource": record.get("templateRouteSource"),
         "bankDebitAmount": record.get("bankDebitAmount"),
         "bankCreditAmount": record.get("bankCreditAmount"),
         "ourDebitAmount": record.get("ourDebitAmount"),
         "ourCreditAmount": record.get("ourCreditAmount"),
         "invoiceNumbers": list(record.get("invoiceNumbers") or []),
-        # 微誉历史账簿中的公积金银行付款固定按公司/个人各半结清。
-        # These fields are consumed only by the housing-fund template.
-        "companyHousingFund": company_housing_fund,
-        "employeeHousingFund": employee_housing_fund,
+        **splits,
         "counterpartyName": record.get("counterpartyName"),
         "counterpartyType": record.get("counterpartyType"),
         "itemClass": record.get("itemClass"),
@@ -225,12 +238,27 @@ def validate_bank_analysis_rules(
     record: Mapping[str, Any], analysis: Mapping[str, Any]
 ) -> None:
     normalized = source_values(record)
-    forced_template_path = str(record.get("forcedTemplatePath") or "").strip()
-    if forced_template_path and str(analysis.get("templatePath") or "") != forced_template_path:
-        raise BankFinalReceiptError(
-            f"银行备注指定模板与分析不一致：{record.get('bankKey')} / {record.get('index')}，"
-            f"备注={record.get('remark')}，配置={forced_template_path}，分析={analysis.get('templatePath')}"
-        )
+    from .bank_statement_matcher import employee_payment_kind, is_person_name
+    employee_kind = employee_payment_kind(record)
+    if is_person_name(record.get("counterpartyName")) and not employee_kind:
+        raise BankFinalReceiptError("人名流水不满足员工付款规则，请重新匹配")
+    if employee_kind or analysis.get("employeePaymentKind"):
+        evidence = {key: record.get(key) for key in ("counterpartyName", "remark", "flowDirection")}
+        if (analysis.get("employeePaymentKind") != employee_kind
+                or analysis.get("employeePaymentEvidence") != evidence
+                or analysis.get("selectionMode") != "employee_remark"):
+            raise BankFinalReceiptError("员工付款规则或备注已变化，请重新分析")
+        expected_debit = "221101" if employee_kind == "salary" else "560106"
+        entries = analysis.get("filledEntries", [])
+        if not isinstance(entries, list) or any(not isinstance(entry, Mapping) for entry in entries):
+            raise BankFinalReceiptError("员工付款分录无效")
+        debits = [entry for entry in entries if entry.get("dc") == 1]
+        if len(entries) != 2 or len(debits) != 1 or str(debits[0].get("accountNumber")) != expected_debit:
+            raise BankFinalReceiptError("员工付款借方必须为工资或固定差旅费科目")
+    if analysis.get("selectionMode") == "statement_remark_exact":
+        raise BankFinalReceiptError("旧备注强制模板分析已失效，请重新执行银行 llm 阶段")
+    if analysis.get("bankSourceAmounts") != bank_amount_snapshot(normalized):
+        raise BankFinalReceiptError("银行分析金额依据已变化或缺失，请重新执行 llm 阶段")
     transaction_amount = Decimal(str(normalized["transactionAmount"]))
     extracted = analysis.get("extractedFields")
     if not isinstance(extracted, Mapping):

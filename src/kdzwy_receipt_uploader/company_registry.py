@@ -76,32 +76,6 @@ def _validate_bank_statement_column_set(value: object, label: str) -> dict[str, 
     return normalized
 
 
-def _validate_remark_template_map(value: object, label: str) -> dict[str, str]:
-    if not isinstance(value, dict):
-        raise CompanyRegistryError(f"{label} 必须是备注精确值到模板路径的对象")
-    normalized: dict[str, str] = {}
-    for raw_remark, raw_path in value.items():
-        if not isinstance(raw_remark, str) or not raw_remark.strip():
-            raise CompanyRegistryError(f"{label} 的备注键必须是非空文本")
-        if raw_remark != raw_remark.strip():
-            raise CompanyRegistryError(f"{label} 的备注键前后不能有空格：{raw_remark!r}")
-        if not isinstance(raw_path, str) or not raw_path.strip():
-            raise CompanyRegistryError(f"{label}.{raw_remark} 的模板路径必须是非空文本")
-        path = Path(raw_path.strip())
-        if (
-            path.is_absolute()
-            or ".." in path.parts
-            or not path.parts
-            or path.parts[0] != "bank"
-            or not path.as_posix().endswith("_template.json")
-        ):
-            raise CompanyRegistryError(
-                f"{label}.{raw_remark} 必须是 bank/ 下以 _template.json 结尾的相对模板路径"
-            )
-        normalized[raw_remark] = path.as_posix()
-    return normalized
-
-
 def validate_bank_configs(value: object, label: str) -> dict[str, dict[str, Any]]:
     if not isinstance(value, dict):
         raise CompanyRegistryError(f"{label} 必须是对象")
@@ -116,17 +90,16 @@ def validate_bank_configs(value: object, label: str) -> dict[str, dict[str, Any]
             raise CompanyRegistryError(f"{label}.{bank_key} 必须是对象")
         _reject_unknown_fields(
             raw_bank_config,
-            {"enabled", "bank_account_number", "split", "remark_template_map"},
+            {"enabled", "bank_account_number", "split"},
             f"{label}.{bank_key}",
         )
         if set(raw_bank_config) != {
             "enabled",
             "bank_account_number",
             "split",
-            "remark_template_map",
         }:
             raise CompanyRegistryError(
-                f"{label}.{bank_key} 必须同时包含 enabled、bank_account_number、split 和 remark_template_map"
+                f"{label}.{bank_key} 必须同时包含 enabled、bank_account_number 和 split"
             )
         enabled = raw_bank_config["enabled"]
         if not isinstance(enabled, bool):
@@ -177,10 +150,6 @@ def validate_bank_configs(value: object, label: str) -> dict[str, dict[str, Any]
                 "filename_index_length": index_length,
                 "filename_index_prefix": index_prefix,
             },
-            "remark_template_map": _validate_remark_template_map(
-                raw_bank_config["remark_template_map"],
-                f"{label}.{bank_key}.remark_template_map",
-            ),
         }
     return normalized
 
