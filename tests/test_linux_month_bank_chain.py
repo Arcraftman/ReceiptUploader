@@ -29,6 +29,7 @@ def write(path, data):
 def test_linux_month_to_bank_prepare(tmp_path):
     # Run the shipped shell dispatcher and initializer, including its real
     # prepare_company_workspace subprocess, in a disposable project.
+    shutil.copytree(ROOT / 'schema', tmp_path / 'schema')
     for folder in ['scripts/linux', 'scripts/win']:
         shutil.copytree(ROOT / folder, tmp_path / folder)
     shutil.copy2(ROOT / 'scripts/start.py', tmp_path / 'scripts/start.py')
@@ -51,10 +52,10 @@ def test_linux_month_to_bank_prepare(tmp_path):
     ]})
     write(tmp_path / 'config/bank_exception.defaults.json', {'version': 2, 'exceptions': [], 'pdf_keywords': {}})
     template_root = tmp_path / 'templates' / key
-    shutil.copytree(ROOT / 'templates/company_20139879', template_root)
+    shutil.copytree(ROOT / 'templates/company_17867515', template_root)
     command = ([os.environ.get('COMSPEC', 'cmd.exe'), '/d', '/c', r'scripts\win\start.bat']
                if os.name == 'nt' else ['bash', 'scripts/linux/start.sh'])
-    command += ['month', config_name, '2026-09', key]
+    command += ['month', config_name, '2026-09', 'company_2']
     env = {**os.environ, 'PYTHON_EXE': sys.executable, 'PYTHONUTF8': '1', 'PYTHONPATH': str(tmp_path / 'src'), 'KDZWY_PROJECT_ROOT': str(tmp_path),
            'PATH': str(Path(sys.executable).parent) + os.pathsep + os.environ.get('PATH', '')}
     write(tmp_path / 'config/template_companies.json', {
@@ -71,7 +72,7 @@ def test_linux_month_to_bank_prepare(tmp_path):
     month = tmp_path / 'data/inbox/company_1_测试公司/2026-09'
     project_path = month / 'project.json'
     project = json.loads(project_path.read_text())
-    assert 'cross_company_upload_enabled' not in project
+    assert 'upload_to_dataset_enabled' not in project
     profile = load_company_profile(config_path)
     jobs = load_company_jobs(project_path, profile)
     assert len(jobs) == 4 and all(not job.enabled for job in jobs)
@@ -123,18 +124,18 @@ def test_linux_month_to_bank_prepare(tmp_path):
 
     selector = Selector()
     context = {'businessMapValues': source_values(record), 'dynamicAccountCatalog': {'accounts': [
-        {'number': '560303', 'id': 'expense', 'fullName': '财务费用_手续费'},
+        {'number': '220201', 'id': 'payable', 'fullName': '应付账款_人民币户'},
         {'number': '100203', 'id': 'bank', 'fullName': '银行存款_测试银行'},
-    ]}, 'dynamicItemClassCatalog': {'classes': []}}
+    ]}, 'dynamicItemClassCatalog': {'classes': [{'itemClassId':5, 'items':[{'id':'supplier', 'number':'1', 'name':'测试银行'}]}]}}
     decision = analyze_ocr_and_choose_template(artifact, template_root, selector=selector, final_template_context=context)
-    assert selector.called and decision['analysisStatus'] == 'ready_for_review'
+    assert not selector.called and decision['analysisStatus'] == 'ready_for_review', decision
     out = generated / 'receipts/bank'
     result = generate_bank_final_receipts(matched, {artifact.invoice_code: decision}, out, key, '2026-09', {})
     assert result['summary']['generatedCount'] == 1
     receipt = json.loads(next(out.rglob('receipt.json')).read_text())
     assert receipt['draft'] is True
     assert receipt['voucher']['date'] == '2026-09-01'
-    assert [entry['accountNumber'] for entry in receipt['voucher']['entries']] == ['560303', '100203']
+    assert [entry['accountNumber'] for entry in receipt['voucher']['entries']] == ['220201', '100203']
     assert sum(entry['dc'] * float(entry['amount']) for entry in receipt['voucher']['entries']) == 0
     # Re-initialization retains explicit bank configuration and never re-enables other sources.
     again = subprocess.run(command, cwd=tmp_path, env=env, capture_output=True, text=True, timeout=30)

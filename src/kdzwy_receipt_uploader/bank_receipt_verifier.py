@@ -1,6 +1,8 @@
 """Verify bank receipt drafts before a future real upload."""
 from __future__ import annotations
 
+from .bank_receipt_layout import receipt_paths
+
 from datetime import datetime, timezone
 import json
 from pathlib import Path
@@ -8,6 +10,41 @@ from typing import Any, Collection
 
 from .models import ReceiptError
 from .workflow import load_receipt
+
+
+def verify_bank_pdf_links(receipt_root: Path, *, bank_only: bool = False) -> dict[str, Any]:
+    """Check only PDF binding for pending receipts; never rewrite receipt data."""
+    missing = []
+    pending = 0
+    paths = receipt_paths(receipt_root)
+    if not paths and not bank_only:
+        missing.append({"receipt": str(receipt_root), "error": "尚未生成receipt，不能进入下一步"})
+    for path in paths:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8-sig"))
+            if bank_only and data.get("source") != "bank" and not str(data.get("receiptId") or "").startswith("bank-") and data.get("manualEntry") is not True:
+                continue
+            if data.get("uploaded") is True:
+                continue
+            pending += 1
+            links = (data.get("voucher") or {}).get("attachmentFiles")
+            valid = isinstance(links, list) and bool(links)
+            for item in links if isinstance(links, list) else []:
+                raw = str(item.get("path") or "").strip() if isinstance(item, dict) else ""
+                pdf = Path(raw)
+                if not pdf.is_absolute():
+                    pdf = path.parent / pdf
+                valid = valid and bool(raw) and pdf.suffix.lower() == ".pdf" and pdf.is_file()
+            if not valid:
+                missing.append({"receipt": str(path.resolve()), "receiptId": data.get("receiptId"),
+                                "error": "PDF绑定为空或文件不存在；填写voucher.attachmentFiles[].path"})
+        except (OSError, ValueError, AttributeError) as exc:
+            missing.append({"receipt": str(path.resolve()), "error": str(exc)})
+    report = {"status": "waiting_for_pdf_binding" if missing else "ready",
+              "phase": "verify", "pendingReceiptCount": pending, "missingPdfCount": len(missing),
+              "missing": missing, "verifiedAt": datetime.now(timezone.utc).isoformat()}
+    _atomic_write_json(receipt_root / "bank_pdf_links.verify.report.json", report)
+    return report
 
 
 def _atomic_write_json(path: Path, value: object) -> None:
@@ -30,7 +67,7 @@ def verify_bank_receipts(
     drafts: list[dict[str, Any]] = []
     ready: list[dict[str, Any]] = []
     invalid: list[dict[str, Any]] = []
-    paths = sorted(receipt_root.glob("receipt_*/receipt.json")) if receipt_root.is_dir() else []
+    paths = receipt_paths(receipt_root) if receipt_root.is_dir() else []
     dedicated_bank_root = receipt_root.name.lower() == "bank"
     normalized_allowed_keys = (
         {str(key) for key in allowed_record_keys}

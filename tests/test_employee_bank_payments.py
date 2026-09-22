@@ -61,14 +61,14 @@ def test_employee_rows_reach_matching_without_person_exclusion(tmp_path):
     wb.save(tmp_path/'alpha.xlsx');wb.close()
     configs={'alpha':{'bank_account_number':'100209','split':{'filename_index_length':7,'filename_index_prefix':'A','parts_per_page':1},
                      'statement_columns':{'index_column':'A','bank_debit_column':'B','bank_credit_column':'C','counterparty_name_column':'D','remark_column':'E'}}}
-    assert collect_person_name_exclusions(configs,tmp_path)=={'alpha':{'A123453'}}
+    assert collect_person_name_exclusions(configs,tmp_path)=={'alpha':set()}
 
     from test_bank_statement_matcher import artifact
-    artifacts = [artifact(tmp_path, 'alpha', f'A12345{i}.pdf') for i in (1, 2)]
+    artifacts = [artifact(tmp_path, 'alpha', f'A12345{i}.pdf') for i in (1, 2, 3)]
     report = match_bank_statements(configs, tmp_path, {'outputDirectory': str(tmp_path/'ocr'), 'artifacts': artifacts},
                                   tmp_path/'map.json', tmp_path/'report.json')
-    assert report['summary']['matchedCount'] == 2
-    assert report['summary']['skippedPersonNameCount'] == 1
+    assert report['summary']['matchedCount'] == 3
+    assert report['summary']['skippedPersonNameCount'] == 0
     mapped = json.loads((tmp_path/'map.json').read_text())
     assert all(r['bankAccountNumber'] == '100209' for r in mapped['banks']['alpha']['entries'].values())
 

@@ -1,7 +1,8 @@
 """OCR every single-page bank receipt after the complete split stage."""
 from __future__ import annotations
 
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, wait, FIRST_COMPLETED
+import logging
 from datetime import datetime, timezone
 from importlib import metadata as importlib_metadata
 import json
@@ -140,6 +141,8 @@ def _discover_split_receipts(split_report: Mapping[str, Any]) -> list[tuple[str,
         if not isinstance(raw_bank, Mapping):
             raise BankReceiptOcrError("银行裁剪报告中的银行结果格式错误")
         bank_key = str(raw_bank.get("bankKey") or "").strip()
+        if raw_bank.get("status") == "no_pdf":
+            continue
         output_directory = Path(str(raw_bank.get("outputDirectory") or ""))
         manifest_path = output_directory / "split.manifest.json"
         if not bank_key or not manifest_path.is_file():
@@ -263,6 +266,7 @@ def run_bank_receipt_ocr(
     excluded_indices: Mapping[str, set[str]] | None = None,
     excluded_pdf_paths: Mapping[str, str] | None = None,
     ocr_runner: Callable[[Path], tuple[str, str]] | None = None,
+    progress: Callable[[str], None] | None = None,
 ) -> dict[str, Any]:
     discovered_receipts = _discover_split_receipts(split_report)
     normalized_exclusions = {
@@ -330,6 +334,15 @@ def run_bank_receipt_ocr(
     results: list[dict[str, Any]] = []
     errors: list[dict[str, str]] = []
     started = time.time()
+    progress = progress or logging.getLogger(__name__).info
+    progress(f"银行 OCR 开始：待处理={len(receipts)}，技术异常跳过={len(excluded_before_ocr)}，工作进程={worker_count}")
+
+    def report_progress(detail: str) -> None:
+        progress(f"银行 OCR 进度：完成={len(results)+len(errors)}/{len(receipts)}，"
+                 f"有文本={sum(item['status']=='success' for item in results)}，"
+                 f"失败={len(errors)}，复用={sum(item['cacheStatus']=='reused' for item in results)}，"
+                 f"耗时={time.time()-started:.1f}秒；{detail}")
+
     if worker_count > 1:
         with ProcessPoolExecutor(max_workers=worker_count) as executor:
             pending = [
@@ -347,11 +360,19 @@ def run_bank_receipt_ocr(
                 )
                 for bank_key, pdf_path, artifact_relative in receipts
             ]
-            for pdf_path, future in pending:
-                try:
-                    results.append(future.result())
-                except Exception as exc:
-                    errors.append({"pdf": str(pdf_path), "error": str(exc)})
+            outstanding = {future: pdf_path for pdf_path, future in pending}
+            while outstanding:
+                done, _ = wait(outstanding, timeout=15, return_when=FIRST_COMPLETED)
+                if not done:
+                    report_progress(f"仍在处理，未完成={len(outstanding)}")
+                for future in done:
+                    pdf_path = outstanding.pop(future)
+                    try:
+                        results.append(future.result())
+                    except Exception as exc:
+                        errors.append({"pdf": str(pdf_path), "error": str(exc)})
+                        progress(f"银行 OCR 失败：{pdf_path.name}；{exc}")
+                    report_progress(pdf_path.name)
     else:
         for bank_key, pdf_path, artifact_relative in receipts:
             try:
@@ -367,6 +388,11 @@ def run_bank_receipt_ocr(
                 )
             except Exception as exc:
                 errors.append({"pdf": str(pdf_path), "error": str(exc)})
+                progress(f"银行 OCR 失败：{pdf_path.name}；{exc}")
+            report_progress(pdf_path.name)
+
+    results.sort(key=lambda item: item['artifactDirectory'])
+    errors.sort(key=lambda item: item['pdf'])
 
     generated_count = sum(item["cacheStatus"] == "generated" for item in results)
     reused_count = sum(item["cacheStatus"] == "reused" for item in results)

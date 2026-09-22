@@ -345,7 +345,7 @@ if __name__ == "__main__":
 class InitializeCompanyMonthV8Tests(unittest.TestCase):
     def test_new_month_defaults_are_explicit_and_sources_are_disabled(self) -> None:
         self.assertFalse(
-            normalize_month_defaults(None)["cross_company_upload_enabled"]
+            normalize_month_defaults(None)["upload_to_dataset_enabled"]
         )
         self.assertEqual(
             normalize_input_settings(None),
@@ -365,14 +365,11 @@ class InitializeCompanyMonthV8Tests(unittest.TestCase):
         )
         self.assertEqual(
             set(sources["bank"]),
-            {*expected_core, "banks", "statement_columns", "exceptions"},
+            {*expected_core, "banks", "statement_columns", "remark_exception"},
         )
         self.assertEqual(sources["bank"]["banks"], {})
         self.assertEqual(sources["bank"]["statement_columns"], {})
-        self.assertEqual(
-            sources["bank"]["exceptions"],
-            load_default_bank_exceptions(),
-        )
+        self.assertNotIn("exceptions", sources["bank"])
 
     def test_existing_month_exception_configuration_is_not_merged_with_new_defaults(self) -> None:
         custom = ["客户甲"]
@@ -381,7 +378,7 @@ class InitializeCompanyMonthV8Tests(unittest.TestCase):
             bank_exception_defaults=["默认供应商"],
         )
 
-        self.assertEqual(sources["bank"]["exceptions"], custom)
+        self.assertNotIn("exceptions", sources["bank"])
 
     def test_initializer_writes_explicit_v8_dataset_target_and_sources_contract(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -433,16 +430,23 @@ class InitializeCompanyMonthV8Tests(unittest.TestCase):
                 patch.object(month_initializer.subprocess, "run", return_value=completed),
                 patch.object(sys, "argv", ["initialize_company_month.py", config_name, "2026-10", "company_1"]),
             ):
-                self.assertEqual(month_initializer.main(), 0)
+                self.assertEqual(month_initializer.main(), 2)
+                self.assertFalse((root / 'data/inbox/company_1_测试公司/2026-10/project.json').exists())
+                self.assertEqual(month_initializer.main(['1', '2026-10', 'company_2']), 0)
             project = json.loads((root / "data" / "inbox" / "company_1_测试公司" / "2026-10" / "project.json").read_text(encoding="utf-8"))
             self.assertEqual(project["version"], 8)
+            options = root / "data/inbox/company_1_测试公司/2026-10/project.options.md"
+            self.assertIn("sources.bank.remark_exception", options.read_text(encoding="utf-8"))
+            self.assertEqual(project["defaults"]["ocr_workers"], 2)
+            for settings in project["sources"].values():
+                self.assertTrue({"analysis_validation", "ocr_workers", "llm_workers", "purpose", "only_mapped_invoices"} <= set(settings))
             self.assertEqual(project["dataset"], {
                 "company_key": "company_1", "company_id": "1", "company_name": "测试公司",
             })
             self.assertEqual(project["target"], {
-                "accountbook_key": "company_1", "company_id": "1", "company_name": "测试公司",
+                "accountbook_key": "company_2", "company_id": "2", "company_name": "目标公司",
             })
-            self.assertFalse(project["defaults"]["cross_company_upload_enabled"])
+            self.assertFalse(project["defaults"]["upload_to_dataset_enabled"])
             self.assertIn("input", project)
             self.assertTrue(all(
                 set(project["sources"][source]) >= {
@@ -451,12 +455,7 @@ class InitializeCompanyMonthV8Tests(unittest.TestCase):
                 for source in BUILT_IN_SOURCES
             ))
             self.assertEqual(project["sources"]["bank"]["banks"], {})
-            self.assertEqual(
-                project["sources"]["bank"]["exceptions"],
-                load_default_bank_exceptions(
-                    root / "config" / "bank_exception.defaults.json"
-                ),
-            )
+            self.assertNotIn("exceptions", project["sources"]["bank"])
             self.assertFalse({"company_key", "company_id", "company_name", "company_config", "login_account", "workspace_directory"} & set(project))
 
             with (
@@ -476,8 +475,8 @@ class InitializeCompanyMonthV8Tests(unittest.TestCase):
             self.assertEqual(cross_project["target"], {
                 "accountbook_key": "company_2", "company_id": "2", "company_name": "目标公司",
             })
-            self.assertTrue(
-                cross_project["defaults"]["cross_company_upload_enabled"]
+            self.assertFalse(
+                cross_project["defaults"]["upload_to_dataset_enabled"]
             )
             self.assertFalse(
                 (root / "data" / "inbox" / "company_2" / "2026-11").exists()

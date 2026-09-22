@@ -38,6 +38,7 @@ def _split_report(tmp_path: Path) -> dict[str, object]:
 
 def test_bank_ocr_runs_only_after_all_manifest_outputs_are_discovered(tmp_path: Path) -> None:
     calls: list[str] = []
+    messages: list[str] = []
 
     def fake_ocr(path: Path) -> tuple[str, str]:
         calls.append(path.name)
@@ -45,7 +46,7 @@ def test_bank_ocr_runs_only_after_all_manifest_outputs_are_discovered(tmp_path: 
 
     output = tmp_path / "ocr" / "bank"
     report = bank_receipt_ocr.run_bank_receipt_ocr(
-        _split_report(tmp_path), output, workers=4, ocr_runner=fake_ocr
+        _split_report(tmp_path), output, workers=4, ocr_runner=fake_ocr, progress=messages.append
     )
 
     assert sorted(calls) == ["A1234567.pdf", "B1234567.pdf"]
@@ -66,6 +67,30 @@ def test_bank_ocr_runs_only_after_all_manifest_outputs_are_discovered(tmp_path: 
     assert not (output / "banka" / "bank_exception").exists()
     assert report["excludedBeforeOcr"][0]["reason"] == "split_bank_exception"
     assert (output / "ocr_stage.report.json").is_file()
+    assert '银行 OCR 开始' in messages[0]
+    assert any('完成=1/2' in message for message in messages)
+    assert '完成=2/2' in messages[-1]
+
+
+def test_parallel_ocr_reports_waiting_and_completion_without_changing_order(tmp_path, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor, wait
+    monkeypatch.setattr(bank_receipt_ocr, 'ProcessPoolExecutor', ThreadPoolExecutor)
+    def write_one(bank, pdf, relative, *args):
+        return {'artifactDirectory': relative, 'sourcePdf': str(pdf), 'status': 'success', 'cacheStatus': 'generated'}
+    monkeypatch.setattr(bank_receipt_ocr, '_write_one_artifact', write_one)
+    waits = 0
+    def controlled_wait(futures, **kwargs):
+        nonlocal waits
+        waits += 1
+        if waits == 1:
+            return set(), set(futures)
+        return wait(futures, **kwargs)
+    monkeypatch.setattr(bank_receipt_ocr, 'wait', controlled_wait)
+    messages = []
+    report = bank_receipt_ocr.run_bank_receipt_ocr(_split_report(tmp_path), tmp_path/'ocr', workers=2, progress=messages.append)
+    assert any('仍在处理' in item for item in messages)
+    assert '完成=2/2' in messages[-1]
+    assert [r['artifactDirectory'] for r in report['artifacts']] == ['banka/A1234567', 'bankb/B1234567']
 
 
 def test_bank_ocr_reuses_unchanged_successful_artifacts(

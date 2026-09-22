@@ -143,3 +143,6 @@ $RECYCLE.BIN/
 # Generated Excel client may contain live financial data.
 excel/*.xlsm
 excel/*.xlsx
+
+# Reversible local cleanup archive; never commit business backups.
+.cleanup-archive/

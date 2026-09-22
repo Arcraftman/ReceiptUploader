@@ -6,12 +6,23 @@ import os
 from pathlib import Path
 import secrets
 import sys
+import socket
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlsplit, parse_qs
 
 from kdzwy_receipt_uploader.project_runtime import project_root
-from kdzwy_receipt_uploader.finance.snapshot import collect_snapshot, spreadsheet_xml
+from kdzwy_receipt_uploader.finance.snapshot import SCHEMA_VERSION, collect_snapshot, spreadsheet_xml
 from kdzwy_receipt_uploader.integrations.read_client import CheckFailure
+from .interpretation import interpret, interpretation_xml
+
+
+class FinanceHTTPServer(HTTPServer):
+    allow_reuse_address = False
+
+    def server_bind(self):
+        if sys.platform == 'win32':
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
 
 
 def main(argv=None):
@@ -48,7 +59,7 @@ def main(argv=None):
                 return
             url = urlsplit(self.path)
             if url.path == "/health":
-                self.send(200, b'{"schema":"1","readOnly":true}')
+                self.send(200, json.dumps({"schema": SCHEMA_VERSION, "readOnly": True}).encode())
                 return
             if url.path != "/snapshot":
                 self.send(404, b'{"error":"Not found"}')
@@ -66,8 +77,35 @@ def main(argv=None):
             except Exception:
                 self.send(502, b'{"error":"Read failed; previous workbook data is unchanged"}')
 
+        def do_POST(self):
+            if not hmac.compare_digest(self.headers.get('Authorization',''), 'Bearer '+token):
+                self.send(401,b'Unauthorized')
+                return
+            if self.path != '/interpretations':
+                self.send(404,b'Not found')
+                return
+            try:
+                size = int(self.headers.get('Content-Length','0'))
+                if not 0 < size <= 32000:
+                    raise ValueError('解读数据大小无效')
+                payload = json.loads(self.rfile.read(size).decode('utf-8'))
+                result = interpret(project_root(),payload)
+                self.send(200,interpretation_xml(result),'application/xml; charset=utf-8')
+            except (ValueError,OSError) as exc:
+                self.send(422,str(exc).encode('utf-8'),'text/plain; charset=utf-8')
+            except Exception:
+                self.send(502,'解读生成失败，财务数据已保留'.encode('utf-8'),'text/plain; charset=utf-8')
+
+    server = FinanceHTTPServer(("127.0.0.1", args.port), Handler)
+    pid_file = directory / "service.pid"
+    pid_file.write_text(str(os.getpid()), encoding="ascii")
     print(f"只读财务服务：http://127.0.0.1:{args.port}；令牌文件：{token_file}", flush=True)
-    HTTPServer(("127.0.0.1", args.port), Handler).serve_forever()
+    try:
+        server.serve_forever()
+    finally:
+        server.server_close()
+        if pid_file.exists() and pid_file.read_text(encoding="ascii").strip() == str(os.getpid()):
+            pid_file.unlink()
 
 
 if __name__ == "__main__":

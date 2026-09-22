@@ -14,25 +14,28 @@ from kdzwy_receipt_uploader.finance.snapshot import MANAGED_SHEETS
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_generated_workbook_matches_reference_content_and_formulas(tmp_path):
+def test_generated_workbook_contains_all_reports(tmp_path):
     path = save_template(tmp_path / 'finance.xlsx')
     actual = load_workbook(path)
-    reference = load_workbook(ROOT / 'excel/finance-template.xlsx')
-    assert actual.sheetnames == reference.sheetnames
-    for sheet in reference:
-        for row in sheet:
-            for cell in row:
-                if sheet.title == '使用说明' and cell.coordinate == 'B6':
-                    continue  # New installer location.
-                assert actual[sheet.title][cell.coordinate].value == cell.value, (sheet.title, cell.coordinate)
+    assert len(actual.sheetnames) == 22
+    assert actual.sheetnames[-1] == '2026年利润和负债'
+    assert actual['年度分析数据'].sheet_state == 'hidden'
+    report = actual['2026年利润和负债']
+    assert report['B3'].value == '一、2026年利润表分析'
+    assert report['B21'].value == '二、2026年资产负债表项目'
+    assert report['I5'].value == '=IF(COUNT(C5,E5,G5)=0,"",SUM(C5,E5,G5))'
+    assert report['AI5'].value == '=IF(COUNT(I5,Q5,Y5,AG5)=0,"",SUM(I5,Q5,Y5,AG5))'
+    assert report['AE4'].value == '12月'
+    assert report['AG5'].value == '=IF(COUNT(AA5,AC5,AE5)=0,"",SUM(AA5,AC5,AE5))'
+    assert report['D46'].value == '=IF(OR(C46="",C$45="",C$45=0),"",C46/C$45)'
+    assert report['C5'].value is None and report['W48'].value is None
     actual.close()
-    reference.close()
 
 
 def test_refresh_contract_and_editable_ranges():
     book = build_workbook()
     assert set(MANAGED_SHEETS) <= set(book.sheetnames)
-    assert book['刷新信息']['B5'].value == '1'
+    assert book['刷新信息']['B5'].value == '2'
     assert book['控制台']['B4'].value is None and book['控制台']['B5'].value is None
     assert book['预算输入']['E204'].fill.fgColor.rgb.endswith('FFF8E5')
     assert book['账龄输入']['H504'].fill.fgColor.rgb.endswith('FFF8E5')
@@ -58,7 +61,7 @@ def test_refuses_existing_output_and_failed_build_preserves_it(tmp_path):
     assert not list(tmp_path.glob('.finance-template-*'))
     save_template(output, overwrite=True)
     book = load_workbook(output)
-    assert len(book.sheetnames) == 17
+    assert len(book.sheetnames) == 22
     book.close()
 
 

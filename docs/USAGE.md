@@ -92,6 +92,8 @@ quit       退出
 
 ## 每月唯一配置：project.json
 
+月份初始化会生成完整配置字段，并在同目录生成 `project.options.md`，逐项列出可选值、格式及用途。说明文件不参与运行；已有设置再次生成时保留。来源级同名字段优先于 `defaults`，修改通用值后还需检查显式的来源覆盖值。
+
 月份初始化后编辑：
 
 ```text
@@ -121,7 +123,7 @@ data/inbox/company_<id>_<公司名>/<YYYY-MM>/project.json
   "defaults": {
     "analysis_validation": "strict",
     "purpose": "production",
-    "cross_company_upload_enabled": false,
+    "upload_to_dataset_enabled": false,
     "only_mapped_invoices": true
   },
   "sources": {
@@ -150,7 +152,7 @@ data/inbox/company_<id>_<公司名>/<YYYY-MM>/project.json
           "remark_column": null
         }
       },
-      "exceptions": ["TIPS电子缴税款业务待报解预算收入"]
+      "remark_exception": ["增值税缴税", "社保缴税", "公积金", "个税缴税", "跳过"]
     },
     "misc": {"enabled": false, "stage": "ocr"}
   }
@@ -162,13 +164,13 @@ data/inbox/company_<id>_<公司名>/<YYYY-MM>/project.json
 - `dataset`：本月资料来自哪家公司，三个身份字段必须与资料公司配置完全一致。
 - `target`：本月最终写入哪家公司的账套，三个身份字段必须与运行期账套注册表完全一致。
 - `input`：用途确认启用时使用的 Excel 文件名和用途列。
-- `defaults`：只保存四个业务可共享的高级参数，不再保存业务运行开关。
+- `defaults`：通用校验、并发、用途、映射和上传目标开关。生成器将来源支持的同名字段展开，来源值优先。
 - `sources.<业务>`：四个业务都必须精确写全 `enabled`、`stage`；只有 `enabled=true` 才会执行。
-- `defaults.cross_company_upload_enabled`：输入 `month B YYYY-MM A` 时自动设为 `true`，使用 B 的资料并上传到显式 target A；手工改成 `false` 后，运行目标自动回到 B 自己的账套，效果等同于 `month B YYYY-MM B`。两种情况都只使用 B 的这一份 `project.json` 和 `input/`，不会复制第二份输入资料。
+- `defaults.upload_to_dataset_enabled`：false 为 dataset → target，true 为 dataset → dataset。month 命令要求两者ID不同；生成后可手动打开此开关。
 - `sources.purchase.usage_confirmation_enabled`：默认 `true`；设为 `false` 表示小规模纳税人，不要求 `用途确认信息.xlsx`，purchase 直接以实际 PDF 为范围并把价税合计计入成本/费用。
 - `sources.bank.banks`：每个 bank key 保存单银行 `enabled`、`bank_account_number` 和 `split`。
 - `sources.bank.statement_columns`：与 `banks` 使用完全相同的 bank key，分别保存各银行 XLSX 的五列位置。
-- 某个 source 还可直接覆盖 `analysis_validation`、并发数、`purpose`、跨主体许可和 `only_mapped_invoices`；不再使用嵌套 `overrides`。
+- 某个 source 还可直接覆盖 `analysis_validation`、并发数、`purpose`和 `only_mapped_invoices`；不再使用嵌套 `overrides`。
 
 四个资料目录始终自带：
 
@@ -367,3 +369,28 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\windows\start_co
 仅付款方向且备注包含“工资”或“费用报销”其中一种时，直接使用该公司的工资/报销模板，不调用模型。两种同时出现、收款或未命中备注仍按人员待处理；显式 exceptions 名单继续优先。
 微誉、千云、智轻云均已设置：工资借记 221101，费用报销全额暂记 560106 销售费用—差旅费，贷记当前银行配置的 bank_account_number。金额、日期及目标科目正常校验；人员不预建为客户/供应商。
 通过校验后沿用 `stage=all` / `send` 提交流程，无需逐张人工确认；上传后用户自行调整费用科目。`ocr` / `llm` 不上传。备注、人员、方向或银行科目变化时禁止复用旧分析。
+
+
+### 银行手动PDF绑定与verify
+银行stage支持ocr、llm、prepare、verify、send、all。前期无PDF也可以分析并生成receipt；上传前必须为每张待上传receipt绑定PDF。
+当状态为waiting_for_pdf_binding时，查看生成目录bank_pdf_links.verify.report.json，填写其中列出的receipt.json的voucher.attachmentFiles，例如：
+```json
+"attachmentFiles": [{"path": "C:/receipts/bound.pdf"}]
+```
+也可以把PDF放入该receipt目录，填写相对路径。之后在start控制台执行 `verify company_17867515 2026-08`；通过后才继续send。verify仅检查PDF链接，不重新分析或上传。重新生成会保留已绑定附件。
+上海微誉人员报销按姓名专用模板生成四条分录，往来科目从目标账套2241下的唯一同名叶子动态解析；科目缺失或同名歧义须先处理。
+
+
+### 2026-09-22 银行receipt目录语义分类
+- 银行生成根目录下增加manual与automatic，两者均纳入PDF verify、凭证校验、上传扫描、未上传PDF报告和上传状态重置工具。
+- 新生成的有效凭证缺少PDF时放manual，有PDF时放automatic；人工补全后仍保留所在目录，不以目录名决定是否上传。旧平铺目录仍兼容；同一key在多个目录存在时阻塞生成，重复receiptId阻塞上传。
+- 分析未通过的记录继续进入blocked报告，不凭空填入分录或视为可上传receipt。
+- 当前company_17867515到company_23354445的2026-08银行196份已移动：manual 2份、automatic 194份；receipt.json逐个SHA256核对未变，原上传标记和幂等日志保留。未执行远端上传或删除。
+
+
+### 银行manual业务分类修正
+备注忽略空白后包含增值税缴税、社保缴税、公积金、个税缴税时，生成凭证必须归入manual，优先于PDF是否存在；这不是remark_exception，不排除最终上传。已有automatic凭证重新生成/复用时迁入manual，保留文件内容及附件。当前旧映射尚将原XLSX这四条列为排除记录，当前194份automatic中没有这四条；需后续重新生成银行映射与分析，不能把旧排除区产物直接视为本次有效凭证。本轮未重跑或上传。
+
+
+### 银行独立阶段
+新增bank stage=match，复用已有OCR重新匹配原流水；llm只读取已有映射分析，prepare只读取已有分析生成。修改原流水备注后先match再llm。ocr继续保留识别加匹配的兼容行为。详见[BANK_WORKFLOW.md](BANK_WORKFLOW.md)。

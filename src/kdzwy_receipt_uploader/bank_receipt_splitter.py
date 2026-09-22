@@ -338,6 +338,7 @@ def split_configured_bank_pdfs(
     input_dir: Path,
     output_root: Path,
     report_path: Path,
+    *, allow_missing_pdf: bool = False,
 ) -> dict[str, Any]:
     if not isinstance(bank_configs, Mapping) or not bank_configs:
         raise BankReceiptSplitError(
@@ -354,6 +355,10 @@ def split_configured_bank_pdfs(
         filename_index_length = int(rule["filename_index_length"])
         filename_index_prefix = str(rule["filename_index_prefix"])
         source_pdf = input_dir / f"{bank_key}.pdf"
+        if not source_pdf.is_file() and allow_missing_pdf:
+            results.append({"bankKey": bank_key, "status": "no_pdf", "outputCount": 0,
+                            "recognizedCount": 0, "bankExceptionCount": 0})
+            continue
         if not source_pdf.is_file():
             raise BankReceiptSplitError(f"配置中的银行PDF不存在：{source_pdf}")
         results.append(

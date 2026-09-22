@@ -1,0 +1,52 @@
+{
+  "id": "bank-internal-transfer",
+  "name": "银行_银行回单_银行结算_内部转账_人民币",
+  "version": "1.0",
+  "documentBlock": "银行",
+  "documentType": "银行回单",
+  "settlementMethod": "银行结算",
+  "businessType": "内部转账",
+  "currency": "人民币",
+  "enabled": true,
+  "matchRules": {
+    "sourceFolders": [
+      "bank"
+    ],
+    "flowDirections": [
+      "inflow"
+    ],
+    "anyKeywords": [
+      "内部转账"
+    ],
+    "expectedAccounts": [
+      "source.bankAccountNumber",
+      "source.transferAccountNumber"
+    ]
+  },
+  "summary": {
+    "header": "",
+    "body": "内部转账",
+    "separator": " "
+  },
+  "amountSource": "source",
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "numberFrom": "source.bankAccountNumber",
+        "name": "银行存款（当前银行）"
+      },
+      "amountFrom": "source.amount",
+      "amountForFrom": "source.amount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "numberFrom": "source.transferAccountNumber",
+        "name": "内部转账对方科目"
+      },
+      "amountFrom": "source.amount",
+      "amountForFrom": "source.amount"
+    }
+  ]
+}

@@ -12,15 +12,205 @@ import tempfile
 from openpyxl import Workbook
 from openpyxl.chart import LineChart, Reference
 from openpyxl.drawing.spreadsheet_drawing import AnchorMarker, TwoCellAnchor
-from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.workbook.properties import CalcProperties
 from openpyxl.worksheet.datavalidation import DataValidation
 
 from ..project_runtime import project_root
+from .dashboard import add_dashboard
+from .rd_report import add_rd_report
+from .hightech_report import add_hightech_report
 
 MONEY = '#,##0.00;[Red](#,##0.00);"—"'
 MATCHES = "AND('控制台'!B4<>\"\",'控制台'!B5<>\"\",'控制台'!B4='刷新信息'!B6,'控制台'!B5='刷新信息'!B8)"
 AS_OF = "DATE(VALUE(LEFT('控制台'!B5,4)),VALUE(RIGHT('控制台'!B5,2))+1,1)-1"
+REPORT_YEAR = 2026
+
+
+def add_annual_analysis_data(book: Workbook) -> None:
+    """Create the hidden transport sheet used to fill the annual report."""
+    sheet = book.create_sheet('年度分析数据')
+    sheet.append(['年度分析数据'])
+    sheet.append(['由只读刷新服务生成；不要人工编辑'])
+    sheet.append([])
+    sheet.append(['月份', '数据类型', '编码', '项目', '金额'])
+    sheet.freeze_panes = 'A5'
+    sheet.sheet_state = 'hidden'
+
+
+def add_profit_and_liability_report(book: Workbook, year: int = REPORT_YEAR) -> None:
+    """Create the annual management report consumed by FinanceRefresh.bas."""
+    sheet = book.create_sheet(f'{year}年利润和负债')
+    sheet.sheet_view.showGridLines = False
+    sheet.freeze_panes = 'C5'
+    sheet.sheet_properties.pageSetUpPr.fitToPage = True
+    sheet.page_setup.orientation = 'landscape'
+    sheet.page_setup.fitToWidth = 1
+    sheet.page_setup.fitToHeight = 0
+    sheet.print_area = 'B2:AJ48'
+
+    month_columns = {1: 'C', 2: 'E', 3: 'G', 4: 'K', 5: 'M', 6: 'O', 7: 'S', 8: 'U', 9: 'W', 10: 'AA', 11: 'AC', 12: 'AE'}
+    percent_columns = {1: 'D', 2: 'F', 3: 'H', 4: 'L', 5: 'N', 6: 'P', 7: 'T', 8: 'V', 9: 'X', 10: 'AB', 11: 'AD', 12: 'AF'}
+    quarter_columns = {1: ('I', (1, 2, 3)), 2: ('Q', (4, 5, 6)), 3: ('Y', (7, 8, 9)), 4: ('AG', (10, 11, 12))}
+    quarter_percent_columns = {1: 'J', 2: 'R', 3: 'Z', 4: 'AH'}
+    amount_rows = {
+        5: '收入', 7: '成本', 9: '费用', 10: '   管理费用', 11: '其中：研发费用',
+        12: '   财务费用', 13: '   销售费用', 15: '利润总额', 17: '所得税',
+    }
+    balance_rows = {23: '资产', 25: '应收账款', 27: '应付账款', 29: '负债',
+                    31: '未分配利润', 33: '所有者权益'}
+    revenue_rows = {45: '收入', 46: '项目收入', 47: '研发收入', 48: '销售商品收入'}
+
+    widths = {'A': 3, 'B': 20, 'AJ': 11, 'AK': 2}
+    for column in (*month_columns.values(), *(v[0] for v in quarter_columns.values()), 'AI'):
+        widths[column] = 15
+    for column in (*percent_columns.values(), *quarter_percent_columns.values()):
+        widths[column] = 9
+    for column, width in widths.items():
+        sheet.column_dimensions[column].width = width
+    sheet.column_dimensions['AK'].hidden = True
+
+    dark = PatternFill('solid', fgColor='263D56')
+    blue = PatternFill('solid', fgColor='D9EAF7')
+    light = PatternFill('solid', fgColor='EDF2F7')
+    white_bold = Font(name='Arial', size=11, bold=True, color='FFFFFF')
+    section_font = Font(name='Arial', size=14, bold=True, color='FFFFFF')
+    thin_gray = Side(style='thin', color='C9D2DC')
+    bottom_border = Border(bottom=thin_gray)
+    for row in sheet.iter_rows(min_row=1, max_row=48, min_col=1, max_col=37):
+        for cell in row:
+            cell.font = Font(name='Arial', size=10)
+
+    sheet['B2'] = '表1'
+    sheet.merge_cells('B3:AI3')
+    sheet['B3'] = f'一、{year}年利润表分析'
+    sheet.merge_cells('AJ3:AJ4')
+    sheet['AJ3'] = '趋势'
+    sheet.merge_cells('B21:AI21')
+    sheet['B21'] = f'二、{year}年资产负债表项目'
+    sheet.merge_cells('AJ21:AJ22')
+    sheet['AJ21'] = '趋势'
+    sheet['B42'] = '表3'
+    sheet.merge_cells('B43:AI43')
+    sheet['B43'] = '各项收入占比'
+    for address in ('B3:AJ3', 'B21:AJ21', 'B43:AI43'):
+        for row in sheet[address]:
+            for cell in row:
+                cell.fill = dark
+                cell.font = section_font
+                cell.alignment = Alignment(vertical='center')
+
+    headers = ['项目', '1月', '%', '2月', '%', '3月', '%', 'Q1季度', '%',
+               '4月', '%', '5月', '%', '6月', '%', 'Q2季度', '%',
+               '7月', '%', '8月', '%', '9月', '%', 'Q3季度', '%',
+               '10月', '%', '11月', '%', '12月', '%', 'Q4季度', '%', 'YTD']
+    for row_number in (4, 44):
+        for offset, value in enumerate(headers, 2):
+            cell = sheet.cell(row_number, offset, value)
+            cell.fill = dark
+            cell.font = white_bold
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+    balance_headers = ['项目', '1月', '', '2月', '', '3月', '', 'Q1季度', '',
+                       '4月', '', '5月', '', '6月', '', 'Q2季度', '',
+                       '7月', '', '8月', '', '9月', '', 'Q3季度', '',
+                       '10月', '', '11月', '', '12月', '', 'Q4季度']
+    for offset, value in enumerate(balance_headers, 2):
+        cell = sheet.cell(22, offset, value)
+        cell.fill = dark
+        cell.font = white_bold
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+
+    for row_number, label in amount_rows.items():
+        sheet.cell(row_number, 2, label)
+    for row_number, label in balance_rows.items():
+        sheet.cell(row_number, 2, label)
+    for row_number, label in revenue_rows.items():
+        sheet.cell(row_number, 2, label)
+    for row_number in (*amount_rows, *balance_rows, 35, 37, *revenue_rows):
+        sheet.cell(row_number, 2).font = Font(name='Arial', size=10, bold=True)
+        for column in range(2, 37):
+            sheet.cell(row_number, column).border = bottom_border
+    sheet['B35'] = '毛利率'
+    sheet['B37'] = '资产负债率'
+
+    for month, amount_column in month_columns.items():
+        percent_column = percent_columns[month]
+        # The macro writes source amounts into these month cells.
+        for row_number in (5, 7, 10, 11, 12, 13, 15, 17, 23, 25, 27, 29, 31, 33, 46, 47, 48):
+            sheet[f'{amount_column}{row_number}'].fill = blue
+            sheet[f'{amount_column}{row_number}'].number_format = MONEY
+        sheet[f'{amount_column}9'] = (
+            f'=IF(COUNT({amount_column}10,{amount_column}12,{amount_column}13)=0,"",'
+            f'SUM({amount_column}10,{amount_column}12,{amount_column}13))'
+        )
+        sheet[f'{amount_column}45'] = f'=IF({amount_column}5="","",{amount_column}5)'
+        sheet[f'{amount_column}35'] = (
+            f'=IF(OR({amount_column}5="",{amount_column}5=0,{amount_column}7=""),"",'
+            f'({amount_column}5-{amount_column}7)/{amount_column}5)'
+        )
+        sheet[f'{amount_column}37'] = (
+            f'=IF(OR({amount_column}23="",{amount_column}23=0,{amount_column}29=""),"",'
+            f'{amount_column}29/{amount_column}23)'
+        )
+        for row_number in amount_rows:
+            sheet[f'{percent_column}{row_number}'] = (
+                f'=IF(OR({amount_column}{row_number}="",{amount_column}$5="",{amount_column}$5=0),"",'
+                f'{amount_column}{row_number}/{amount_column}$5)'
+            )
+        for row_number in revenue_rows:
+            sheet[f'{percent_column}{row_number}'] = (
+                f'=IF(OR({amount_column}{row_number}="",{amount_column}$45="",{amount_column}$45=0),"",'
+                f'{amount_column}{row_number}/{amount_column}$45)'
+            )
+
+    for quarter, (quarter_column, months) in quarter_columns.items():
+        source_columns = [month_columns[month] for month in months]
+        percent_column = quarter_percent_columns[quarter]
+        for row_number in amount_rows:
+            refs = ','.join(f'{column}{row_number}' for column in source_columns)
+            sheet[f'{quarter_column}{row_number}'] = f'=IF(COUNT({refs})=0,"",SUM({refs}))'
+            sheet[f'{percent_column}{row_number}'] = (
+                f'=IF(OR({quarter_column}{row_number}="",{quarter_column}$5="",{quarter_column}$5=0),"",'
+                f'{quarter_column}{row_number}/{quarter_column}$5)'
+            )
+        quarter_end = source_columns[-1]
+        for row_number in balance_rows:
+            sheet[f'{quarter_column}{row_number}'] = f'=IF({quarter_end}{row_number}="","",{quarter_end}{row_number})'
+        sheet[f'{quarter_column}35'] = (
+            f'=IF(OR({quarter_column}5="",{quarter_column}5=0,{quarter_column}7=""),"",'
+            f'({quarter_column}5-{quarter_column}7)/{quarter_column}5)'
+        )
+        sheet[f'{quarter_column}37'] = (
+            f'=IF(OR({quarter_column}23="",{quarter_column}23=0,{quarter_column}29=""),"",'
+            f'{quarter_column}29/{quarter_column}23)'
+        )
+        for row_number in revenue_rows:
+            refs = ','.join(f'{column}{row_number}' for column in source_columns)
+            sheet[f'{quarter_column}{row_number}'] = f'=IF(COUNT({refs})=0,"",SUM({refs}))'
+            sheet[f'{percent_column}{row_number}'] = (
+                f'=IF(OR({quarter_column}{row_number}="",{quarter_column}$45="",{quarter_column}$45=0),"",'
+                f'{quarter_column}{row_number}/{quarter_column}$45)'
+            )
+
+    for row_number in (*amount_rows, *revenue_rows):
+        sheet[f'AI{row_number}'] = f'=IF(COUNT(I{row_number},Q{row_number},Y{row_number},AG{row_number})=0,"",SUM(I{row_number},Q{row_number},Y{row_number},AG{row_number}))'
+    for row_number in (35, 37):
+        for column in (*month_columns.values(), *(value[0] for value in quarter_columns.values())):
+            sheet[f'{column}{row_number}'].number_format = '0.0%'
+    for row_number in (*amount_rows, *revenue_rows):
+        for column in (*percent_columns.values(), *quarter_percent_columns.values()):
+            sheet[f'{column}{row_number}'].number_format = '0.0%'
+    for row_number in (*amount_rows, *balance_rows, *revenue_rows):
+        for column in (*month_columns.values(), *(v[0] for v in quarter_columns.values()), 'AI'):
+            sheet[f'{column}{row_number}'].number_format = MONEY
+    for row_number in range(5, 49):
+        if row_number not in (21, 22, 43, 44):
+            for column in range(2, 37):
+                if sheet.cell(row_number, column).fill.fill_type is None:
+                    sheet.cell(row_number, column).fill = light
+    sheet['AK1'] = ''
+    sheet['AK2'] = ''
+    sheet['AK3'] = ''
 
 
 def style_range(sheet, address, *, number_format=None, fill=None, color=None):
@@ -153,6 +343,11 @@ def build_workbook() -> Workbook:
     for r in range(5, 16):
         guide.row_dimensions[r].height = 42
         guide[f'B{r}'].alignment = Alignment(wrap_text=True)
+    add_annual_analysis_data(book)
+    add_profit_and_liability_report(book)
+    add_dashboard(book, MATCHES)
+    add_rd_report(book, MATCHES)
+    add_hightech_report(book, MATCHES)
     return book
 
 

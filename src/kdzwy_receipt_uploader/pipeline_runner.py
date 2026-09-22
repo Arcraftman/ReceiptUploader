@@ -126,7 +126,7 @@ def main() -> int:
     analysis_validation = str(settings.get("analysis_validation", "strict")).strip().lower()
     if analysis_validation not in {"strict", "relaxed", "exceptions"}:
         raise ValueError('analysis_validation 只支持 "strict"、"relaxed" 或 "exceptions"')
-    if mode not in {"prepare", "analysis-only", "confirm"}:
+    if mode not in {"prepare", "analysis-only", "confirm", "verify"} or (mode == "verify" and pipeline_source_key != "bank"):
         print(f"不支持的 mode：{mode}")
         return 2
     logger.info("开始任务：source_company=%s accountbook=%s document_entity=%s month=%s stage=%s source=%s", company, expected_company, document_entity_name, month, workflow_stage, settings.get("source", "all"))

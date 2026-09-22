@@ -123,7 +123,7 @@ def dispatch(argv: list[str] | None = None) -> int:
     if command == 'run_company':
         run('login_companies.py', '--mode', 'login_companies', '--project-config', str(root / 'data/inbox' / name / args.month / 'project.json'), '--no-pause')
     extra = {
-        'run_company': [], 'run_bank': ['--source', 'bank', '--concise'],
+        'run_company': ['--allow-confirm'], 'run_bank': ['--source', 'bank', '--concise'],
         'confirm_one': ['--stage', 'send', '--limit', '1', '--allow-confirm', '--allow-cross-entity-confirm'],
         'confirm_all': ['--allow-confirm', '--allow-cross-entity-confirm'],
     }

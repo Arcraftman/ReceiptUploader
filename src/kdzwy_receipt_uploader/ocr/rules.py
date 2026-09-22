@@ -85,10 +85,13 @@ def _enrich_bank_counterparty_roles(
         "inflow": "customer",
         "outflow": "supplier",
     }.get(flow_direction, "")
+    from ..bank_rules import is_supplier_refund, is_bank_fee
+    if is_supplier_refund(values) or is_bank_fee(values):
+        direction_role = "supplier"
     roles = [direction_role] if direction_role else sorted(matches)
     values["counterpartyRoles"] = roles
     values["counterpartyRoleSource"] = (
-        "statement_direction"
+        "bank_fee_remark" if is_bank_fee(values) else "refund_remark" if is_supplier_refund(values) else "statement_direction"
         if direction_role
         else "dynamic_item_catalog"
         if matches
@@ -129,6 +132,8 @@ def _rule_candidates(
     reasons: dict[str, str] = {}
     has_business_values = isinstance(business_values, Mapping)
     values = business_values if has_business_values else {}
+    if folder == "bank":
+        text = _normalize_match_text(artifact.text + "\n" + str(values.get("remark") or ""))
     flow_direction = str(values.get("flowDirection") or "").strip().lower()
     actual_counterparty_roles = {
         str(value).strip().lower()

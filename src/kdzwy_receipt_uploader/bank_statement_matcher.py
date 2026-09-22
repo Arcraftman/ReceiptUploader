@@ -18,7 +18,53 @@ class BankStatementMatchError(RuntimeError):
     pass
 
 
-from .bank_rules import employee_payment_kind, is_person_name
+from .bank_rules import employee_payment_kind, internal_transfer_account, is_person_name, remark_exception_match
+
+
+def _statement_date(values: Any) -> str:
+    dates = set()
+    for value in values:
+        if isinstance(value, (date, datetime)):
+            dates.add(value.strftime("%Y-%m-%d"))
+        elif isinstance(value, str) and re.fullmatch(r"20[0-9]{2}[-/.][0-9]{1,2}[-/.][0-9]{1,2}(?:[ T].*)?", value.strip()):
+            parts = re.split(r"[-/. T]", value.strip())
+            try:
+                dates.add(date(*map(int, parts[:3])).isoformat())
+            except ValueError:
+                pass
+    return next(iter(dates)) if len(dates) == 1 else ""
+
+
+def _statement_receipt(statement: Mapping[str, Any], root: Path, bank_key: str) -> dict[str, Any]:
+    directory = root / "statement_evidence" / bank_key / statement["index"]
+    directory.mkdir(parents=True, exist_ok=True)
+    text = "\n".join(["证据来源：银行原始流水Excel（无PDF）",
+        f"记账日期：{statement.get('statementDate', '')}",
+        f"交易对方：{statement['counterpartyName']}",
+        f"摘要：{statement['remark']}",
+        f"金额：{statement['transactionAmount']}",
+        f"资金方向：{statement['flowDirection']}"])
+    (directory / "ocr.txt").write_text(text, encoding="utf-8")
+    (directory / "ocr.json").write_text(json.dumps({"engine": "bank-statement", "status": "success",
+        "fields": {"allowedTemplateBlocks": ["银行"]}, "statement": statement["statement"]}, ensure_ascii=False), encoding="utf-8")
+    return {"pdf": "", "evidenceSource": "bank_statement", "ocrText": str((directory / "ocr.txt").resolve()),
+            "ocrMetadata": str((directory / "ocr.json").resolve())}
+
+
+def _transfer_skip_reason(row: Mapping[str, Any], config_company: str) -> str:
+    remark = str(row.get("remark") or "").strip()
+    is_self = bool(config_company) and row.get("counterpartyName") == config_company
+    if "内部转账" not in remark and not is_self:
+        return ""
+    if not internal_transfer_account(row):
+        return "内部转账备注须包含内部转账及其后的唯一科目编码"
+    try:
+        credit = Decimal(str(row.get("bankCreditAmount") or 0))
+    except InvalidOperation:
+        return "内部转账必须银行贷方有有效金额"
+    if not credit.is_finite() or credit <= 0 or row.get("flowDirection") != "inflow" or row.get("directionError"):
+        return "内部转账必须银行贷方有金额且方向唯一为流入"
+    return ""
 
 
 def _person_name_marker(
@@ -275,6 +321,7 @@ def _read_statement_rows(
                     "itemClassHint": item_class,
                     "counterpartyRoleSource": "statement_direction_hint",
                     "remark": remark,
+                    "statementDate": _statement_date(values),
                     **({"supplierName": counterparty_name} if counterparty_type == "supplier" else {}),
                     **({"customerName": counterparty_name, "customName": counterparty_name} if counterparty_type == "customer" else {}),
                     "statement": {
@@ -343,21 +390,8 @@ def collect_person_name_exclusions(
     bank_configs: Mapping[str, Mapping[str, Any]],
     input_directory: Path,
 ) -> dict[str, set[str]]:
-    """Return statement indexes whose configured counterparty cell is a person name."""
-    exclusions: dict[str, set[str]] = {}
-    for bank_key, bank_config in sorted(bank_configs.items()):
-        statement_rows, _, _ = _read_statement_rows(
-            input_directory / f"{bank_key}.xlsx",
-            bank_key,
-            bank_config,
-            "",
-        )
-        exclusions[bank_key] = {
-            str(row["index"])
-            for row in statement_rows
-            if is_person_name(row.get("counterpartyName")) and not employee_payment_kind(row)
-        }
-    return exclusions
+    """Compatibility API: counterparties are no longer excluded by name."""
+    return {key: set() for key in bank_configs}
 
 
 def read_bank_statement_rows(
@@ -386,6 +420,8 @@ def match_bank_statements(
     report_path: Path,
     config_company: str = "",
     excluded_statement_indices: Mapping[str, set[str]] | None = None,
+    allow_without_pdf: bool = False,
+    remark_exception: list[str] | None = None,
 ) -> dict[str, Any]:
     if not isinstance(bank_configs, Mapping) or not bank_configs:
         raise BankStatementMatchError("project.json sources.bank.banks 必须至少配置一家银行")
@@ -406,6 +442,7 @@ def match_bank_statements(
     total_direction_errors = 0
     total_duplicates = 0
     total_exception_filtered = 0
+    total_skipped_transfers = 0
     normalized_exception_exclusions = {
         str(bank_key): {str(index) for index in indexes}
         for bank_key, indexes in (excluded_statement_indices or {}).items()
@@ -425,21 +462,33 @@ def match_bank_statements(
         exception_filtered_statements = [
             row for row in all_statement_rows if str(row.get("index")) in exception_indexes
         ]
-        skipped_person_name_statements = [
-            _person_name_marker(row, bank_account_number)
-            for row in all_statement_rows
-            if str(row.get("index")) not in exception_indexes
-            and is_person_name(row.get("counterpartyName")) and not employee_payment_kind(row)
-        ]
+        skipped_person_name_statements = []
         statement_rows = [
             row
             for row in all_statement_rows
             if str(row.get("index")) not in exception_indexes
-            and (not is_person_name(row.get("counterpartyName")) or employee_payment_kind(row))
         ]
         receipts, bank_exception_receipts = _read_receipts(
             ocr_report, bank_key, bank_config
         )
+        skipped_remarks = [
+            {**row, "matchedRemarkException": keyword, "downstreamEligible": False}
+            for row in statement_rows
+            if (keyword := remark_exception_match(row.get("remark"), remark_exception or []))
+        ]
+        remark_indexes = {row["index"] for row in skipped_remarks}
+        statement_rows = [row for row in statement_rows if row["index"] not in remark_indexes]
+        remark_receipts = [row for row in receipts if row["index"] in remark_indexes]
+        receipts = [row for row in receipts if row["index"] not in remark_indexes]
+        skipped_transfers = [
+            {**row, "skipReason": reason, "downstreamEligible": False}
+            for row in statement_rows
+            if (reason := _transfer_skip_reason(row, config_company))
+        ]
+        skipped_indexes = {row["index"] for row in skipped_transfers}
+        statement_rows = [row for row in statement_rows if row["index"] not in skipped_indexes]
+        skipped_receipts = [row for row in receipts if row["index"] in skipped_indexes]
+        receipts = [row for row in receipts if row["index"] not in skipped_indexes]
         statements_by_index: dict[str, list[dict[str, Any]]] = defaultdict(list)
         receipts_by_index: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for row in statement_rows:
@@ -465,7 +514,7 @@ def match_bank_statements(
             if not statement_candidates:
                 unmatched_receipt_rows.extend(receipt_candidates)
                 continue
-            if not receipt_candidates:
+            if not receipt_candidates and not allow_without_pdf:
                 unmatched_statements.extend([
                     {
                         **item,
@@ -511,7 +560,8 @@ def match_bank_statements(
                 "amountValidated": statement["amountValidated"],
                 "invoiceNumbers": statement["invoiceNumbers"],
                 "statement": statement["statement"],
-                "receipt": receipt_candidates[0]["receipt"],
+                "receipt": receipt_candidates[0]["receipt"] if receipt_candidates else _statement_receipt(statement, map_path.parent, bank_key),
+                "statementDate": statement.get("statementDate", ""),
             }
             matches[index] = entry
 
@@ -522,11 +572,14 @@ def match_bank_statements(
             "entries": matches,
         }
         bank_summary = {
+            "remarkExceptionCount": len(skipped_remarks),
+            "withoutPdfCount": sum(not entry["receipt"].get("pdf") for entry in matches.values()),
+            "skippedInternalTransferCount": len(skipped_transfers),
             "statementRowCount": len(all_statement_rows),
             "eligibleStatementRowCount": len(statement_rows),
             "exceptionFilteredStatementCount": len(exception_filtered_statements),
             "skippedPersonNameCount": len(skipped_person_name_statements),
-            "recognizedReceiptCount": len(receipts),
+            "recognizedReceiptCount": len(receipts) + len(skipped_receipts) + len(remark_receipts),
             "bankExceptionReceiptCount": len(bank_exception_receipts),
             "matchedCount": len(matches),
             "unmatchedStatementCount": len(unmatched_statements),
@@ -536,6 +589,10 @@ def match_bank_statements(
             "ignoredIndexValueCount": len(ignored_rows),
         }
         bank_reports[bank_key] = {
+            "remarkExceptionStatements": skipped_remarks,
+            "remarkExceptionReceipts": remark_receipts,
+            "skippedInternalTransferStatements": skipped_transfers,
+            "skippedInternalTransferReceipts": skipped_receipts,
             "bankAccountNumber": bank_account_number,
             "statementFile": str(statement_path.resolve()),
             "statementColumns": normalized_columns,
@@ -549,7 +606,7 @@ def match_bank_statements(
             "ignoredIndexValues": ignored_rows,
         }
         total_statement_rows += len(all_statement_rows)
-        total_recognized_receipts += len(receipts)
+        total_recognized_receipts += len(receipts) + len(skipped_receipts) + len(remark_receipts)
         total_bank_exception_receipts += len(bank_exception_receipts)
         total_matches += len(matches)
         total_unmatched_statements += len(unmatched_statements)
@@ -558,8 +615,12 @@ def match_bank_statements(
         total_direction_errors += len(direction_errors)
         total_duplicates += len(duplicates)
         total_exception_filtered += len(exception_filtered_statements)
+        total_skipped_transfers += len(skipped_transfers)
 
     summary = {
+        "remarkExceptionCount": sum(bank["summary"]["remarkExceptionCount"] for bank in bank_reports.values()),
+        "withoutPdfCount": sum(bank["summary"]["withoutPdfCount"] for bank in bank_reports.values()),
+        "skippedInternalTransferCount": total_skipped_transfers,
         "bankCount": len(bank_reports),
         "statementRowCount": total_statement_rows,
         "recognizedReceiptCount": total_recognized_receipts,

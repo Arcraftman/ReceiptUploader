@@ -62,4 +62,4 @@ strict = true
 follow_imports = "silent"
 
 [tool.setuptools.package-data]
-"kdzwy_receipt_uploader.finance" = ["template_layout.json"]
+"kdzwy_receipt_uploader.finance" = ["template_layout.json", "rd_template.xlsx"]

@@ -169,7 +169,7 @@ def test_workspace_always_contains_all_builtin_sources(tmp_path: Path, monkeypat
                 "usage_filename": "用途确认信息.xlsx",
                 "usage_column": "E",
             },
-            "defaults": {"analysis_validation": "strict", "cross_company_upload_enabled": True},
+            "defaults": {"analysis_validation": "strict", "upload_to_dataset_enabled": False},
             "sources": {
                 "sales": {"enabled": False, "stage": "ocr"},
                 "purchase": {"enabled": True, "stage": "prepare"},

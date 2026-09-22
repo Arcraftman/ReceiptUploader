@@ -39,3 +39,23 @@ def test_receipt_entry_ids_and_pdf(tmp_path: Path) -> None:
     voucher = build_voucher(receipt, {"vchNum": 1, "year": "2026", "period": "7", "yearPeriod": "202607"}, None)
     assert [entry["entryId"] for entry in voucher["entries"]] == [1, 2]
     assert "attachmentFiles" not in voucher
+
+
+def test_categories_upload_together_and_reject_duplicate_ids(tmp_path):
+    def write(category, receipt_id):
+        folder = tmp_path / category / ("receipt_" + category)
+        folder.mkdir(parents=True, exist_ok=True)
+        payload = {"schemaVersion":"1.0", "receiptId":receipt_id, "source":"bank", "draft":False,
+            "voucher":{"date":"2026-08-31", "groupId":"g", "summary":"test", "userName":"tester",
+                       "attachments":0, "attachmentFiles":[{"path":"bound.pdf"}],
+                       "entries":[{"accountId":str(dc), "accountNumber":"100201", "accountName":"bank",
+                                   "dc":dc, "amount":1, "amountFor":1, "cur":"RMB", "rate":"1"} for dc in (1,-1)]}}
+        (folder / "bound.pdf").write_bytes(b"%PDF-1.4 test")
+        (folder / "receipt.json").write_text(json.dumps(payload))
+    write("manual", "bank-manual")
+    write("automatic", "bank-automatic")
+    valid, invalid = find_receipts(tmp_path, {})
+    assert not invalid and len(valid) == 2
+    write("manual", "bank-automatic")
+    valid, invalid = find_receipts(tmp_path, {})
+    assert len(invalid) == 1 and "receiptId" in invalid[0]["error"]

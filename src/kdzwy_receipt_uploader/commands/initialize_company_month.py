@@ -118,6 +118,7 @@ def normalize_source_settings(
         if source == "bank":
             allowed.add("banks")
             allowed.add("exceptions")
+            allowed.add("remark_exception")
             allowed.add("statement_columns")
         if source == "purchase":
             allowed.add("usage_confirmation_enabled")
@@ -131,8 +132,10 @@ def normalize_source_settings(
             raise CompanyRegistryError(f"sources.{source}.enabled must be a JSON boolean (true or false)")
         settings["enabled"] = enabled
         settings.setdefault("stage", "ocr")
-        if settings["stage"] not in {"ocr", "llm", "prepare", "send", "all"}:
-            raise CompanyRegistryError(f"sources.{source}.stage must be ocr, llm, prepare, send or all")
+        if settings["stage"] not in {"ocr", "match", "llm", "prepare", "verify", "send", "all"}:
+            raise CompanyRegistryError(f"sources.{source}.stage must be ocr, match, llm, prepare, verify, send or all")
+        if settings["stage"] in {"match", "verify"} and source != "bank":
+            raise CompanyRegistryError("verify阶段仅用于bank")
         if source == "bank":
             settings.setdefault("banks", {})
             bank_configs = validate_bank_configs(
@@ -145,16 +148,9 @@ def normalize_source_settings(
                 bank_configs,
             )
             settings["banks"] = bank_configs
-            if "exceptions" not in settings:
-                defaults = (
-                    bank_exception_defaults
-                    if bank_exception_defaults is not None
-                    else load_default_bank_exceptions()
-                )
-                settings["exceptions"] = copy.deepcopy(defaults)
-            settings["exceptions"] = validate_bank_exceptions(
-                settings["exceptions"], "sources.bank.exceptions"
-            )
+            settings.pop("exceptions", None)
+            from kdzwy_receipt_uploader.bank_rules import DEFAULT_REMARK_EXCEPTIONS
+            settings["remark_exception"] = validate_bank_exceptions(settings.get("remark_exception", list(DEFAULT_REMARK_EXCEPTIONS)), "sources.bank.remark_exception")
         if source == "purchase":
             usage_confirmation_enabled = settings.get("usage_confirmation_enabled", True)
             if not isinstance(usage_confirmation_enabled, bool):
@@ -178,7 +174,7 @@ def normalize_month_defaults(value: object) -> dict[str, Any]:
         "ocr_workers",
         "llm_workers",
         "purpose",
-        "cross_company_upload_enabled",
+        "upload_to_dataset_enabled",
         "only_mapped_invoices",
     }
     unsupported = sorted(set(result) - allowed)
@@ -188,7 +184,7 @@ def normalize_month_defaults(value: object) -> dict[str, Any]:
         )
     result.setdefault("analysis_validation", "strict")
     result.setdefault("purpose", "production")
-    result.setdefault("cross_company_upload_enabled", False)
+    result.setdefault("upload_to_dataset_enabled", False)
     result.setdefault("only_mapped_invoices", False)
     return result
 
@@ -221,6 +217,14 @@ def resolve_company_config(selector: str) -> Path:
         name += ".json"
     path = (project_root() / "config" / "companies" / name).resolve()
     if not path.is_file():
+        identifier = str(selector).strip().removesuffix('.json')
+        matches = []
+        for candidate in (project_root() / "config" / "companies").glob('company_*.json'):
+            profile = load_company_profile(candidate)
+            if identifier in {profile.company_id, profile.key}:
+                matches.append(candidate)
+        if len(matches) == 1:
+            return matches[0].resolve()
         raise CompanyRegistryError(f"Company config not found: {path}")
     return path
 
@@ -251,7 +255,7 @@ def resolve_target_accountbook_selector(accountbooks: dict[str, Any], selector: 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Initialize a company dataset for a specific accounting month")
-    parser.add_argument("company_config_name", help="Config filename under config/companies; .json is optional")
+    parser.add_argument("company_config_name", help="Dataset company ID, key, or config filename (.json optional)")
     parser.add_argument("month", help="Accounting month in YYYY-MM format")
     parser.add_argument(
         "target_accountbook",
@@ -303,10 +307,9 @@ def main(argv: list[str] | None = None) -> int:
                     "Existing month dataset identity does not match the company config; correct or remove the month config"
                 )
         target_accountbook = resolve_target_accountbook_selector(accountbooks, args.target_accountbook)
+        if target_accountbook.company_id == company_id or target_accountbook.key == company_key:
+            raise CompanyRegistryError("month 要求 target id 与 dataset id 不同；请指定另一个目标账套。生成配置后，可手动设置 defaults.upload_to_dataset_enabled=true 上传到 dataset 自己的账套。")
         safe_defaults = normalize_month_defaults(project_payload.get("defaults"))
-        safe_defaults["cross_company_upload_enabled"] = (
-            target_accountbook.key != company_key
-        )
         input_settings = normalize_input_settings(project_payload.get("input"))
         source_settings = normalize_source_settings(project_payload.get("sources"))
         execution_enabled_sources = [
@@ -330,7 +333,15 @@ def main(argv: list[str] | None = None) -> int:
             "sources": source_settings,
         }
 
+        from kdzwy_receipt_uploader.project_options import complete_project_options, write_project_options
+        technical_path = project_root() / "config" / "pipeline.defaults.json"
+        technical_defaults = read_object(technical_path) if technical_path.is_file() else {}
+        normalized_project = complete_project_options(normalized_project, technical_defaults)
         write_json(project_config_path, normalized_project)
+        schema_path = project_root() / "schema" / "project.schema.json"
+        if not schema_path.is_file():
+            schema_path = Path(__file__).resolve().parents[3] / "schema" / "project.schema.json"
+        project_options_path = write_project_options(project_config_path, schema_path)
         completed = subprocess.run(
             [
                 sys.executable,
@@ -368,9 +379,10 @@ def main(argv: list[str] | None = None) -> int:
             "month": month,
             "month_directory": str(month_root),
             "project_config": str(project_config_path),
+            "project_options": str(project_options_path),
             "sources": list(BUILT_IN_SOURCES),
             "execution_enabled_sources": execution_enabled_sources,
-            "next": "Dataset and target saved to project.json. A different target enables cross_company_upload_enabled; setting it to false restores the dataset company as target. Add documents to input and configure source enabled and stage before running.",
+            "next": "Dataset and target saved to project.json. upload_to_dataset_enabled defaults to false (dataset -> target). Set it manually to true for dataset -> dataset. Add documents to input and configure source enabled and stage before running.",
         }, ensure_ascii=False, indent=2))
         return 0
     except (CompanyRegistryError, OSError, json.JSONDecodeError) as exc:

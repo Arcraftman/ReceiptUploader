@@ -161,13 +161,13 @@ def build_bank_ocr_artifacts(records: Mapping[str, Mapping[str, Any]]) -> list[O
         pdf_path = Path(str(receipt.get("pdf") or ""))
         text_path = Path(str(receipt.get("ocrText") or ""))
         metadata_path = Path(str(receipt.get("ocrMetadata") or ""))
-        if not pdf_path.is_file() or not text_path.is_file() or not metadata_path.is_file():
+        if (receipt.get("pdf") and not pdf_path.is_file()) or not text_path.is_file() or not metadata_path.is_file():
             raise BankFinalReceiptError(f"银行 OCR 产物不完整：{key}")
         text = text_path.read_text(encoding="utf-8")
         metadata = json.loads(metadata_path.read_text(encoding="utf-8-sig"))
         artifacts.append(OcrArtifact(
             invoice_code=key,
-            source_pdf=pdf_path.resolve(),
+            source_pdf=pdf_path.resolve() if receipt.get("pdf") else text_path.resolve(),
             source_folder="bank",
             source_side="bank",
             output_dir=metadata_path.parent.resolve(),
@@ -235,13 +235,49 @@ def _entries_from_analysis(analysis: Mapping[str, Any], amount: Any) -> list[dic
 
 
 def validate_bank_analysis_rules(
-    record: Mapping[str, Any], analysis: Mapping[str, Any]
+    record: Mapping[str, Any], analysis: Mapping[str, Any], account_catalog=None
 ) -> None:
     normalized = source_values(record)
-    from .bank_statement_matcher import employee_payment_kind, is_person_name
+    from .bank_statement_matcher import employee_payment_kind
     employee_kind = employee_payment_kind(record)
-    if is_person_name(record.get("counterpartyName")) and not employee_kind:
-        raise BankFinalReceiptError("人名流水不满足员工付款规则，请重新匹配")
+    from .bank_rules import is_personal_reimbursement, personal_reimbursement_summary, resolve_employee_payable
+    personal_account = ""
+    if is_personal_reimbursement(record):
+        evidence = analysis.get("employeeAccountEvidence") or {}
+        try:
+            expected = resolve_employee_payable(record, account_catalog if account_catalog is not None else [{
+                "number": evidence.get("accountNumber"), "id": evidence.get("accountId"), "name": evidence.get("accountName")
+            }])
+        except (ValueError, AttributeError) as exc:
+            raise BankFinalReceiptError("人员实时科目证据缺失或失效，请重新分析") from exc
+        if expected != evidence:
+            raise BankFinalReceiptError("人员科目已变化，请重新分析")
+        personal_account = expected["accountNumber"]
+        entries = analysis.get("filledEntries") or []
+        if any(str(e.get("accountId")) != expected["accountId"] for e in entries if e.get("accountNumber") == personal_account):
+            raise BankFinalReceiptError("人员科目ID与实时科目证据不符")
+    from .bank_rules import is_supplier_refund
+    if is_supplier_refund(record) or analysis.get("selectionMode") == "supplier_refund_remark":
+        entries = analysis.get("filledEntries", [])
+        if (not is_supplier_refund(record) or record.get("flowDirection") != "inflow"
+                or analysis.get("selectionMode") != "supplier_refund_remark"
+                or str(analysis.get("remark") or "").strip() != str(record.get("remark") or "").strip()):
+            raise BankFinalReceiptError("退款备注或方向已变化，请重新分析")
+        if (not isinstance(entries, list) or len(entries) != 2 or any(not isinstance(e, Mapping) for e in entries)
+                or not any(e.get("dc") == -1 and str(e.get("accountNumber")) == "220201" for e in entries)):
+            raise BankFinalReceiptError("退款必须贷记220201应付账款")
+    from .bank_rules import is_bank_fee
+    if is_bank_fee(record) or analysis.get("selectionMode") == "bank_fee_remark":
+        if (not is_bank_fee(record) or record.get("flowDirection") != "outflow"
+                or analysis.get("selectionMode") != "bank_fee_remark"
+                or str(analysis.get("remark") or "").strip() != str(record.get("remark") or "").strip()):
+            raise BankFinalReceiptError("手续费备注或方向已变化，请重新分析")
+        entries = analysis.get("filledEntries", [])
+        if (not isinstance(entries, list) or len(entries) != 2
+                or any(not isinstance(e, Mapping) for e in entries)
+                or [(str(e.get("accountNumber")), e.get("dc")) for e in entries]
+                != [("220201", 1), (str(record.get("bankAccountNumber")), -1)]):
+            raise BankFinalReceiptError("手续费必须借记220201应付账款、贷记当前银行科目")
     if employee_kind or analysis.get("employeePaymentKind"):
         evidence = {key: record.get(key) for key in ("counterpartyName", "remark", "flowDirection")}
         if (analysis.get("employeePaymentKind") != employee_kind
@@ -253,7 +289,18 @@ def validate_bank_analysis_rules(
         if not isinstance(entries, list) or any(not isinstance(entry, Mapping) for entry in entries):
             raise BankFinalReceiptError("员工付款分录无效")
         debits = [entry for entry in entries if entry.get("dc") == 1]
-        if len(entries) != 2 or len(debits) != 1 or str(debits[0].get("accountNumber")) != expected_debit:
+        if personal_account:
+            expected_shape = [("560203",1),(personal_account,-1),(personal_account,1),(str(record.get("bankAccountNumber")),-1)]
+            if [(str(e.get("accountNumber")),e.get("dc")) for e in entries] != expected_shape:
+                raise BankFinalReceiptError("本公司报销必须使用费用及人员独立科目的四条分录")
+            if any(e.get("auxiliaryExpected") or any(key.endswith("Id") and key != "accountId" for key in e) for e in entries):
+                raise BankFinalReceiptError("本公司报销人员使用独立科目，不使用itemClass辅助核算")
+            body = personal_reimbursement_summary(record)
+            for index, entry in enumerate(entries):
+                expected = body + (" " + str(analysis.get("bankTransactionDate")) if index == 3 else "")
+                if entry.get("explanation") != expected:
+                    raise BankFinalReceiptError("报销摘要必须以人员姓名开头并保留备注用途")
+        elif len(entries) != 2 or len(debits) != 1 or str(debits[0].get("accountNumber")) != expected_debit:
             raise BankFinalReceiptError("员工付款借方必须为工资或固定差旅费科目")
     if analysis.get("selectionMode") == "statement_remark_exact":
         raise BankFinalReceiptError("旧备注强制模板分析已失效，请重新执行银行 llm 阶段")
@@ -296,11 +343,28 @@ def validate_bank_analysis_rules(
         raise BankFinalReceiptError(
             f"银行分析缺少 filledEntries：{record.get('bankKey')} / {record.get('index')}"
         )
+    from .bank_rules import internal_transfer_account
+    transfer_account = internal_transfer_account(record)
+    if transfer_account or analysis.get("selectionMode") == "internal_transfer_remark":
+        try:
+            credit = Decimal(str(record.get("bankCreditAmount") or 0))
+            valid_credit = credit.is_finite() and credit > 0 and credit == transaction_amount
+        except (InvalidOperation, ValueError, TypeError):
+            valid_credit = False
+        if (not transfer_account or transfer_account == required_number or not valid_credit
+                or record.get("flowDirection") != "inflow"
+                or analysis.get("selectionMode") != "internal_transfer_remark"
+                or str(analysis.get("remark") or "").strip() != str(record.get("remark") or "").strip()):
+            raise BankFinalReceiptError("内部转账备注、科目或收款方向已变化，请重新分析")
+        if (len(entries) != 2 or any(not isinstance(e, Mapping) for e in entries)
+                or [(str(e.get("accountNumber")), e.get("dc")) for e in entries] != [(required_number,1),(transfer_account,-1)]):
+            raise BankFinalReceiptError("内部转账分录必须借当前银行科目、贷备注指定科目")
     bank_entries = [
         entry
         for entry in entries
         if isinstance(entry, Mapping)
         and "银行存款" in str(entry.get("accountName") or "")
+        and (not transfer_account or str(entry.get("accountNumber")) == required_number)
     ]
     if len(bank_entries) != 1:
         raise BankFinalReceiptError(
@@ -316,7 +380,10 @@ def validate_bank_analysis_rules(
         for entry in entries
         if isinstance(entry, Mapping) and int(entry.get("dc") or 0) == -1
     )
-    if debit_total != transaction_amount or credit_total != transaction_amount:
+    expected_total = transaction_amount * (2 if personal_account else 1)
+    if personal_account and any(Decimal(str(e.get("amount") or 0)) != transaction_amount for e in entries):
+        raise BankFinalReceiptError("报销四条分录各自金额必须等于流水金额")
+    if debit_total != expected_total or credit_total != expected_total:
         raise BankFinalReceiptError(
             f"银行分录金额必须与 transactionAmount 完全一致："
             f"{record.get('bankKey')} / {record.get('index')}，"
@@ -334,6 +401,8 @@ def validate_bank_analysis_rules(
             f"银行分析缺少 OCR 交易日期：{record.get('bankKey')} / {record.get('index')}"
         )
     bank_explanation = str(bank_entries[0].get("explanation") or "")
+    if transfer_account and any(str(e.get("explanation") or "") != f"内部转账 {transaction_date}" for e in entries):
+        raise BankFinalReceiptError("内部转账两行摘要必须为内部转账加交易日期")
     if not bank_explanation.endswith(f" {transaction_date}"):
         raise BankFinalReceiptError(
             f"银行存款分录摘要必须以空格加 OCR 交易日期结尾："
@@ -344,7 +413,7 @@ def validate_bank_analysis_rules(
         for value in record.get("invoiceNumbers") or []
         if re.fullmatch(r"\d{8,20}", str(value))
     ]
-    if str(record.get("flowDirection") or "") == "inflow" and invoice_numbers:
+    if str(record.get("flowDirection") or "") == "inflow" and invoice_numbers and not transfer_account:
         expected_body = " ".join(invoice_numbers)
         actual_body = str(analysis.get("explanation_body") or "").strip()
         if actual_body != expected_body:
@@ -368,6 +437,8 @@ def generate_bank_final_receipts(
 ) -> dict[str, Any]:
     """Generate final-shape upload-ready receipts for prepare or all."""
     output_root.mkdir(parents=True, exist_ok=True)
+    for category in ("manual", "automatic"):
+        (output_root / category).mkdir(exist_ok=True)
     generated = 0
     reused = 0
     blocked = 0
@@ -397,12 +468,18 @@ def generate_bank_final_receipts(
         validate_bank_analysis_rules(record, current_analysis)
         amount = source_values(record)["transactionAmount"]
         receipt_id = f"bank-{company}-{month}-{key}"
-        path = output_root / f"receipt_{key}" / "receipt.json"
+        from .bank_receipt_layout import receipt_path
+        try:
+            path = receipt_path(output_root, key, record)
+        except ValueError as exc:
+            raise BankFinalReceiptError(str(exc)) from exc
         if path.exists() and not overwrite:
             reused += 1
         else:
             receipt = record.get("receipt") if isinstance(record.get("receipt"), Mapping) else {}
             pdf_path = str(receipt.get("pdf") or "")
+            if not Path(pdf_path).is_file():
+                pdf_path = ""
             entries = _entries_from_analysis(current_analysis or {}, amount)
             transaction_date = _date_from_analysis(current_analysis or {})
             payload = {
@@ -424,6 +501,12 @@ def generate_bank_final_receipts(
                     "entries": entries,
                 },
             }
+            if path.is_file():
+                previous = json.loads(path.read_text(encoding="utf-8-sig"))
+                manual_files = (previous.get("voucher") or {}).get("attachmentFiles")
+                if isinstance(manual_files, list) and manual_files:
+                    payload["voucher"]["attachmentFiles"] = manual_files
+                    payload["voucher"]["attachments"] = len(manual_files)
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
             generated += 1

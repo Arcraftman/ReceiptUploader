@@ -12,6 +12,7 @@ import shlex
 import subprocess
 from kdzwy_receipt_uploader.project_runtime import process_environment
 import sys
+import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -70,7 +71,67 @@ def data(response):
     return result.get('data')
 
 
-def login_account(account, headed=False, reuse=True):
+def authenticated_user_payload(payload):
+    """Reject login HTML, expired sessions and empty success envelopes."""
+    return (isinstance(payload, dict)
+            and payload.get('success') is not False
+            and all(payload.get(key) in (None, 0, 200, '0', '200')
+                    for key in ('code', 'status', 'errorcode', 'errcode'))
+            and isinstance(payload.get('data'), dict) and bool(payload['data']))
+
+
+def wait_authenticated_context(context, *, timeout, progress):
+    """Check authenticated API state, including redirects and login popup pages."""
+    deadline = time.monotonic() + timeout
+    next_notice = time.monotonic() + 15
+    while time.monotonic() < deadline:
+        pages = [page for page in context.pages if not page.is_closed()]
+        if not pages:
+            raise RuntimeError('登录浏览器已关闭，请重新点击登录。')
+        origins = []
+        for page in reversed(pages):
+            try:
+                parsed = check_url(page.url)
+            except RuntimeError:
+                continue
+            origin = 'https://' + parsed.netloc
+            if origin not in origins:
+                origins.append(origin)
+        for origin in origins:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            try:
+                response = context.request.get(origin + '/guanjia/user/info',
+                                               timeout=min(5000, max(1, int(remaining * 1000))))
+                try:
+                    if response.ok and authenticated_user_payload(response.json()):
+                        return origin
+                finally:
+                    response.dispose()
+            except Exception:
+                # A loading page, login HTML or transient network failure is not
+                # proof of login. Continue until the bounded deadline.
+                pass
+        # A rejected credential must end this attempt and release its browser
+        # and login lock, rather than waiting three minutes while retry is blocked.
+        for page in pages:
+            try:
+                body = page.locator('body').inner_text(timeout=1000)
+            except Exception:
+                continue
+            if isinstance(body, str) and re.search(
+                    r'账号或密码错误|用户名或密码错误|账户或密码错误|密码不正确|密码错误|账号不存在|用户名不存在', body):
+                raise RuntimeError('账号或密码错误，请重新点击登录并输入正确的账号密码。')
+        if time.monotonic() >= next_notice:
+            progress('仍在等待有效登录会话；请在浏览器完成验证码或短信验证。')
+            next_notice = time.monotonic() + 15
+        pages[-1].wait_for_timeout(1000)
+    raise RuntimeError('未能在规定时间内确认有效登录会话。请重新登录；如网页已进入首页，请检查网络或提供地址栏中不含参数的域名和路径。')
+
+
+def login_account(account, headed=False, reuse=True, progress=None):
+    progress = progress or (lambda message: None)
     key = account['key']
     if not re.fullmatch(r'[A-Za-z0-9_-]+', key):
         raise RuntimeError('Account key must contain only letters, digits, underscores and hyphens')
@@ -100,15 +161,14 @@ def login_account(account, headed=False, reuse=True):
                     route.continue_()
             c.route('**/*', guard)
             page = c.new_page()
+            progress('浏览器已启动，正在打开账无忧登录页……')
             page.goto('https://gj.kdzwy.com/', wait_until='domcontentloaded', timeout=60000)
             page.locator('#log-account').fill(account['username'])
             page.locator('#log-pwd').fill(account['password'])
             page.locator('#sub-btn').click()
-            try:
-                page.wait_for_url('**/acct-web/guanjia/**', timeout=180000 if headed else 45000)
-            except Exception:
-                raise RuntimeError('Login incomplete. Run start login --headed to complete browser verification') from None
-            origin = 'https://' + check_url(page.url).netloc
+            progress('已提交登录，正在确认会话；如有验证码，请在浏览器完成。')
+            origin = wait_authenticated_context(c, timeout=180 if headed else 45, progress=progress)
+            progress('登录会话已确认，正在保存本机会话……')
             state = c.storage_state()
             state['guanjia_origin'] = origin
             write_private(path, state)
@@ -192,7 +252,7 @@ def initialize(rows, dataset, month, target):
 def console(rows):
     help_text = (
         'list | login | discover | month DATASET YYYY-MM TARGET | '
-        'bank/exceptions/unmatched/verify DATASET YYYY-MM | finance | status | help | quit'
+        'run DATASET YYYY-MM | bank/exceptions/unmatched/verify DATASET YYYY-MM | finance | status | help | quit'
     )
     print('Setup console: ' + help_text)
     while True:
@@ -231,9 +291,9 @@ def console(rows):
                     check=True,
                     env=process_environment(),
                 )
-            elif cmd in ('bank', 'exceptions', 'unmatched', 'verify') and len(args) == 2:
+            elif cmd in ('run', 'bank', 'exceptions', 'unmatched', 'verify') and len(args) == 2:
                 row = resolve_selector(rows, args[0])
-                mapping = {'bank': 'run_bank', 'exceptions': 'list_bank_exceptions', 'unmatched': 'list_unmatched_bank', 'verify': 'verify_bank'}
+                mapping = {'run': 'run_company', 'bank': 'run_bank', 'exceptions': 'list_bank_exceptions', 'unmatched': 'list_unmatched_bank', 'verify': 'verify_bank'}
                 from kdzwy_receipt_uploader.company_registry import company_config_filename
                 config_name = company_config_filename(row['company_id'], row['name']).removesuffix('.json')
                 subprocess.run([sys.executable, "-m", "kdzwy_receipt_uploader.command_dispatch", mapping[cmd], config_name, args[1]], check=True, env=process_environment())

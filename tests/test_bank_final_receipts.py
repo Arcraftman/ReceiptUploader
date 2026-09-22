@@ -53,9 +53,11 @@ def test_bank_source_values_split_housing_fund_from_verified_history() -> None:
     assert values["employeeHousingFund"] == "1316.00"
 
 
-def test_prepare_existing_generates_final_drafts_and_preserves_edits(tmp_path: Path) -> None:
+@pytest.mark.parametrize("with_pdf", [True, False])
+def test_prepare_existing_generates_final_drafts_and_preserves_edits(tmp_path: Path, with_pdf) -> None:
     pdf = tmp_path / "V001.pdf"
-    pdf.write_bytes(b"%PDF-1.4 bank")
+    if with_pdf:
+        pdf.write_bytes(b"%PDF-1.4 bank")
     matched = {
         "bank_a__V001": {
             "key": "bank_a__V001",
@@ -111,11 +113,11 @@ def test_prepare_existing_generates_final_drafts_and_preserves_edits(tmp_path: P
         "blockedAnalysisCount": 1,
     }
     assert report["blocked"][0]["key"] == "bank_a__V002"
-    matched_path = output / "receipt_bank_a__V001" / "receipt.json"
+    matched_path = output / ("automatic" if with_pdf else "manual") / "receipt_bank_a__V001" / "receipt.json"
     matched_receipt = json.loads(matched_path.read_text(encoding="utf-8"))
     assert matched_receipt["draft"] is True
     assert matched_receipt["voucher"]["date"] == "2026-07-31"
-    assert matched_receipt["voucher"]["attachments"] == 1
+    assert matched_receipt["voucher"]["attachments"] == int(with_pdf)
     assert not (output / "receipt_bank_a__V002").exists()
 
     matched_receipt["voucher"]["summary"] = "人工已修改"
@@ -131,6 +133,24 @@ def test_prepare_existing_generates_final_drafts_and_preserves_edits(tmp_path: P
     assert rerun["summary"]["generatedCount"] == 0
     assert rerun["summary"]["reusedCount"] == 1
     assert json.loads(matched_path.read_text(encoding="utf-8"))["voucher"]["summary"] == "人工已修改"
+    manual_pdf = matched_path.parent / "manual.pdf"
+    manual_pdf.write_bytes(b"%PDF-1.4")
+    matched_receipt["voucher"]["attachmentFiles"] = [{"path": "manual.pdf"}]
+    matched_path.write_text(json.dumps(matched_receipt), encoding="utf-8")
+    generate_bank_final_receipts(matched, analysis, output, "company_1", "2026-07",
+                                {"group_id": "g", "group_name": "记", "user_name": "tester"}, overwrite=True)
+    regenerated = json.loads(matched_path.read_text(encoding="utf-8"))
+    assert regenerated["voucher"]["attachmentFiles"] == [{"path": "manual.pdf"}]
+    assert regenerated["voucher"]["attachments"] == 1
+    # Remark-driven manual classification wins over an existing PDF/category.
+    matched["bank_a__V001"]["remark"] = "扣款（增值税缴税）"
+    generate_bank_final_receipts(matched, analysis, output, "company_1", "2026-07",
+                                {"group_id": "g", "group_name": "记", "user_name": "tester"})
+    manual_path = output / "manual/receipt_bank_a__V001/receipt.json"
+    assert manual_path.is_file()
+    assert json.loads(manual_path.read_text(encoding="utf-8")) == regenerated
+
+
 
 
 def test_prepare_existing_rejects_wrong_bank_account_number(tmp_path: Path) -> None:

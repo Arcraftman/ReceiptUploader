@@ -62,9 +62,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--accountbook", action="append", default=[], help="Run only this accountbook key; repeatable")
     parser.add_argument("--month", action="append", required=True, help="Explicit month in YYYY-MM format; repeatable")
     parser.add_argument("--source", choices=["sales", "purchase", "bank", "misc", "all"], default=None, help="Run selected enabled sources; all selects all enabled sources")
-    parser.add_argument("--stage", choices=["ocr", "llm", "prepare", "send", "all"], default=None, help="Override the workflow stage from the monthly project.json")
+    parser.add_argument("--stage", choices=["ocr", "match", "llm", "prepare", "verify", "send", "all"], default=None, help="Override the workflow stage from the monthly project.json")
     parser.add_argument("--plan", action="store_true", help="Validate and show the plan without executing it")
-    parser.add_argument("--allow-confirm", action="store_true", help="Authorize real uploads through confirm-one/confirm-all")
+    parser.add_argument("--allow-confirm", action="store_true", help="Authorize configured send/all stages through run or explicit confirmation commands")
     parser.add_argument("--limit", type=int, default=0, help="Forward to run_pipeline: limit")
     parser.add_argument("--receipt-id", type=str, default="", help="Forward to run_pipeline: receipt-id")
     parser.add_argument("--test-upload", action="store_true", help="Forward to run_pipeline: test-upload")
@@ -162,9 +162,11 @@ def main(argv: list[str] | None = None) -> int:
                 if not prompt_file.is_file() or not prompt_file.read_text(encoding="utf-8").strip():
                     raise CompanyRegistryError(f"Template company is missing source prompt: {prompt_file}")
             cross_entity = accountbook.key != dataset.key
+            if job.stage in {"match", "verify"} and job.source != "bank":
+                raise CompanyRegistryError("verify阶段仅适用于bank")
             internal_mode, analysis_stage = workflow_stage_plan(job.stage)
             if internal_mode == "confirm" and not args.allow_confirm:
-                raise CompanyRegistryError("stage=send/all requires confirm-one or confirm-all")
+                raise CompanyRegistryError("stage=send/all requires run or an explicit confirmation command (--allow-confirm)")
             settings = build_job_settings(defaults, accountbook, dataset, job)
             settings["template_company_key"] = template_company.key
             settings["template_company_name"] = template_company.name
@@ -258,7 +260,7 @@ def main(argv: list[str] | None = None) -> int:
                     state.update(status="succeeded", exit_code=0, event="run_succeeded")
                     logger.info("Job succeeded: %s/%s/%s/%s", dataset.key, accountbook.key, job.month, job.source)
                 else:
-                    state.update(status="failed", exit_code=completed.returncode, error=f"Pipeline exit code={completed.returncode}", event="run_failed")
+                    state.update(status="waiting_for_pdf_binding" if completed.returncode == 4 else "failed", exit_code=completed.returncode, error=f"Pipeline exit code={completed.returncode}", event="run_waiting_for_pdf" if completed.returncode == 4 else "run_failed")
         except KeyboardInterrupt:
             state.update(status="cancelled", exit_code=130, error="Interrupted by user", event="run_cancelled")
             print("Job interrupted; state saved.", file=sys.stderr)

@@ -199,6 +199,8 @@ def load_receipt(path: Path, snapshot: dict[tuple[str, str], dict[str, Any]], pd
         ))
     if total_size > 30 * 1024 * 1024:
         raise ReceiptError("单个 receipt 的 PDF 合计不能超过 30MB")
+    if root.get("source") == "bank" or receipt_id.startswith("bank-"):
+        attachments = len(attachment_files)
     if not invoice_codes and attachment_files and attachments != len(attachment_files):
         raise ReceiptError("attachments 与 attachmentFiles 数量不一致")
 
@@ -218,6 +220,7 @@ def load_receipt(path: Path, snapshot: dict[tuple[str, str], dict[str, Any]], pd
 
 def find_receipts(input_dir: Path, snapshot: dict[tuple[str, str], dict[str, Any]], pdf_map: InvoicePdfMap | None = None) -> tuple[list[tuple[Path, Receipt]], list[dict[str, str]]]:
     valid: list[tuple[Path, Receipt]] = []
+    seen_receipt_ids: set[str] = set()
     invalid: list[dict[str, str]] = []
     for path in sorted(input_dir.rglob("*.json")):
         if path.name.endswith(".result.json") or path.name.endswith(".report.json") or path.name in {"xlsx_pdf_map.json", "xlsx_pdf_map.report.json"}:
@@ -230,7 +233,11 @@ def find_receipts(input_dir: Path, snapshot: dict[tuple[str, str], dict[str, Any
                 continue
             if isinstance(raw, dict) and raw.get("uploaded") is True:
                 continue
-            valid.append((path, load_receipt(path, snapshot, pdf_map)))
+            receipt = load_receipt(path, snapshot, pdf_map)
+            if receipt.receipt_id in seen_receipt_ids:
+                raise ReceiptError(f"重复receiptId：{receipt.receipt_id}")
+            seen_receipt_ids.add(receipt.receipt_id)
+            valid.append((path, receipt))
         except ReceiptError as exc:
             invalid.append({"file": str(path), "error": str(exc)})
     return valid, invalid
@@ -358,7 +365,11 @@ def validate_auxiliary_readback(source_entries: list[dict[str, Any]], detail: An
         expected_account_number = str(expected.get("accountNumber", "")).strip()
         expected_subject_name = str(expected.get("subjectAccountName", "")).strip()
         actual_account_number = str(actual.get("accountNumber", "")).strip()
-        if not expected_id or actual_id != expected_id or not expected_name or actual_aux_name != expected_name or (expected_account_number and actual_account_number != expected_account_number) or (expected_subject_name and actual_account_name != expected_subject_name):
+        # The live catalog uses full-width parentheses in some organization names.
+        # Keep ID/account checks exact; only normalize this equivalent punctuation.
+        parentheses = str.maketrans("（）", "()")
+        names_match = actual_aux_name.translate(parentheses) == expected_name.translate(parentheses)
+        if not expected_id or actual_id != expected_id or not expected_name or not names_match or (expected_account_number and actual_account_number != expected_account_number) or (expected_subject_name and actual_account_name != expected_subject_name):
             mismatches.append({
                 "line": index + 1,
                 "itemClass": item_class,

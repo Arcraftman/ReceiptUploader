@@ -46,7 +46,7 @@
   },
   "summary": {
     "header": "",
-    "body": "收到供应商退款 {source.counterpartyName}",
+    "body": "供应商付款退回",
     "separator": " "
   },
   "amountSource": "source",
@@ -84,5 +84,6 @@
     "verifiedBusinessPatterns": [
       "上海方顺医疗器械有限公司汇入500元：借银行存款，贷应付账款"
     ]
-  }
+  },
+  "usageNotes": "流水remark去除首尾空白后等于退款时，固定选择本模板：借银行存款，贷220201应付账款；供应商来自当前流水对手方及目标账套辅助核算。"
 }

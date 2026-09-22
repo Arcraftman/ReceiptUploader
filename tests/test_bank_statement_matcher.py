@@ -105,15 +105,18 @@ def test_matches_multiple_banks_and_maps_bank_direction(tmp_path: Path) -> None:
 
     assert report["status"] == "ok_with_unmatched"
     assert report["summary"] == {
+        "remarkExceptionCount": 0,
+        "withoutPdfCount": 0,
+        "skippedInternalTransferCount": 0,
         "bankCount": 2,
         "statementRowCount": 5,
         "recognizedReceiptCount": 3,
         "bankExceptionReceiptCount": 1,
         "matchedCount": 3,
         "exceptionFilteredStatementCount": 0,
-        "unmatchedStatementCount": 1,
+        "unmatchedStatementCount": 2,
         "unmatchedReceiptCount": 1,
-        "skippedPersonNameCount": 1,
+        "skippedPersonNameCount": 0,
         "duplicateIndexCount": 0,
         "directionErrorCount": 0,
     }
@@ -149,15 +152,9 @@ def test_matches_multiple_banks_and_maps_bank_direction(tmp_path: Path) -> None:
     assert marker["configCompany"] == "固定资料公司"
     assert marker["counterpartyType"] == "supplier"
     assert "A34567" not in result["banks"]["alpha"]["entries"]
-    person_marker = report["banks"]["alpha"]["skippedPersonNameStatements"][0]
-    assert person_marker["index"] == "A45678"
-    assert person_marker["counterpartyName"] == "张三"
-    assert person_marker["counterpartyType"] == "person"
-    assert person_marker["markerReason"] == "person_name"
-    assert person_marker["downstreamEligible"] is False
-    assert "supplierName" not in person_marker
-    assert "A45678" not in result["banks"]["alpha"]["entries"]
-    assert collect_person_name_exclusions(configs, input_dir)["alpha"] == {"A45678"}
+    assert report["banks"]["alpha"]["skippedPersonNameStatements"] == []
+    assert report["banks"]["alpha"]["unmatchedStatements"][1]["index"] == "A45678"
+    assert collect_person_name_exclusions(configs, input_dir)["alpha"] == set()
     assert report_path.is_file()
 
 
@@ -280,3 +277,77 @@ def test_duplicate_statement_index_is_partial(tmp_path: Path) -> None:
     assert report["status"] == "partial"
     assert report["summary"]["duplicateIndexCount"] == 1
     assert report["summary"]["matchedCount"] == 0
+
+@pytest.mark.parametrize('remark,debit,credit,party,expected', [
+    ('内部转账100204', 0, 200, '本公司', True),
+    ('内部转账100209', 0, 200, '本公司', True),
+    ('内部转账100204', 200, 0, '本公司', False),
+    ('内部转账100204', 0, 0, '本公司', False),
+    ('内部转账100204', 100, 200, '本公司', False),
+    ('内部转账', 0, 200, '本公司', False),
+    ('内部转账abc', 0, 200, '其他公司', False),
+    ('往来款', 0, 200, '本公司', False),
+    ('货款', 200, 0, '其他公司', True),
+])
+def test_internal_transfer_matching_gate(tmp_path, remark, debit, credit, party, expected):
+    write_statement(tmp_path / 'alpha.xlsx', [
+        (None, 'A12345', None, None, None, debit, credit, party, remark),
+    ])
+    config = {'alpha': {
+        'bank_account_number': '100201',
+        'split': {'filename_index_length': 6, 'filename_index_prefix': 'A'},
+        'statement_columns': {'index_column': 'B', 'bank_debit_column': 'F',
+                              'bank_credit_column': 'G', 'counterparty_name_column': 'H',
+                              'remark_column': 'I'},
+    }}
+    report = match_bank_statements(config, tmp_path,
+        {'outputDirectory': str(tmp_path / 'ocr'),
+         'artifacts': [artifact(tmp_path, 'alpha', 'A12345.pdf')]},
+        tmp_path / 'map.json', tmp_path / 'report.json', config_company='本公司')
+    assert report['summary']['matchedCount'] == int(expected)
+    assert report['summary']['skippedInternalTransferCount'] == int(not expected)
+    assert report['summary']['unmatchedStatementCount'] == 0
+    assert report['summary']['unmatchedReceiptCount'] == 0
+    assert report['status'] == 'ok'
+    entries = json.loads((tmp_path / 'map.json').read_text(encoding='utf-8'))['banks']['alpha']['entries']
+    assert ('A12345' in entries) == expected
+
+
+def test_statement_without_pdf_builds_truthful_evidence(tmp_path):
+    from datetime import datetime
+    from kdzwy_receipt_uploader.bank_final_receipts import build_bank_ocr_artifacts, load_bank_records
+    write_statement(tmp_path / 'alpha.xlsx', [(None, 'A12345', datetime(2026,8,3), None, None, 18.62, 0, '银行供应商', '手续费')])
+    config = {'alpha': {'bank_account_number': '100204',
+        'split': {'filename_index_length': 6, 'filename_index_prefix': 'A'},
+        'statement_columns': {'index_column': 'B', 'bank_debit_column': 'F', 'bank_credit_column': 'G',
+                              'counterparty_name_column': 'H', 'remark_column': 'I'}}}
+    report = match_bank_statements(config, tmp_path, {'artifacts': []}, tmp_path/'map.json', tmp_path/'report.json', allow_without_pdf=True)
+    records, unmatched = load_bank_records(tmp_path/'map.json', tmp_path/'report.json')
+    assert not unmatched and report['summary']['matchedCount'] == 1
+    assert records['alpha__A12345']['receipt']['pdf'] == ''
+    artifacts = build_bank_ocr_artifacts(records)
+    assert artifacts[0].engine == 'bank-statement'
+    assert '2026-08-03' in artifacts[0].text and '手续费' in artifacts[0].text
+
+
+@pytest.mark.parametrize('remark', ['扣款（增值税缴税）', '扣款（社保缴税）', '本月公积 金扣款', '扣款（个税缴税）', '跳过', '手续费，跳过单独处理'])
+def test_remark_exception_excludes_statement_and_pdf(tmp_path, remark):
+    from kdzwy_receipt_uploader.bank_rules import DEFAULT_REMARK_EXCEPTIONS
+    write_statement(tmp_path/'alpha.xlsx', [(None,'A12345',None,None,None,100,0,'单位',remark)])
+    config={'alpha':{'bank_account_number':'100201',
+        'split':{'filename_index_length':6,'filename_index_prefix':'A'},
+        'statement_columns':{'index_column':'B','bank_debit_column':'F','bank_credit_column':'G',
+                             'counterparty_name_column':'H','remark_column':'I'}}}
+    report=match_bank_statements(config,tmp_path,
+        {'outputDirectory':str(tmp_path/'ocr'),'artifacts':[artifact(tmp_path,'alpha','A12345.pdf')]},
+        tmp_path/'map.json',tmp_path/'report.json',allow_without_pdf=True,remark_exception=["增值税缴税", "社保缴税", "公积金", "个税缴税", "跳过"])
+    assert report['summary']['remarkExceptionCount']==1
+    assert report['summary']['matchedCount']==0
+    assert report['summary']['unmatchedReceiptCount']==0
+    assert report['summary']['unmatchedStatementCount']==0
+
+
+def test_explicit_skip_is_effective_without_configured_exceptions():
+    from kdzwy_receipt_uploader.bank_rules import remark_exception_match
+    assert remark_exception_match('此笔手续费跳过', []) == '跳过'
+    assert remark_exception_match('正常手续费', []) == ''

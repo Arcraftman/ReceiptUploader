@@ -77,6 +77,8 @@ def enforce_template_explanation(
     if not isinstance(map_values, Mapping):
         map_values = {}
     source_key = source_from_folder_name(artifact.source_folder) or artifact.source_side
+    from ..bank_rules import internal_transfer_account
+    transfer_account = internal_transfer_account(map_values) if source_key == "bank" and decision.get("selectionMode") == "internal_transfer_remark" else ""
     bank_account_number = ""
     bank_transaction_date = ""
     bank_invoice_numbers: list[str] = []
@@ -148,6 +150,17 @@ def enforce_template_explanation(
                 number = str(value or "").strip()
                 if re.fullmatch(r"\d{8,20}", number) and number not in bank_invoice_numbers:
                     bank_invoice_numbers.append(number)
+    from ..bank_rules import is_personal_reimbursement, resolve_employee_payable, flatten_account_rows
+    account_container = context_values.get("dynamicAccountCatalog")
+    account_rows = flatten_account_rows(account_container.get("accounts", []) if isinstance(account_container, Mapping) else [])
+    person_evidence = None
+    if source_key == "bank" and is_personal_reimbursement(map_values):
+        try:
+            person_evidence = resolve_employee_payable(map_values, account_rows)
+        except ValueError as exc:
+            raise OcrPipelineError(str(exc)) from exc
+        decision["employeeAccountEvidence"] = person_evidence
+        map_values = dict(map_values, employeePayableAccountNumber=person_evidence["accountNumber"])
     sales_map = {artifact.invoice_code: dict(map_values)} if source_key == "sales" else {}
     purchase_map = {artifact.invoice_code: dict(map_values)} if source_key == "purchase" else {}
     rendered = VoucherTemplateEngine([template]).render(
@@ -163,8 +176,12 @@ def enforce_template_explanation(
     )
     explanation_header = str(rendered.get("explanation_header") or "")
     explanation_body = str(rendered.get("explanation_body") or "").rstrip()
-    if bank_invoice_numbers:
+    if bank_invoice_numbers and not transfer_account:
         explanation_body = " ".join(bank_invoice_numbers)
+    from ..bank_rules import personal_reimbursement_summary
+    if source_key == "bank" and is_personal_reimbursement(map_values):
+        explanation_header = ""
+        explanation_body = personal_reimbursement_summary(map_values)
     explanation_separator = str(template.get("explanation_separator", " "))
     explanation = explanation_separator.join(
         part for part in (explanation_header, explanation_body) if part
@@ -176,7 +193,7 @@ def enforce_template_explanation(
     )
     template_entries = template.get("entries") if isinstance(template.get("entries"), list) else []
     account_container = context_values.get("dynamicAccountCatalog")
-    account_rows = account_container.get("accounts", []) if isinstance(account_container, Mapping) else []
+    account_rows = flatten_account_rows(account_container.get("accounts", []) if isinstance(account_container, Mapping) else [])
     accounts_by_number: dict[str, list[Mapping[str, Any]]] = {}
     for account in account_rows:
         if isinstance(account, Mapping):
@@ -196,10 +213,12 @@ def enforce_template_explanation(
             source_key == "bank"
             and account_number_from == "source.bankAccountNumber"
         )
+        is_transfer_counter = bool(transfer_account) and account_number_from == "source.transferAccountNumber"
         if (
             source_key == "bank"
             and "银行存款" in str(selector.get("name") or "")
             and not is_bank_deposit_entry
+            and not is_transfer_counter
         ):
             raise OcrPipelineError(
                 "银行存款分录必须使用动态科目来源 "
@@ -208,6 +227,12 @@ def enforce_template_explanation(
         if is_bank_deposit_entry:
             bank_deposit_entry_count += 1
             account_number = bank_account_number
+        elif is_transfer_counter:
+            account_number = transfer_account
+        elif account_number_from == "source.employeePayableAccountNumber":
+            if not person_evidence:
+                raise OcrPipelineError("人员科目模板缺少实时科目解析")
+            account_number = person_evidence["accountNumber"]
         account_matches = accounts_by_number.get(account_number, [])
         if len(account_matches) != 1:
             raise OcrPipelineError(
@@ -235,7 +260,7 @@ def enforce_template_explanation(
             "amount": amount,
             "amountFor": amount,
             "explanation": (
-                bank_entry_explanation if is_bank_deposit_entry else explanation
+                bank_entry_explanation if is_bank_deposit_entry or is_transfer_counter else explanation
             ),
             "cur": "RMB",
             "rate": "1",
@@ -575,7 +600,7 @@ def compact_analysis_for_storage(decision: Mapping[str, Any]) -> dict[str, Any]:
         "templatePath", "templateId", "decisionCode", "decisionName", "selectionMode", "confidence", "reason", "status", "analysisStatus", "remark",
         "llmAttempted", "llmProvider", "llmModel", "llmRequestId",
         "explanation_header", "explanation_body", "explanation", "sourceFolder", "configCompany",
-        "partyRule", "employeePaymentKind", "employeePaymentEvidence", "bankSourceAmounts", "bankAccountNumber", "bankTransactionDate", "invoiceNumbers", "sourcePdf", "validation",
+        "partyRule", "employeePaymentKind", "employeePaymentEvidence", "employeeAccountEvidence", "bankSourceAmounts", "bankAccountNumber", "bankTransactionDate", "invoiceNumbers", "sourcePdf", "validation",
         "exceptionStatus", "exceptionType", "exceptionConfig", "exceptionValidationErrors",
     ):
         if key in decision:

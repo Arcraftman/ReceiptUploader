@@ -21,7 +21,7 @@ from .upload_journal import UploadJournal, UploadInProgress
 from .responsibility_chain import run_selected_sources_safe
 from .source_profile import source_from_folder_name, normalize_source_key
 from .simple_logging import configure_pipeline_logger, install_console_transcript
-from .bank_receipt_verifier import verify_bank_receipts
+from .bank_receipt_verifier import verify_bank_receipts, verify_bank_pdf_links
 from .exception_ledger import append_exception, blocking_document_ids, replace_stage_exceptions, resolve_document_stage
 
 
@@ -43,6 +43,20 @@ def _write_upload_checkpoint(path: Path, result: dict[str, Any]) -> None:
         "attachmentFileIds": list(result.get("attachmentFileIds") or []),
         "completedAt": str(result.get("completedAt") or datetime.now(timezone.utc).isoformat()),
     }
+    if result.get("attachmentStatus") == "uploaded_linked_and_verified":
+        from .bank_upload_report import pdf_hash
+        files = (payload.get("voucher") or {}).get("attachmentFiles", [])
+        hashes = []
+        for item in files:
+            attachment = Path(str(item.get("path") or ""))
+            if not attachment.is_absolute():
+                attachment = path.parent / attachment
+            if attachment.is_file():
+                hashes.append(pdf_hash(attachment))
+        payload["uploadResult"]["attachmentSha256"] = hashes
+        if hashes:
+            with (path.parent.parent / "bank_attachment_uploads.jsonl").open("a", encoding="utf-8") as ledger:
+                ledger.write(json.dumps({"receiptId": payload.get("receiptId"), **payload["uploadResult"]}, ensure_ascii=False) + "\n")
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     temporary.replace(path)
@@ -207,6 +221,10 @@ def main(argv: list[str] | None = None) -> int:
         pdf_map = InvoicePdfMap.load(pdf_map_path.resolve())
         print(f"PDF映射：{pdf_map_path.resolve()}")
     if args.confirm and source in {"bank", "all"}:
+        pdf_check = verify_bank_pdf_links(input_dir, bank_only=source == "all")
+        if pdf_check["missingPdfCount"]:
+            print(f"等待人工绑定PDF：{pdf_check['missingPdfCount']}张；禁止上传。", file=sys.stderr)
+            return 4
         bank_verification = verify_bank_receipts(input_dir)
         bank_summary = bank_verification["summary"]
         print(

@@ -65,7 +65,7 @@ def build_preupload_report(receipt_directory: Path, output_path: Path, run_param
         analysis_by_invoice = json.loads(analysis_path.read_text(encoding="utf-8-sig"))
     except (OSError, json.JSONDecodeError):
         analysis_by_invoice = {}
-    for receipt_path in sorted(receipt_directory.glob("receipt_*/receipt.json")):
+    for receipt_path in sorted(receipt_directory.rglob("receipt_*/receipt.json")):
         payload = json.loads(receipt_path.read_text(encoding="utf-8"))
         voucher = payload.get("voucher", {})
         invoice_codes = voucher.get("invoiceCodes", [])

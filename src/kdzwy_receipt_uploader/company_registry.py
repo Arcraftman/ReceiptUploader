@@ -255,7 +255,7 @@ class CompanyJob:
     stage: str = "ocr"
     source: str = "all"
     purpose: str = "production"
-    cross_company_upload_enabled: bool = False
+    upload_to_dataset_enabled: bool = False
     enabled: bool = True
     overrides: dict[str, Any] = field(default_factory=dict)
     template_company: str = ""
@@ -266,8 +266,10 @@ class CompanyJob:
 
 WORKFLOW_STAGE_PLAN = {
     "ocr": ("analysis-only", "ocr"),
+    "match": ("analysis-only", "match"),
     "llm": ("analysis-only", "llm"),
     "prepare": ("prepare", "existing"),
+    "verify": ("verify", "existing"),
     "send": ("confirm", "existing"),
     "all": ("confirm", "all"),
 }
@@ -276,7 +278,7 @@ WORKFLOW_STAGE_PLAN = {
 def workflow_stage_plan(stage: str) -> tuple[str, str]:
     normalized = str(stage or "").strip().lower()
     if normalized not in WORKFLOW_STAGE_PLAN:
-        raise CompanyRegistryError("stage 只支持 ocr、llm、prepare、send 或 all")
+        raise CompanyRegistryError("stage 只支持 ocr、match、llm、prepare、verify、send 或 all")
     return WORKFLOW_STAGE_PLAN[normalized]
 
 
@@ -505,18 +507,18 @@ def load_company_jobs(path: Path, company: CompanyProfile) -> list[CompanyJob]:
     }
     default_configurable_fields = {
         *shared_configurable_fields,
-        "cross_company_upload_enabled",
+        "upload_to_dataset_enabled",
     }
     _reject_unknown_fields(defaults, default_configurable_fields, "project.defaults")
-    for label in ("cross_company_upload_enabled", "only_mapped_invoices"):
+    for label in ("upload_to_dataset_enabled", "only_mapped_invoices"):
         if label in defaults:
             _strict_bool(defaults[label], f"project.defaults.{label}", default=False)
-    cross_company_upload_enabled = _strict_bool(
-        defaults.get("cross_company_upload_enabled"),
-        "project.defaults.cross_company_upload_enabled",
+    upload_to_dataset_enabled = _strict_bool(
+        defaults.get("upload_to_dataset_enabled"),
+        "project.defaults.upload_to_dataset_enabled",
         default=False,
     )
-    if not cross_company_upload_enabled:
+    if upload_to_dataset_enabled:
         target_accountbook = dataset_company_key
         target_company_id = dataset_company_id
         target_company_name = dataset_company_name
@@ -532,6 +534,7 @@ def load_company_jobs(path: Path, company: CompanyProfile) -> list[CompanyJob]:
         if source == "bank":
             source_fields.add("banks")
             source_fields.add("exceptions")
+            source_fields.add("remark_exception")
             source_fields.add("statement_columns")
         if source == "purchase":
             source_fields.add("usage_confirmation_enabled")
@@ -552,6 +555,8 @@ def load_company_jobs(path: Path, company: CompanyProfile) -> list[CompanyJob]:
                 result[key] = copy.deepcopy(row[key])
         workflow_stage = _required_text(row.get("stage"), f"{label}.stage").lower()
         workflow_stage_plan(workflow_stage)
+        if workflow_stage in {"match", "verify"} and source != "bank":
+            raise CompanyRegistryError("match/verify阶段仅用于bank")
         result["workflow_stage"] = workflow_stage
         if source == "purchase":
             result["usage_confirmation_enabled"] = _strict_bool(
@@ -563,10 +568,6 @@ def load_company_jobs(path: Path, company: CompanyProfile) -> list[CompanyJob]:
             if "banks" not in row:
                 raise CompanyRegistryError(
                     "sources.bank 缺少统一多银行配置 banks"
-                )
-            if "exceptions" not in row:
-                raise CompanyRegistryError(
-                    "sources.bank 缺少特殊对象名称配置 exceptions"
                 )
             if "statement_columns" not in row:
                 raise CompanyRegistryError(
@@ -585,9 +586,7 @@ def load_company_jobs(path: Path, company: CompanyProfile) -> list[CompanyJob]:
                 for bank_key, bank_config in bank_configs.items()
             }
             result["statement_columns"] = statement_columns
-            result["exceptions"] = validate_bank_exceptions(
-                row["exceptions"], "sources.bank.exceptions"
-            )
+            result["remark_exception"] = validate_bank_exceptions(row.get("remark_exception", []), "sources.bank.remark_exception")
         return result
 
     sources = payload.get("sources")
@@ -628,7 +627,7 @@ def load_company_jobs(path: Path, company: CompanyProfile) -> list[CompanyJob]:
             stage=workflow_stage,
             source=source,
             purpose=str(row.get("purpose", defaults.get("purpose", "production"))),
-            cross_company_upload_enabled=cross_company_upload_enabled,
+            upload_to_dataset_enabled=upload_to_dataset_enabled,
             enabled=job_enabled,
             overrides=overrides,
             target_company_id=target_company_id,

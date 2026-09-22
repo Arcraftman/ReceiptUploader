@@ -11,8 +11,11 @@ from xml.etree import ElementTree as ET
 from ..company_registry import load_accountbooks, normalize_month
 from ..integrations.read_client import ReadClient, CheckFailure, check_identity, month_values, substitute
 
-SCHEMA_VERSION = "1"
-MANAGED_SHEETS = ("刷新信息", "公司列表", "利润表", "资产负债表", "现金流量表", "科目余额", "凭证明细", "出纳账", "往来余额", "月度趋势")
+SCHEMA_VERSION = "2"
+MANAGED_SHEETS = (
+    "刷新信息", "公司列表", "利润表", "资产负债表", "现金流量表", "科目余额",
+    "凭证明细", "出纳账", "往来余额", "月度趋势", "年度分析数据",
+)
 
 
 def profit_metric(name):
@@ -78,7 +81,7 @@ def collect_snapshot(root: Path, company: str, month: str, client_factory=ReadCl
     book = books[company]
     client = client_factory(root / book.session_file, book.company_id, book.name)
     check_identity(client.request("GET", "/basedata/initParams", {"m": "getSystemParams"}), client.company_id, client.dbid)
-    cases = json.loads((root / "config/finance_read_sources.json").read_text())
+    cases = json.loads((root / "config/finance_read_sources.json").read_text(encoding="utf-8"))
     def fetch(key, requested_month=month, overrides=None):
         case = cases[key]
         vals = month_values(requested_month)
@@ -152,12 +155,38 @@ def collect_snapshot(root: Path, company: str, month: str, client_factory=ReadCl
                 raise CheckFailure(f"{kind}辅助余额与总账不符，停止刷新")
     data["往来余额"] = sheet("往来余额", note + "；应收1122、应付2202；未核销单据和到期日尚未由接口提供", ["类型", "核算项目ID组合", "编码", "名称", "期初借方", "期初贷方", "本期借方", "本期贷方", "期末借方", "期末贷方"], auxiliary)
     trend = []
+    annual = []
     for m in range(1, int(month[-2:]) + 1):
         period = f"{month[:4]}-{m:02}"
-        report = profits if period == month else fetch("profit_sheet", period)
-        for row in report["rows"]:
+        profit_report = profits if period == month else fetch("profit_sheet", period)
+        balance_report = balance if period == month else fetch("balance_sheet", period)
+        subject_report = subjects if period == month else fetch(
+            "subject_balance", period, {"isIncludeItem": False, "toLevel": 10}
+        )
+        for row in profit_report["rows"]:
             trend.append([period, row["reportItem"], row["name"], number(row.get("balance")), profit_metric(row["name"])])
+            annual.append([period, "profit", row["reportItem"], row["name"], number(row.get("balance"))])
+        for row in balance_report["rows"]:
+            asset = row["asset"]
+            liability = row["liability"]
+            annual.append([period, "balance_asset", str(asset["name"]).strip(), asset["name"], number(asset.get("balance"))])
+            annual.append([
+                period, "balance_liability", str(liability["name"]).strip(), liability["name"],
+                number(liability.get("balance")),
+            ])
+        for row in walk_rows(subject_report["item"]):
+            annual.append([
+                period, "subject_credit", str(row["number"]), row["name"], number(row.get("ptCredit")),
+            ])
+            if row.get("isLeaf"):
+                annual.append([
+                    period, "subject_debit_leaf", str(row["number"]), row["name"], number(row.get("ptDebit")),
+                ])
     data["月度趋势"] = sheet("利润月度明细", f"{book.name}；年初至{month}；人民币元", ["月份", "项目编码", "项目", "本月金额", "统计分类"], trend)
+    data["年度分析数据"] = sheet(
+        "年度分析数据", f"{book.name}；年初至{month}；供年度报表逐月取数",
+        ["月份", "数据类型", "编码", "项目", "金额"], annual,
+    )
     check_identity(client.request("GET", "/basedata/initParams", {"m": "getSystemParams"}), client.company_id, client.dbid)
     refreshed = datetime.now(timezone.utc).isoformat()
     data["公司列表"] = sheet("可选公司", "使用已启用的本地账套注册表", ["公司编号", "公司名称"], [[key, b.name] for key, b in books.items() if b.enabled])

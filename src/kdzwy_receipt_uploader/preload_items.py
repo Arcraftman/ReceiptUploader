@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Any, Mapping
 
-from .bank_rules import employee_payment_kind
+from .bank_rules import employee_payment_kind, is_supplier_refund, internal_transfer_account, is_bank_fee
 from .item_class import AUXILIARY_ITEM_CLASSES, resolve_item_class_id
 from .xlsx_cache import load_read_only_workbook
 
@@ -254,7 +254,7 @@ def preload_bank_counterparties(
     resolved: list[dict[str, Any]] = []
     unresolved: list[dict[str, Any]] = []
     for record_key, record in records.items():
-        if employee_payment_kind(record):
+        if employee_payment_kind(record) or internal_transfer_account(record):
             continue
         name = str(record.get("counterpartyName") or "").strip()
         config_company = str(record.get("configCompany") or "").strip()
@@ -277,7 +277,13 @@ def preload_bank_counterparties(
         credit_has_amount = has_positive_amount(
             record.get("bankCreditAmount"), record.get("bankCreditRaw")
         )
-        if evidence_classes:
+        if is_supplier_refund(record) and record.get("flowDirection") == "inflow":
+            resolved_classes = [5]
+            resolution_source = "refund_remark"
+        elif is_bank_fee(record) and record.get("flowDirection") == "outflow":
+            resolved_classes = [5]
+            resolution_source = "bank_fee_remark"
+        elif evidence_classes:
             resolved_classes = evidence_classes
             resolution_source = "source_business_evidence"
         elif existing_classes:

@@ -82,3 +82,17 @@ def test_auxiliary_missing_rows_and_unknown_class():
         validate_auxiliary_readback(source,{})
     with pytest.raises(ApiError, match='回读不一致'):
         validate_auxiliary_readback(source,{'entries':[{}]})
+
+@pytest.mark.parametrize('name,identity,accepted', [
+    ('久程信息科技（上海）有限公司', '123', True),
+    ('久程信息科技（上海）有限公司', '456', False),
+    ('久程信息科技（北京）有限公司', '123', False),
+])
+def test_auxiliary_readback_equivalent_parentheses(name, identity, accepted):
+    source = [{'auxiliaryExpected': {'itemClass':'供应商','id':'123','name':'久程信息科技(上海)有限公司','accountNumber':'220201'}}]
+    detail = {'entries':[{'supplierId':identity,'auxiliaryName':name,'accountNumber':'220201'}]}
+    if accepted:
+        assert validate_auxiliary_readback(source, detail)
+    else:
+        with pytest.raises(ApiError):
+            validate_auxiliary_readback(source, detail)

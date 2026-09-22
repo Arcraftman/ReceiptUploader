@@ -120,6 +120,8 @@ def _discover_split_pdfs(split_report: Mapping[str, Any]) -> list[tuple[str, Pat
         if not isinstance(bank, Mapping):
             continue
         bank_key = str(bank.get("bankKey") or "")
+        if bank.get("status") == "no_pdf":
+            continue
         output_directory = Path(str(bank.get("outputDirectory") or ""))
         manifest_path = output_directory / "split.manifest.json"
         try:

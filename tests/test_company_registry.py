@@ -74,7 +74,7 @@ class LegacyRegistryTests(unittest.TestCase):
         accountbook = AccountbookProfile("target", "目标账套", "session.json")
         dataset = DatasetProfile("source", "资料法定主体", "data/inbox/source")
         job = CompanyJob(
-            "target", "source", "2026-08", cross_company_upload_enabled=True
+            "target", "source", "2026-08", upload_to_dataset_enabled=True
         )
         with self.assertRaises(CompanyRegistryError):
             build_job_settings(defaults, accountbook, dataset, job)
@@ -358,12 +358,13 @@ class RegistryV8Tests(unittest.TestCase):
                 "company_id": "2",
                 "company_name": "目标公司",
             }
+            payload["defaults"]["upload_to_dataset_enabled"] = True
             path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
             jobs = load_company_jobs(path, self._company())
             self.assertTrue(all(job.accountbook == "company_1" for job in jobs))
             self.assertTrue(all(job.target_company_id == "1" for job in jobs))
             self.assertTrue(all(job.target_company_name == "测试公司" for job in jobs))
-            self.assertTrue(all(not job.cross_company_upload_enabled for job in jobs))
+            self.assertTrue(all(job.upload_to_dataset_enabled for job in jobs))
             same_company_settings = build_job_settings(
                 {"analysis_validation": "strict"},
                 AccountbookProfile(
@@ -380,13 +381,13 @@ class RegistryV8Tests(unittest.TestCase):
                 "workspaces/default/company_1/2026-08",
             )
 
-            payload["defaults"]["cross_company_upload_enabled"] = True
+            payload["defaults"].pop("upload_to_dataset_enabled")
             path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
             sales_job = next(
                 job for job in load_company_jobs(path, self._company())
                 if job.source == "sales"
             )
-            self.assertTrue(sales_job.cross_company_upload_enabled)
+            self.assertFalse(sales_job.upload_to_dataset_enabled)
             self.assertEqual(sales_job.accountbook, "company_2")
             self.assertEqual(sales_job.target_company_id, "2")
             settings = build_job_settings(
@@ -473,8 +474,7 @@ class RegistryV8Tests(unittest.TestCase):
             payload = self._project()
             payload["sources"]["bank"].pop("exceptions")
             path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
-            with self.assertRaisesRegex(CompanyRegistryError, "缺少特殊对象名称配置 exceptions"):
-                load_company_jobs(path, self._company())
+            load_company_jobs(path, self._company())
 
             payload = self._project()
             payload["sources"]["bank"].pop("statement_columns")
@@ -482,7 +482,7 @@ class RegistryV8Tests(unittest.TestCase):
             with self.assertRaisesRegex(CompanyRegistryError, "缺少独立银行流水列配置"):
                 load_company_jobs(path, self._company())
 
-    def test_bank_exceptions_are_unique_exact_names(self) -> None:
+    def test_legacy_bank_exceptions_never_reach_runtime(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "project.json"
             payload = self._project()
@@ -490,12 +490,11 @@ class RegistryV8Tests(unittest.TestCase):
             path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
             jobs = load_company_jobs(path, self._company())
             bank_job = next(job for job in jobs if job.source == "bank")
-            self.assertEqual(bank_job.overrides["exceptions"], ["供应商甲", "张三"])
+            self.assertNotIn("exceptions", bank_job.overrides)
 
             payload["sources"]["bank"]["exceptions"] = ["供应商甲", "供应商甲"]
             path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
-            with self.assertRaisesRegex(CompanyRegistryError, "包含重复名称"):
-                load_company_jobs(path, self._company())
+            self.assertTrue(all("exceptions" not in job.overrides for job in load_company_jobs(path, self._company())))
 
     def test_enabled_bank_requires_all_statement_columns_to_be_filled(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

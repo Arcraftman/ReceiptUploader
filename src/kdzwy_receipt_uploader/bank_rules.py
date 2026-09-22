@@ -54,12 +54,96 @@ def is_person_name(value: object) -> bool:
     )
 
 
+def is_supplier_refund(row: Mapping[str, Any]) -> bool:
+    """Match a business keyword within the statement remark."""
+    return "退款" in str(row.get("remark") or "")
+
+
+def internal_transfer_account(row: Mapping[str, Any]) -> str:
+    remark = str(row.get("remark") or "")
+    matches = re.findall(r"内部转账\s*([0-9]+)", remark)
+    return matches[0] if len(matches) == 1 and remark.count("内部转账") == 1 else ""
+
+
 def employee_payment_kind(row: Mapping[str, Any]) -> str:
     """Route only explicit, unambiguous employee cash outflows."""
     if not is_person_name(row.get("counterpartyName")) or row.get("flowDirection") != "outflow":
         return ""
     remark = str(row.get("remark") or "")
-    salary, reimbursement = "工资" in remark, "费用报销" in remark
+    salary, reimbursement = "工资" in remark, "报销" in remark
     if salary == reimbursement:
         return ""
     return "salary" if salary else "reimbursement"
+
+
+def is_bank_fee(row: Mapping[str, Any]) -> bool:
+    return "手续费" in str(row.get("remark") or "")
+
+
+DEFAULT_REMARK_EXCEPTIONS = ["跳过"]
+
+
+def remark_exception_match(remark: object, keywords: list[str]) -> str:
+    text = re.sub(r"\s+", "", str(remark or ""))
+    if "跳过" in text:
+        return "跳过"
+    return next((keyword for keyword in keywords if re.sub(r"\s+", "", keyword)
+                 and re.sub(r"\s+", "", keyword) in text), "")
+
+
+def is_personal_reimbursement(row: Mapping[str, Any]) -> bool:
+    return row.get("configCompany") == "上海微誉信息技术有限公司" and employee_payment_kind(row) == "reimbursement"
+
+
+def flatten_account_rows(rows: Any) -> list[Mapping[str, Any]]:
+    result = {}
+    def visit(items):
+        if not isinstance(items, list):
+            return
+        for item in items:
+            if not isinstance(item, Mapping):
+                continue
+            if item.get("number"):
+                result[(str(item["number"]), str(item.get("id") or ""))] = item
+            visit(item.get("child", []))
+            visit(item.get("children", []))
+    visit(rows)
+    return list(result.values())
+
+
+def resolve_employee_payable(row: Mapping[str, Any], accounts: Any) -> dict[str, str]:
+    """Resolve one exact person leaf beneath 2241, at any account depth."""
+    name = str(row.get("counterpartyName") or "").strip()
+    rows = flatten_account_rows(accounts)
+    matches = []
+    for account in rows:
+        number = str(account.get("number") or "")
+        leaf_name = str(account.get("name") or account.get("fullName") or "").split("_")[-1].strip()
+        if not re.fullmatch(r"2241[0-9]+", number) or leaf_name != name:
+            continue
+        if account.get("child") or account.get("children") or any(
+            str(other.get("number") or "").startswith(number) and str(other.get("number")) != number for other in rows
+        ):
+            continue
+        if account.get("id") in (None, "", 0, "0"):
+            continue
+        matches.append({"personName": name, "accountNumber": number,
+                        "accountId": str(account["id"]), "accountName": leaf_name})
+    if len(matches) != 1:
+        raise ValueError(f"2241人员明细科目无法唯一匹配：{name}，候选={matches}")
+    return matches[0]
+
+
+def personal_reimbursement_summary(row: Mapping[str, Any]) -> str:
+    name = str(row.get("counterpartyName") or "").strip()
+    remark = str(row.get("remark") or "").strip().replace("费用报销", "报销")
+    return remark if remark.startswith(name) else name + remark
+
+
+MANUAL_BANK_REMARKS = ("增值税缴税", "社保缴税", "公积金", "个税缴税")
+
+
+def manual_bank_remark(remark: object) -> str:
+    """Classify for manual processing, without excluding from upload."""
+    text = re.sub(r"\s+", "", str(remark or ""))
+    return next((keyword for keyword in MANUAL_BANK_REMARKS if keyword in text), "")

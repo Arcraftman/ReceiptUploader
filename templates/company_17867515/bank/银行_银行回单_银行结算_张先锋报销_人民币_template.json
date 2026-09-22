@@ -1,0 +1,84 @@
+{
+  "id": "company_17867515-bank-reimbursement-张先锋",
+  "name": "银行_银行回单_银行结算_张先锋报销_人民币",
+  "version": "1.0",
+  "documentBlock": "银行",
+  "documentType": "银行回单",
+  "settlementMethod": "银行结算",
+  "businessType": "费用报销",
+  "currency": "人民币",
+  "keywords": [
+    "费用报销"
+  ],
+  "when": {
+    "businessType": "费用报销",
+    "settlementMethod": "银行结算"
+  },
+  "matchRules": {
+    "sourceFolders": [
+      "bank"
+    ],
+    "allowedDocumentBlocks": [
+      "银行"
+    ],
+    "flowDirections": [
+      "outflow"
+    ],
+    "anyKeywords": [
+      "费用报销"
+    ],
+    "expectedAccounts": [
+      "560203",
+      "source.employeePayableAccountNumber",
+      "source.bankAccountNumber"
+    ]
+  },
+  "summary": {
+    "header": "",
+    "body": "张先锋报销",
+    "separator": " "
+  },
+  "amountSource": "source",
+  "entries": [
+    {
+      "dc": 1,
+      "accountSelector": {
+        "number": "560203",
+        "name": "管理费用_办公用品费"
+      },
+      "amountFrom": "source.amount",
+      "amountForFrom": "source.amount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "name": "其他应付款_张先锋",
+        "numberFrom": "source.employeePayableAccountNumber"
+      },
+      "amountFrom": "source.amount",
+      "amountForFrom": "source.amount"
+    },
+    {
+      "dc": 1,
+      "accountSelector": {
+        "name": "其他应付款_张先锋",
+        "numberFrom": "source.employeePayableAccountNumber"
+      },
+      "amountFrom": "source.amount",
+      "amountForFrom": "source.amount"
+    },
+    {
+      "dc": -1,
+      "accountSelector": {
+        "numberFrom": "source.bankAccountNumber",
+        "name": "银行存款（由project.json动态注入）"
+      },
+      "amountFrom": "source.amount",
+      "amountForFrom": "source.amount"
+    }
+  ],
+  "enabled": true,
+  "usageNotes": "仅上海微誉、对应人员报销使用；费用入账与往来结清四条分录，人员使用独立科目，不使用itemClass。",
+  "employeeName": "张先锋",
+  "companyName": "上海微誉信息技术有限公司"
+}

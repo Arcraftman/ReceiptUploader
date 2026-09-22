@@ -53,7 +53,7 @@ def clear_receipt_markers(receipt_root: Path, sources: tuple[str, ...]) -> tuple
     scanned = 0
     changed = 0
     for source in sources:
-        for path in sorted((receipt_root / source).glob("receipt_*/receipt.json")):
+        for path in sorted((receipt_root / source).rglob("receipt_*/receipt.json")):
             payload = read_json(path)
             receipt_id = str(payload.get("receiptId", "")).strip()
             if receipt_id:

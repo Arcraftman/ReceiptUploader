@@ -32,7 +32,7 @@ def analyze_ocr_and_choose_template(artifact: OcrArtifact, template_root: Path, 
         enriched = dict(record)
         try:
             template_payload = catalog.load_template(record)
-            enriched.update({key: template_payload.get(key) for key in ("decisionCode", "decisionName", "documentBlock", "documentType", "settlementMethod", "businessType", "currency", "keywords", "matchRules", "amountSource", "exception") if template_payload.get(key) is not None})
+            enriched.update({key: template_payload.get(key) for key in ("decisionCode", "decisionName", "documentBlock", "documentType", "settlementMethod", "businessType", "currency", "keywords", "matchRules", "amountSource", "exception", "employeeName", "companyName") if template_payload.get(key) is not None})
         except Exception:
             pass
         enriched["templateFileName"] = Path(str(record.get("path", ""))).name
@@ -77,13 +77,54 @@ def analyze_ocr_and_choose_template(artifact: OcrArtifact, template_root: Path, 
     if not scoped_records:
         raise OcrPipelineError(f"模板范围为空：source={source_key}，目录={template_root / source_key}")
     candidate_records = scoped_records
-    from ..bank_rules import employee_payment_kind, is_person_name
+    from ..bank_rules import employee_payment_kind, is_supplier_refund, internal_transfer_account, is_bank_fee
+    transfer_account = internal_transfer_account(runtime_map_values) if source_key == "bank" else ""
+    if source_key == "bank" and "内部转账" in str(runtime_map_values.get("remark") or "") and not transfer_account:
+        raise OcrPipelineError("内部转账备注必须为内部转账加数字科目编码")
+    bank_fee = source_key == "bank" and is_bank_fee(runtime_map_values)
+    refund = source_key == "bank" and is_supplier_refund(runtime_map_values)
     employee_kind = employee_payment_kind(runtime_map_values) if source_key == "bank" else ""
-    if source_key == "bank" and is_person_name(runtime_map_values.get("counterpartyName")) and not employee_kind:
-        raise OcrPipelineError("人名流水缺少明确且唯一的工资或费用报销付款备注")
-    if employee_kind:
+    if sum(bool(value) for value in (transfer_account, refund, bank_fee, employee_kind)) > 1:
+        raise OcrPipelineError("备注命中多个业务规则，请保留一个明确业务关键词")
+    if transfer_account:
+        runtime_map_values["transferAccountNumber"] = transfer_account
+        from decimal import Decimal, InvalidOperation
+        try:
+            credit = Decimal(str(runtime_map_values.get("bankCreditAmount") or 0))
+            valid_credit = credit.is_finite() and credit > 0 and credit == Decimal(str(runtime_map_values.get("transactionAmount")))
+        except (InvalidOperation, ValueError, TypeError):
+            valid_credit = False
+        if runtime_map_values.get("flowDirection") != "inflow" or not valid_credit:
+            raise OcrPipelineError("内部转账模板仅用于流水贷方有金额的收款记录")
+        if transfer_account == required_bank_account_number:
+            raise OcrPipelineError("内部转账对方科目不能与当前银行科目相同")
+        rule_candidates = [item for item in candidate_records if item.get("businessType") == "内部转账"]
+        rejected = {}
+        if len(rule_candidates) != 1:
+            raise OcrPipelineError("内部转账必须配置唯一模板")
+    elif refund:
+        if runtime_map_values.get("flowDirection") != "inflow":
+            raise OcrPipelineError("备注退款要求银行收款方向，请核对流水借贷列")
+        rule_candidates = [item for item in candidate_records if item.get("businessType") == "供应商退款"]
+        rejected = {}
+        if len(rule_candidates) != 1:
+            raise OcrPipelineError("退款必须配置唯一的供应商退款模板")
+    elif bank_fee:
+        if runtime_map_values.get("flowDirection") != "outflow":
+            raise OcrPipelineError("手续费要求银行付款方向，请核对流水借贷列")
+        rule_candidates = [item for item in candidate_records if item.get("businessType") == "银行手续费"]
+        rejected = {}
+        if len(rule_candidates) != 1:
+            raise OcrPipelineError("手续费必须配置唯一的银行手续费模板")
+    elif employee_kind:
         business = "发放工资" if employee_kind == "salary" else "费用报销"
         rule_candidates = [item for item in candidate_records if item.get("businessType") == business]
+        if employee_kind == "reimbursement" and runtime_map_values.get("configCompany") == "上海微誉信息技术有限公司":
+            name = str(runtime_map_values.get("counterpartyName") or "").strip()
+            rule_candidates = [item for item in rule_candidates if item.get("employeeName") == name and item.get("companyName") == runtime_map_values.get("configCompany")]
+        else:
+            rule_candidates = [item for item in rule_candidates if not item.get("employeeName")]
+
         rejected = {}
         if len(rule_candidates) != 1:
             raise OcrPipelineError(f"员工付款必须有唯一的{business}模板")
@@ -118,7 +159,25 @@ def analyze_ocr_and_choose_template(artifact: OcrArtifact, template_root: Path, 
     memory = _load_analysis_memory(memory_path)
     active_selector = selector or OpenAICompatibleTemplateSelector.from_settings({})
     choose_parameters = inspect.signature(active_selector.choose).parameters
-    if employee_kind:
+    if transfer_account:
+        chosen_transfer = rule_candidates[0]
+        decision = {"status": "success", "templatePath": chosen_transfer["path"],
+                    "templateId": chosen_transfer["id"], "confidence": 1.0,
+                    "selectionMode": "internal_transfer_remark", "llmAttempted": False,
+                    "reason": "按内部转账备注中的对方科目生成收款侧内部转账凭证"}
+    elif refund:
+        chosen_refund = rule_candidates[0]
+        decision = {"status": "success", "templatePath": chosen_refund["path"],
+                    "templateId": chosen_refund["id"], "confidence": 1.0,
+                    "selectionMode": "supplier_refund_remark", "llmAttempted": False,
+                    "reason": "流水备注包含退款，按用户指定模板生成供应商付款退回"}
+    elif bank_fee:
+        chosen_fee = rule_candidates[0]
+        decision = {"status": "success", "templatePath": chosen_fee["path"],
+                    "templateId": chosen_fee["id"], "confidence": 1.0,
+                    "selectionMode": "bank_fee_remark", "llmAttempted": False,
+                    "reason": "流水备注包含手续费，按供应商应付账款付款模板生成"}
+    elif employee_kind:
         chosen_employee = rule_candidates[0]
         decision = {"status": "success", "templatePath": chosen_employee["path"],
                     "templateId": chosen_employee["id"], "confidence": 1.0,

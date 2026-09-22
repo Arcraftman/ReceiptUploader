@@ -50,13 +50,13 @@ def test_xml_preserves_identifier_and_literal_formula():
 
 
 def test_sources_all_pass_independent_read_allowlist():
-    sources = json.loads((Path(__file__).parents[1] / "config/finance_read_sources.json").read_text())
+    sources = json.loads((Path(__file__).parents[1] / "config/finance_read_sources.json").read_text(encoding="utf-8"))
     for case in sources.values():
         validate_request(case["method"], case["path"].replace("{dbId}", "123"), case.get("query", {}), case.get("body"), "123")
 
 
 def test_excel_refresh_only_writes_managed_sheets_and_stages_before_write():
-    vba = (Path(__file__).parents[1] / "excel/FinanceRefresh.bas").read_text()
+    vba = (Path(__file__).parents[1] / "excel/FinanceRefresh.bas").read_text(encoding="utf-8")
     line = next(line for line in vba.splitlines() if 'names = Array(' in line)
     assert all('"'+name+'"' in line for name in MANAGED_SHEETS)
     assert '"预算输入"' not in line and '"账龄输入"' not in line
@@ -65,12 +65,16 @@ def test_excel_refresh_only_writes_managed_sheets_and_stages_before_write():
     assert '"\'" & values(r, c)' in vba
 
 
-def test_snapshot_removes_auxiliary_totals_and_adds_nonauxiliary_accounts(tmp_path):
+@pytest.mark.parametrize('selected_month', [2, 12])
+def test_snapshot_removes_auxiliary_totals_and_adds_nonauxiliary_accounts(tmp_path, selected_month):
     from kdzwy_receipt_uploader.finance.snapshot import collect_snapshot
     root = Path(__file__).parents[1]
     (tmp_path / "runtime/registry").mkdir(parents=True)
     (tmp_path / "config").mkdir()
-    (tmp_path / "config/finance_read_sources.json").write_text((root / "config/finance_read_sources.json").read_text())
+    (tmp_path / "config/finance_read_sources.json").write_text(
+        (root / "config/finance_read_sources.json").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
     (tmp_path / "runtime/registry/accountbooks.json").write_text(json.dumps({"version": 2, "accountbooks": [
         {"key": "company_1", "company_id": "1", "name": "测试公司", "enabled": True, "login_account": "account_1", "session_file": "unused.json"}
     ]}))
@@ -86,7 +90,7 @@ def test_snapshot_removes_auxiliary_totals_and_adds_nonauxiliary_accounts(tmp_pa
             if path.endswith("/balance-report"):
                 return {"item": [
                     {"number": "2202", "name": "应付", "endCredit": 70, "isLeaf": False},
-                    {"number": "220201", "accountId": "a", "name": "供应商", "endCredit": 100, "isLeaf": True},
+                    {"number": "220201", "accountId": "a", "name": "供应商", "endCredit": 100, "ptDebit": -25, "isLeaf": True},
                     {"number": "220202", "accountId": "b", "name": "无辅助", "endCredit": -30, "isLeaf": True},
                 ]}
             if path.endswith("/balance-item-report/query"):
@@ -95,8 +99,15 @@ def test_snapshot_removes_auxiliary_totals_and_adds_nonauxiliary_accounts(tmp_pa
                         {"idStr": "a_vendor", "name": "科目子行", "accountNumber": "220201", "endCredit": 100},
                         {"idStr": None, "name": "合计", "endCredit": 100}]
             raise AssertionError(path)
-    snapshot = collect_snapshot(tmp_path, "company_1", "2026-01", Client)
+    snapshot = collect_snapshot(tmp_path, "company_1", f"2026-{selected_month:02}", Client)
     rows = snapshot["sheets"]["往来余额"][4:]
     assert len(rows) == 2
     assert sum((r[9] or 0) - (r[8] or 0) for r in rows) == 70
     assert rows[1][1] == "account:b"
+    annual = snapshot["sheets"]["年度分析数据"][4:]
+    assert {row[0] for row in annual} == {f'2026-{m:02}' for m in range(1,selected_month+1)}
+    assert any(row[:4] == ["2026-01", "subject_credit", "2202", "应付"] for row in annual)
+    assert any(row[:4] == ["2026-02", "subject_credit", "2202", "应付"] for row in annual)
+    debits = [row for row in annual if row[1] == 'subject_debit_leaf']
+    assert {row[2] for row in debits} == {'220201', '220202'}
+    assert all(row[4] == -25 for row in debits if row[2] == '220201')
